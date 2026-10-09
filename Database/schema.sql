@@ -6,16 +6,16 @@ CREATE TABLE IF NOT EXISTS User (
     User_ID INT AUTO_INCREMENT PRIMARY KEY,
     FName VARCHAR(50) NOT NULL,
     LName VARCHAR(50) NOT NULL,
-    Student_ID DECIMAL(8,0) NOT NULL,
-    Email VARCHAR(50) NOT NULL,
-    Password VARCHAR(20) NOT NULL
+    Student_ID VARCHAR(20) NOT NULL UNIQUE,
+    Email VARCHAR(50) NOT NULL UNIQUE,
+    Password VARCHAR(255) NOT NULL
 ) ENGINE=InnoDB;
 
 -- 2.ตารางข้อมูลเจ้าหน้าที่ (Admin)
 CREATE TABLE IF NOT EXISTS Admin (
     Admin_ID INT AUTO_INCREMENT PRIMARY KEY,
-    Admin_email VARCHAR(50) NOT NULL,
-    Admin_password VARCHAR(20) NOT NULL
+    Admin_email VARCHAR(50) NOT NULL UNIQUE,
+    Admin_password VARCHAR(255) NOT NULL
 ) ENGINE=InnoDB;
 
 -- 3.ตารางข้อมูลหมวดหมู่ของสิ่งของ (Category)
