@@ -261,7 +261,7 @@ router.post('/admin-login', async (req, res) => {
         if (!isPasswordValid) {
             return res.status(401).json({
                 success: false,
-                message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
+                message: 'รหัสผ่านไม่ถูกต้อง'
             });
         }
         
