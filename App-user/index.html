@@ -1,13 +1,103 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>app-user</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus lost & Found</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" 
+            rel="stylesheet"> 
+
+    <style> 
+            /*ล้างค่าขอบทั้งในและนอก ที่เบราเซอร์ให้มา*/
+        *{
+            margin: 0;                  /*ลบระยะห่างภายนอก*/
+            padding: 0;                  /* ลบกระยะห่างภายใน */
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+        /* พื้นหลังหน้าเว็บสำหรับวางเครื่องมือ */
+        body {
+            background-color: #f4f5f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        /* กำหนดตัวขนาดเครื่อง */
+        .app-container {
+            width: 100%;
+            max-width: 390px;
+            height: 800px;
+            background-color: #ffffff;
+            border-radius: 61px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 8px solid #2b2b2b;
+            position: relative;
+        }
+        /* กำหนด ส่วนheader */
+        .app-header {
+            padding: 12px 0;
+            display: flex;               /*ทำให้องค์ประกอบในกล่องอยู่ในแถวหรือคอลัมน์เดียวกัน*/   
+            justify-content: center;            /*เป็นการทำให้ header อยู่ตรงกลาง*/
+            align-items: center;        /*จัดของข้างในให้อยู่ตรงกลาง*/
+        }
+            /* สร้าง dynamic */
+            .dynamic-island {
+                width: 110px;
+                height: 28px;
+                background-color: #000000 ;
+                border-radius: 20px;
+
+                position: absolute; /*อิงตำแหน่งจากapp-container*/ 
+                top : 55px ;          /* ระยะห่างจากขอบจอ */
+                left: 50%;              /* ขยับมาเริ่มที่จุดกึ่งกลางของหน้าจอ */
+                transform: translateX(-50%);     /* ดึงตัวแถบกลับมาทางซ้าย 50% เพื่อให้อยู่ตรงกลาง */   
+            }
+            /* แสดง เนื้อหาหลักในแอพ */
+        .app-content {
+            padding:30px 24px ;
+            display: flex;
+            flex-direction: column;         /*จัดเรียงบนลงล่าง*/
+            align-items: center; 
+            flex: 1;
+            justify-content: center;
+            
+        }
+            /* ขนาดและตำแหน่งlogo */
+            .app-logo {
+                width: 215px;
+                height: auto;
+                top: 70px;
+                margin-bottom: 20px;
+                position: absolute;
+        }
+    </style>
+    
+</head>
+
+<body>
+     <!-- แสดงตัวเครื่องมือถือ -->
+    <div class = "app-container">
+            <div class="app-content">
+                <img src="logo.png" class = "app-logo">
+            </div>
+        </div>
+    <!-- แสดงส่วนheader -->
+    <div class = "app-header"> 
+                 <div class = "dynamic-island"> </div>   
+            </div>
+
+        
+         
+         
+</body>
 </html>
