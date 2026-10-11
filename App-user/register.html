@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Lost & Found</title>
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" 
+            rel="stylesheet"> 
+        
+        <style>
+            *{
+            margin: 0;                  /*ลบระยะห่างภายนอก*/
+            padding: 0;                  /* ลบกระยะห่างภายใน */
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        body {
+            background-color: #f4f5f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .rg-container {
+            width: 100%;
+            max-width: 390px;
+            height: 800px;
+            background-color: #ffffff;
+            border-radius: 61px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 8px solid #2b2b2b;
+            position: relative;
+            padding: 24px 20px;
+        }
+        /* กำหนด ส่วนheader */
+        .rg-header {
+            padding: 12px 0;
+            display: flex;               /*ทำให้องค์ประกอบในกล่องอยู่ในแถวหรือคอลัมน์เดียวกัน*/   
+            justify-content: center;            /*เป็นการทำให้ header อยู่ตรงกลาง*/
+            align-items: center;        /*จัดของข้างในให้อยู่ตรงกลาง*/
+        }
+        .dynamic-island {
+            width: 110px;
+            height: 28px;
+            background-color: #000000 ;
+            border-radius: 20px;
+
+            position: absolute; /*อิงตำแหน่งจากapp-container*/ 
+            top : 40px ;          /* ระยะห่างจากขอบจอ */
+            left: 50%;              /* ขยับมาเริ่มที่จุดกึ่งกลางของหน้าจอ */
+            transform: translateX(-50%);     /* ดึงตัวแถบกลับมาทางซ้าย 50% เพื่อให้อยู่ตรงกลาง */   
+        }
+            /* แสดง เนื้อหาหลักในแอพ */
+        .rg-content {
+            padding:80px 24px 30px ;
+            display: flex;
+            flex-direction: column;         /*จัดเรียงบนลงล่าง*/
+            align-items: center; 
+            flex: 1;
+        }
+        h1 {
+            font-size: 28px;
+            font-weight: 650;
+            color: #111111;
+            margin-bottom: 10px;
+            align-self: center;         /*ใช้กับตัวใดตัวนึง*/
+            position: absolute;
+            top: 100px;
+        }
+        /* การจัดกลุ่ม */
+        .form-group {
+            margin-bottom: 14px;
+        }
+        /* จัดกล่องสำหรับแถว เอาไว้ใส่ชื่อ นามสกุล */
+        .form-row {
+      display: flex;
+      gap: 13px;                /*ช่องว่าง*/
+    }
+    .form-row .form-group {
+      flex: 1;                  /*ทำให้ช่องกรอกข้อมูลแบ่งพื้นที่เท่าๆกัน ยืดขยายตามแถว อัตโนมัติ*/
+    }
+    label {
+      display: block;               /*กำหนดตัวอักษร เพื่อให้ผลเป็นบล็อคแยกกัน และช่วยดันให้ช่องกรอกข้อมูล ดันไปบรรทัดข้างล่าง*/
+      font-size: 13px;
+      font-weight: 500;
+      color: #444444;
+      margin-bottom: 6px;
+    }
+    /* สร้างกล่องที่ครอบช่องกรอก */
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    /* ใส่ข้อมูล*/
+    input {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 14px;
+      border: 1px solid #e0e0e0;
+      border-radius: 13px;
+      outline: none;
+      background-color: #ffffff;
+      color: #333333;
+    }
+    input:focus {
+      border-color: #f06529;
+    }
+
+         </style>
+</head>
+
+
+<body>
+
+    <div class="rg-container">
+        <div class="dynamic-island"></div>
+        <div class="rg-content"></div>
+            <h1>สร้างบัญชี</h1>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>ชื่อ</label>
+                <div class="input-wrapper">
+                    <input type="text" placeholder="สมใจ">
+                </div>
+            </div> 
+            <div class="form-group">
+                <label>นามสกุล</label>
+                <div class="input-wrapper">
+                    <input type="text" placeholder="เพชรฆาต">
+                </div>
+            </div>
+        </div>
+
+            <div class="form-group">
+                <label>รหัสนักศึกษา</label>
+                <div class="input-wrapper">
+                    <input type="text" placeholder="6xxxxxxx">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Email</label>
+                <div class="input-wrapper">
+                    <input type="text" placeholder="6xxxxxxx@kmitl.ac.th">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>รหัสผ่าน</label>
+                <div class="input-wrapper">
+                    <input type="text" placeholder="กรอกรหัสผ่าน">
+                </div>
+            </div>
+    </div>   
+       
+   
+   
+    
+
+</body>
+</html>
