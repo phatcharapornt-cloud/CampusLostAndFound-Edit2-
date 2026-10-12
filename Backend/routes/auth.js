@@ -216,7 +216,7 @@ router.post('/reset-password', async (req, res) => {
         await db.query('UPDATE User SET Password = ? WHERE User_ID = ?', [hashedPassword, userID]);
 
         // 5. ทำเครื่องหมายในตาราง ResetPassword ว่า Token นี้ใช้งานแล้ว (Is_Used = TRUE)
-        await db.query('UPDATE ResetPassword SET Is_Used = TRUE WHERE Resetpassword_ID = ? ', [tokens[0].Reset_ID]);
+        await db.query('UPDATE ResetPassword SET Is_Used = TRUE WHERE Resetpassword_ID = ? ', [tokens[0].ResetPassword_ID]);
 
         res.json({
             success: true,
