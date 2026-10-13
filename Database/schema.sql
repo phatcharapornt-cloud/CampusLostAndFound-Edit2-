@@ -127,5 +127,5 @@ CREATE EVENT IF NOT EXISTS delete_unapproved_found_items
 ON SCHEDULE EVERY 5 MINUTE
 DO
     DELETE FROM FoundItem
-    WHERE Found_status = 'รอดำเนินการ'
+    WHERE Found_status = 'รอการอนุมัติ'
     AND Foundcheck_at < NOW() - INTERVAL 30 MINUTE;
