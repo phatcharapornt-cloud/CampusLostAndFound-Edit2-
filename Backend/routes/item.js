@@ -94,7 +94,6 @@ router.post('/founditem', async (req, res) => {
         Found_time,
         Found_description,
         Found_photo,
-        Found_status 
     } = req.body;   
 
     // ตรวจสอบว่ากรอกข้อมูลครบถ้วนหรือไม่
@@ -116,7 +115,9 @@ router.post('/founditem', async (req, res) => {
     try {
         const userID = User_ID || null; // หากไม่มี User_ID ให้กำหนดเป็น null
         const adminID = Admin_ID || null; // หากไม่มี Admin_ID ให้กำหนดเป็น null
-        const status = Found_status || 'รอการอนุมัติ'; // กำหนดค่า default เป็น 'รอการอนุมัติ' หากเจ้าหน้าที่ยังไม่ได้รับสิ่งของที่พบ
+
+        //หาก Admin เป็นผู้แจ้งเองให้เป็น 'อนุมัติแล้ว' ทันที แต่ถ้า User แจ้งให้เป็น 'รอดำเนินการ'
+        const status = adminID ? 'อนุมัติแล้ว' : 'รอการอนุมัติ';
         const photoPath = saveBase64Image(Found_photo, 'found'); // บันทึกรูปภาพลงดิสก์ แล้วดึง Path สั้นๆ มาใช้งาน
 
         const insertFoundItemQuery = `
