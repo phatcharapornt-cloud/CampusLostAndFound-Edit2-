@@ -28,7 +28,7 @@
             height: 800px;
             background-color: #ffffff;
             border-radius: 61px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -69,7 +69,7 @@
             margin-bottom: 10px;
             align-self: center;         /*ใช้กับตัวใดตัวนึง*/
             position: absolute;
-            top: 100px;
+            top: 85px;
         }
         /* การจัดกลุ่ม */
         .form-group {
@@ -77,38 +77,94 @@
         }
         /* จัดกล่องสำหรับแถว เอาไว้ใส่ชื่อ นามสกุล */
         .form-row {
-      display: flex;
-      gap: 13px;                /*ช่องว่าง*/
-    }
-    .form-row .form-group {
-      flex: 1;                  /*ทำให้ช่องกรอกข้อมูลแบ่งพื้นที่เท่าๆกัน ยืดขยายตามแถว อัตโนมัติ*/
-    }
-    label {
-      display: block;               /*กำหนดตัวอักษร เพื่อให้ผลเป็นบล็อคแยกกัน และช่วยดันให้ช่องกรอกข้อมูล ดันไปบรรทัดข้างล่าง*/
-      font-size: 13px;
-      font-weight: 500;
-      color: #444444;
-      margin-bottom: 6px;
-    }
-    /* สร้างกล่องที่ครอบช่องกรอก */
-    .input-wrapper {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-    /* ใส่ข้อมูล*/
-    input {
-      width: 100%;
-      padding: 10px 14px;
-      font-size: 14px;
-      border: 1px solid #e0e0e0;
-      border-radius: 13px;
-      outline: none;
-      background-color: #ffffff;
-      color: #333333;
-    }
-    input:focus {
-      border-color: #f06529;
+            display: flex;
+            gap: 13px;                /*ช่องว่าง*/
+        }
+        .form-row .form-group {
+            flex: 1;                  /*ทำให้ช่องกรอกข้อมูลแบ่งพื้นที่เท่าๆกัน ยืดขยายตามแถว อัตโนมัติ*/
+        }
+        label {
+            display: block;               /*กำหนดตัวอักษร เพื่อให้ผลเป็นบล็อคแยกกัน และช่วยดันให้ช่องกรอกข้อมูล ดันไปบรรทัดข้างล่าง*/
+            font-size: 13px;
+            font-weight: 500;
+            color: #444444;
+            margin-bottom: 8px;
+        }
+                                    /* สร้างกล่องที่ครอบช่องกรอก */
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+                /* ใส่ข้อมูล*/
+        input {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 14px;
+            border: 1px solid #e0e0e0;
+            border-radius: 13px;
+            outline: none;
+            background-color: #ffffff;
+            color: #333333;
+        }
+        input:focus {
+            border-color: #f06529;
+        }
+        .eye-icon {
+            position: absolute;              /*ช่วยให้จัดตำแหน่งเทียบกับขอบของกล่อง ไม่หลุดออกไปข้างนอก*/
+            right: 12px;
+            color: #888888;
+            cursor: pointer;
+        }
+        /* กล่องเงื่อนไข */
+        .rule-container {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 20px; 
+        }
+        .rules-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 8px;
+        }
+
+        .rule-item {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: #777777;
+            margin-bottom: 6px;
+        }
+
+        .rule-item:last-child {
+            margin-bottom: 0;
+        }
+        .submit-btn  {
+            width: 100%;
+            padding: 12px;
+            background-color: #f26522;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .submit-b:hover {
+            background-color: #e05413;
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 13px;
+            color: #555555;
+        }
+        .login-link a {
+            color: #f06529;
+            text-decoration: none;
+            font-weight: 600;
     }
 
          </style>
@@ -154,9 +210,27 @@
             <div class="form-group">
                 <label>รหัสผ่าน</label>
                 <div class="input-wrapper">
-                    <input type="text" placeholder="กรอกรหัสผ่าน">
+                    <input type="password" placeholder="กรอกรหัสผ่าน">   
+                    <i class="fa-regular fa-eye-slash eye-icon"></i>
                 </div>
             </div>
+
+            <div class="rule-container">
+                <div class="rules-title">หมายเหตุ : เงื่อนไขความปลอดภัย</div>
+                    <div class="rule-item">ความยาว 8-16 ตัวอักษร</div>
+                    <div class="rule-item">มีตัวอักษรพิมพ์ใหญ่อย่างน้อย 1 ตัวอ (A-Z)</div>
+                    <div class="rule-item">มีตัวอักษรพิมพ์เล็กอย่างน้อย 1 ตัว (a-z)</div>
+                    <div class="rule-item">มีตัวเลขอย่างน้อย 1 ตัว (0-9)</div>
+                    <div class="rule-item">มีอักขระพิเศษอย่างน้อย 1 ตัว</div>
+            </div>
+
+                <button type="button" class="submit-btn">สมัครใช้งาน</button>
+                    <div class="login-link">
+                        <a href="login.html"></a>
+                    </div>
+
+        </div>
+            
     </div>   
        
    
