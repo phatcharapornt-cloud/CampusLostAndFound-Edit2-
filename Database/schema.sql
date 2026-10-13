@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS LostItem (
     Lost_time TIME NULL,
     Lost_description VARCHAR(200) NOT NULL,
     Lost_photo VARCHAR(255) NULL,
-    Lost_status ENUM('พบ', 'ไม่พบ','คืนสิ่งของแล้ว') NOT NULL,
+    Lost_status ENUM('พบ', 'ไม่พบ','ได้รับสิ่งของคืนแล้ว') NOT NULL,
     FOREIGN KEY (User_ID) REFERENCES User(User_ID) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Category_ID) REFERENCES Category(Category_ID) ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (Location_ID) REFERENCES Location(Location_ID) ON DELETE RESTRICT ON UPDATE CASCADE
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS FoundItem (
     Found_time TIME NOT NULL,
     Found_description VARCHAR(200) NOT NULL,
     Found_photo VARCHAR(255) NOT NULL,
-    Found_status ENUM('รอการอนุมัติ', 'อนุมัติแล้ว', 'ได้รับสิ่งของคืนแล้ว') NOT NULL,
+    Found_status ENUM('รอการอนุมัติ', 'อนุมัติแล้ว', 'คืนสิ่งของแล้ว') NOT NULL,
     Foundcheck_at DATETIME NOT NULL Default CURRENT_TIMESTAMP,
     FOREIGN KEY (User_ID) REFERENCES User(User_ID) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Admin_ID) REFERENCES Admin(Admin_ID) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -118,3 +118,14 @@ CREATE TABLE IF NOT EXISTS Notification (
     FOREIGN KEY (Found_ID) REFERENCES FoundItem(Found_ID) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Claim_ID) REFERENCES Claim(Claim_ID) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
+
+-- 11. ระบบลบข้อมูลอัตโนมัติภายใน 30 นาที ของสิ่งของที่พบ (FoundItem) ที่รอการอนุมัติ
+-- 1. เปิดใช้งานระบบ Event Scheduler ใน MySQL
+SET GLOBAL event_scheduler = ON;
+-- 2. สร้าง Event ตรวจเช็คและลบรายการ 'รอดำเนินการ' ที่เกิน 30 นาที ทุกๆ 5 นาที
+CREATE EVENT IF NOT EXISTS delete_unapproved_found_items
+ON SCHEDULE EVERY 5 MINUTE
+DO
+    DELETE FROM FoundItem
+    WHERE Found_status = 'รอดำเนินการ'
+    AND Foundcheck_at < NOW() - INTERVAL 30 MINUTE;
