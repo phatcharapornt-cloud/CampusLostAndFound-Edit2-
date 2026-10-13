@@ -50,7 +50,7 @@
             border-radius: 20px;
 
             position: absolute; /*อิงตำแหน่งจากapp-container*/ 
-            top : 40px ;          /* ระยะห่างจากขอบจอ */
+            top : 30px ;          /* ระยะห่างจากขอบจอ */
             left: 50%;              /* ขยับมาเริ่มที่จุดกึ่งกลางของหน้าจอ */
             transform: translateX(-50%);     /* ดึงตัวแถบกลับมาทางซ้าย 50% เพื่อให้อยู่ตรงกลาง */   
         }
@@ -121,7 +121,7 @@
             background-color: #f8f9fa;
             border-radius: 10px;
             padding: 14px;
-            margin-bottom: 20px; 
+            margin-bottom: 55px; 
         }
         .rules-title {
             font-size: 12px;
@@ -151,6 +151,7 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
+            transform: translateY(-30px);       /* ย้ายตำแหน่งโดยไม่มีผลกระทบต่อส่วนอื่น ค่าน้อยยิ่งสูง*/
         }
         .submit-b:hover {
             background-color: #e05413;
@@ -224,10 +225,9 @@
                     <div class="rule-item">มีอักขระพิเศษอย่างน้อย 1 ตัว</div>
             </div>
 
-                <button type="button" class="submit-btn">สมัครใช้งาน</button>
-                    <div class="login-link">
-                        <a href="login.html"></a>
-                    </div>
+            <button type="button" class="submit-btn" onclick="window.location.href='login.html'">สมัครใช้งาน</button>
+
+            <!-- <div class="login-link"></div> -->
 
         </div>
             
