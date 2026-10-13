@@ -35,7 +35,6 @@ router.post('/lostitem', async (req, res) => {
         Lost_time,
         Lost_description,
         Lost_photo,
-        Lost_status 
     } = req.body;
 
     // ตรวจสอบว่ากรอกข้อมูลครบถ้วนหรือไม่
@@ -47,7 +46,7 @@ router.post('/lostitem', async (req, res) => {
     }
 
     try {
-        const status = Lost_status || 'ไม่พบ'; // กำหนดค่า default เป็น 'lost' หากไม่พบการจับคู่
+        const status = 'ไม่พบ'; // กำหนดสถานะเริ่มต้นเป็น 'ไม่พบ'
         const time = Lost_time || null ; // กำหนดค่า default เป็น null หากผู้ใช้งานจำช่วงเวลาของสิ่งของที่หายไม่ได้
         const photoPath = saveBase64Image(Lost_photo, 'lost'); // บันทึกรูปภาพลงดิสก์ แล้วดึง Path สั้นๆ มาใช้งาน
 
