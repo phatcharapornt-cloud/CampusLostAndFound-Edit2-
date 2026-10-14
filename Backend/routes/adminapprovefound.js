@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const { processMatchingByFoundItem } = require('../service/matchingService');
 
 // 1. ดึงรายการสิ่งของที่พบทั้งหมดที่สถานะเป็น 'รอการอนุมัติ' (GET /api/admin/pendingfound)
 router.get('/pendingfound', async (req, res) => {
@@ -68,6 +69,8 @@ router.put('/approvefound/:id', async (req, res) => {
                 message: 'ไม่พบรายการที่รออนุมัติ หรือรายการนี้ถูกอนุมัติไปแล้ว'
             });
         }
+        //ประมวลผลจับคู่กับรายการของหายในระบบทันทีที่อนุมัติสำเร็จ
+        processMatchingByFoundItem(id);
 
         res.status(200).json({
             success: true,
