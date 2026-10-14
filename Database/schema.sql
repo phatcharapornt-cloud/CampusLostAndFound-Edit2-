@@ -46,12 +46,12 @@ CREATE TABLE IF NOT EXISTS LostItem (
     User_ID INT NOT NULL,
     Category_ID INT NOT NULL,
     Location_ID INT NOT NULL,
-    LostItem_name VARCHAR(30) NOT NULL,
+    LostItem_name VARCHAR(100) NOT NULL,
     Lost_date DATE NOT NULL,
     Lost_time TIME NULL,
     Lost_description VARCHAR(200) NOT NULL,
     Lost_photo VARCHAR(255) NULL,
-    Lost_status ENUM('พบ', 'ไม่พบ','ได้รับสิ่งของคืนแล้ว') NOT NULL,
+    Lost_status ENUM('พบ', 'ไม่พบ','ได้รับสิ่งของคืนแล้ว') NOT NULL DEFAULT 'ไม่พบ',
     FOREIGN KEY (User_ID) REFERENCES User(User_ID) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Category_ID) REFERENCES Category(Category_ID) ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (Location_ID) REFERENCES Location(Location_ID) ON DELETE RESTRICT ON UPDATE CASCADE
@@ -61,15 +61,15 @@ CREATE TABLE IF NOT EXISTS LostItem (
 CREATE TABLE IF NOT EXISTS FoundItem (
     Found_ID INT AUTO_INCREMENT PRIMARY KEY,
     User_ID INT NOT NULL,
-    Admin_ID INT NOT NULL,
+    Admin_ID INT NULL,
     Category_ID INT NOT NULL,
     Location_ID INT NOT NULL,
-    FoundItem_name VARCHAR(30) NOT NULL,
+    FoundItem_name VARCHAR(100) NOT NULL,
     Found_date DATE NOT NULL,
     Found_time TIME NOT NULL,
     Found_description VARCHAR(200) NOT NULL,
     Found_photo VARCHAR(255) NOT NULL,
-    Found_status ENUM('รอการอนุมัติ', 'อนุมัติแล้ว', 'คืนสิ่งของแล้ว') NOT NULL,
+    Found_status ENUM('รอการอนุมัติ', 'อนุมัติแล้ว', 'คืนสิ่งของแล้ว') NOT NULL DEFAULT 'รอการอนุมัติ',
     Foundcheck_at DATETIME NOT NULL Default CURRENT_TIMESTAMP,
     FOREIGN KEY (User_ID) REFERENCES User(User_ID) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Admin_ID) REFERENCES Admin(Admin_ID) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS MatchItem (
     Found_ID INT NOT NULL,
     Match_score DECIMAL(5,2) NOT NULL,
     Match_date DATE NOT NULL default (CURRENT_DATE),
-    Mathch_time TIME NOT NULL default (CURRENT_TIME),
+    Match_time TIME NOT NULL default (CURRENT_TIME),
     FOREIGN KEY (Lost_ID) REFERENCES LostItem(Lost_ID) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Found_ID) REFERENCES FoundItem(Found_ID) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
@@ -92,11 +92,19 @@ CREATE TABLE IF NOT EXISTS MatchItem (
 -- 9.ตารางข้อมูลการขอรับสิ่งของคืน (Claim)
 CREATE TABLE IF NOT EXISTS Claim (
     Claim_ID INT AUTO_INCREMENT PRIMARY KEY,
-    Admin_ID INT NOT NULL,
+    User_ID INT NOT NULL,
+    Admin_ID INT NULL,
+    Match_ID INT NOT NULL,
+    Lost_ID INT NOT NULL,
+    Found_ID INT NOT NULL,
     Claim_detail VARCHAR(200) NOT NULL,
-    Claim_status ENUM('รอการอนุมัติ', 'อนุมัติ', 'ปฏิเสธ','คืนสิ่งของแล้ว') NOT NULL,
+    Claim_status ENUM('รอการอนุมัติ', 'อนุมัติ', 'ปฏิเสธ','คืนสิ่งของแล้ว') NOT NULL DEFAULT 'รอการอนุมัติ',
     Claim_date DATE NOT NULL,
-    Claimcheck_at DATETIME NOT NULL Default CURRENT_TIMESTAMP,
+    Claimcheck_at DATETIME NULL Default NULL,
+    FOREIGN KEY (User_ID) REFERENCES User(User_ID) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (Match_ID) REFERENCES MatchItem(Match_ID) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (Lost_ID) REFERENCES LostItem(Lost_ID) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (Found_ID) REFERENCES FoundItem(Found_ID) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Admin_ID) REFERENCES Admin(Admin_ID) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
