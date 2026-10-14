@@ -4,6 +4,9 @@ const db = require('../config/db');
 const fs = require('fs');
 const path = require('path');
 
+// นำเข้าฟังก์ชันประมวลผลจับคู่จากไฟล์ matchitem.js
+const { processMatchingByLostItem, processMatchingByFoundItem } = require('../service/matchingService');
+
 // ฟังก์ชันแปลง Base64 แล้วบันทึกเป็นไฟล์รูปภาพลงโฟลเดอร์ uploads
 function saveBase64Image(base64Data, prefix) {
     if (!base64Data) return null;
@@ -68,10 +71,15 @@ router.post('/lostitem', async (req, res) => {
             status
         ]);
 
+        const newLostId = result.insertId; //ดึง Lost_ID ที่ถูกบันทึกล่าสุด
+
+        // เรียกฟังก์ชันประมวลผลการจับคู่สิ่งของให้อัตโนมัติ
+        processMatchingByLostItem(newLostId);
+
         res.status(201).json({
             success: true,
             message: 'แจ้งสิ่งของที่หายสำเร็จ',
-            LostItem_ID: result.insertId // ส่งกลับ LostItem_ID ของสิ่งของที่หายที่ถูกบันทึก
+            LostItem_ID: newLostId // ส่งกลับ LostItem_ID ของสิ่งของที่หายที่ถูกบันทึก
         });
     } catch (error) {
         console.error('Error reporting lost item:', error);
@@ -82,11 +90,10 @@ router.post('/lostitem', async (req, res) => {
     }
 });
 
-// 2. API แจ้งสิ่งของที่พบ (POST /api/items/founditem)
-router.post('/founditem', async (req, res) => {
+// 2. API แจ้งสิ่งของที่พบโดยผู้ใช้งาน(user) (POST /api/items/founditem/user)
+router.post('/founditem/user', async (req, res) => {
     const{
-        User_ID,
-        Admin_ID,
+        User_ID, // User_ID ของคนที่ล็อกอินมาแจ้ง
         Category_ID,
         Location_ID,
         FoundItem_name,
@@ -97,28 +104,17 @@ router.post('/founditem', async (req, res) => {
     } = req.body;   
 
     // ตรวจสอบว่ากรอกข้อมูลครบถ้วนหรือไม่
-    if (!Category_ID || !Location_ID || !FoundItem_name || !Found_date || !Found_time || !Found_photo || !Found_description ) {
+    if (!User_ID ||!Category_ID || !Location_ID || !FoundItem_name || !Found_date || !Found_time || !Found_photo || !Found_description ) {
         return res.status(400).json({
             success: false,
             message: 'กรุณากรอกข้อมูลให้ครบถ้วน'
         });
     }
 
-    // ต้องมีผู้แจ้งอย่างน้อย 1 คน (User หรือ Admin) หากไม่มีผู้แจ้งให้ส่ง error
-    if (!User_ID && !Admin_ID) {
-        return res.status(400).json({
-            success: false,
-            message: 'กรุณาระบุผู้แจ้ง (User หรือ Admin)'
-        });
-    }
-
     try {
-        const userID = User_ID || null; // หากไม่มี User_ID ให้กำหนดเป็น null
-        const adminID = Admin_ID || null; // หากไม่มี Admin_ID ให้กำหนดเป็น null
-
-        //หาก Admin เป็นผู้แจ้งเองให้เป็น 'อนุมัติแล้ว' ทันที แต่ถ้า User แจ้งให้เป็น 'รอดำเนินการ'
-        const status = adminID ? 'อนุมัติแล้ว' : 'รอการอนุมัติ';
-        const photoPath = saveBase64Image(Found_photo, 'found'); // บันทึกรูปภาพลงดิสก์ แล้วดึง Path สั้นๆ มาใช้งาน
+        const status = 'รอการอนุมัติ';
+        const adminID = null; // ผู้ใช้แจ้งเอง ยังไม่มี Admin อนุมัติ
+        const photoPath = saveBase64Image(Found_photo, 'found');
 
         const insertFoundItemQuery = `
             INSERT INTO FoundItem (User_ID, Admin_ID, Category_ID, Location_ID, FoundItem_name, Found_date, Found_time, Found_description, Found_photo, Found_status)
@@ -126,7 +122,7 @@ router.post('/founditem', async (req, res) => {
         `;
 
         const [result] = await db.query(insertFoundItemQuery, [
-            userID,
+            User_ID,
             adminID,
             Category_ID,
             Location_ID,
@@ -140,11 +136,11 @@ router.post('/founditem', async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: 'แจ้งสิ่งของที่พบสำเร็จ',
-            FoundItem_ID: result.insertId // ส่งกลับ FoundItem_ID ของสิ่งของที่พบที่ถูกบันทึก
+            message: 'แจ้งสิ่งของที่พบสำเร็จ (รอ Admin อนุมัติ)',
+            FoundItem_ID: result.insertId
         });
     } catch (error) {
-        console.error('Error reporting found item:', error);
+        console.error('Error reporting found item by user:', error);
         res.status(500).json({
             success: false,
             message: 'เกิดข้อผิดพลาดในการแจ้งสิ่งของที่พบ'
@@ -152,7 +148,80 @@ router.post('/founditem', async (req, res) => {
     }
 });
 
-// 3. API ดึงหมวดหมู่และสถานที่ (ใช้ส่งให้ Frontend ทำตัวเลข/Dropdown)
+// 3. API แจ้งสิ่งของที่พบโดยผู้ดูแล (admin) (POST /api/items/founditem/admin)
+router.post('/founditem/admin', async (req, res) => {
+    const {
+        Admin_ID,     // Admin ที่เข้าสู่ระบบ
+        Student_ID,   // รหัสนักศึกษาของผู้นำของมาคืน (Admin กรอก)
+        Category_ID,
+        Location_ID,
+        FoundItem_name,
+        Found_date,
+        Found_time,
+        Found_description,
+        Found_photo,
+    } = req.body;   
+
+    if (!Admin_ID || !Student_ID || !Category_ID || !Location_ID || !FoundItem_name || !Found_date || !Found_time || !Found_photo || !Found_description) {
+        return res.status(400).json({
+            success: false,
+            message: 'กรุณากรอกข้อมูลให้ครบถ้วน'
+        });
+    }
+
+    try {
+        // ค้นหา User_ID จาก Student_ID ที่ Admin กรอกเข้ามา
+        const [users] = await db.query('SELECT User_ID FROM User WHERE Student_ID = ?', [Student_ID]);
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'ไม่พบข้อมูลนักศึกษานี้ในระบบ กรุณาให้นักศึกษาสมัครใช้งานในแอปพลิเคชันและตรวจสอบความถูกต้องอีกครั้ง'
+            });
+        }
+
+        const userID = users[0].User_ID;
+        const status = 'อนุมัติแล้ว'; // Admin บันทึกเอง ถือว่าอนุมัติทันที
+        const photoPath = saveBase64Image(Found_photo, 'found');
+
+        const insertFoundItemQuery = `
+            INSERT INTO FoundItem (User_ID, Admin_ID, Category_ID, Location_ID, FoundItem_name, Found_date, Found_time, Found_description, Found_photo, Found_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const [result] = await db.query(insertFoundItemQuery, [
+            userID,       // User_ID ของนักศึกษาคนที่นำของมาคืน
+            Admin_ID,     // Admin_ID ของ Admin ผู้คีย์ข้อมูล
+            Category_ID,
+            Location_ID,
+            FoundItem_name,
+            Found_date,
+            Found_time,
+            Found_description,
+            photoPath,
+            status
+        ]);
+
+        const newFoundId = result.insertId;
+
+        // ประมวลผลจับคู่อัตโนมัติทันที
+        processMatchingByFoundItem(newFoundId);
+
+        res.status(201).json({
+            success: true,
+            message: 'บันทึกสิ่งของที่พบและประมวลผลจับคู่เรียบร้อยแล้ว',
+            FoundItem_ID: newFoundId
+        });
+    } catch (error) {
+        console.error('Error reporting found item by admin:', error);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการบันทึกสิ่งของที่พบ'
+        });
+    }
+});
+
+// 4. API ดึงหมวดหมู่และสถานที่ (ใช้ส่งให้ Frontend ทำตัวเลข/Dropdown)
 
     // 1. ดึงหมวดหมู่ (GET /api/items/categories)
         router.get('/categories', async (req, res) => {

@@ -6,6 +6,9 @@ require('dotenv').config();
 const db = require('./config/db');
 const authRoutes = require('./routes/auth');
 const itemRoutes = require('./routes/item');
+const matchRouter = require('./routes/matchitem');
+const adminApproveRouter = require('./routes/adminapprovefound');
+const claimRoutes = require('./routes/claimitem');
 
 const app = express();
 
@@ -16,6 +19,9 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
+app.use('/api/match', matchRouter);
+app.use('/api/admin', adminApproveRouter);
+app.use('/api/claim', claimRoutes);
 
 // เปิดให้เข้าถึงไฟล์รูปภาพในโฟลเดอร์ uploads ผ่าน URL ได้
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
