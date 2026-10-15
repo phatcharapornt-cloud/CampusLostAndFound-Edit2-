@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
-const { validateRegistration } = require('../utils/validators');
+const { validateRegistration, validateLogin } = require('../utils/validators');
 
 //1. API สมัครสมาชิก (POST /api/auth/register(signup))
 // Body (JSON): { FName, LName, Student_ID, Email, Password }
@@ -73,8 +73,17 @@ router.post('/register', async (req, res) => {
 });
 
 // 2. API เข้าสู่ระบบ (POST /api/auth/login)
+// ผู้ใช้งาน (App-user): Body { Student_ID, Password }
+//   200 = สำเร็จ (role: 'user', user: ข้อมูลผู้ใช้ไม่รวมรหัสผ่าน) | 400 = กรอกไม่ครบ/รูปแบบผิด | 401 = รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง
+// แบบเดิม: Body { Email, Password } ยังใช้ได้ (ผู้ใช้งานหรือ Admin เข้าด้วยอีเมล)
 router.post('/login', async (req, res) => {
-    const { Email, Password } = req.body;
+    const body = req.body ?? {};
+
+    if (body.Email === undefined) {
+        return loginWithStudentId(body, res);
+    }
+
+    const { Email, Password } = body;
 
     //ตรวจสอบว่ากรอกข้อมูลครบถ้วนหรือไม่
     if (!Email || !Password) {
@@ -145,6 +154,60 @@ router.post('/login', async (req, res) => {
         });
     }
 });
+
+// เข้าสู่ระบบด้วยรหัสนักศึกษา + รหัสผ่าน (ใช้ในหน้า App-user/login.html)
+async function loginWithStudentId(body, res) {
+    // 1. ตรวจสอบว่ากรอกครบ และรหัสนักศึกษาเป็นตัวเลข 8 หลัก
+    const { values, errors } = validateLogin(body);
+
+    if (Object.keys(errors).length > 0) {
+        const missingField = values.Student_ID === '' || values.Password === '';
+        return res.status(400).json({
+            success: false,
+            message: missingField ? 'กรุณากรอกรหัสนักศึกษาและรหัสผ่านให้ครบถ้วน' : Object.values(errors)[0],
+            errors
+        });
+    }
+
+    // ไม่บอกว่าผิดที่รหัสนักศึกษาหรือรหัสผ่าน เพื่อไม่ให้คนอื่นใช้หน้านี้เดาว่าใครมีบัญชีบ้าง
+    const invalidCredentials = {
+        success: false,
+        message: 'รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง'
+    };
+
+    try {
+        // 2. ค้นหาผู้ใช้จากรหัสนักศึกษา
+        const getUserQuery = 'SELECT User_ID, FName, LName, Student_ID, Email, Password FROM User WHERE Student_ID = ?';
+        const [users] = await db.query(getUserQuery, [values.Student_ID]);
+
+        if (users.length === 0) {
+            return res.status(401).json(invalidCredentials);
+        }
+
+        // 3. เปรียบเทียบรหัสผ่านที่กรอกกับรหัสผ่านที่เข้ารหัส (bcrypt) ไว้ในฐานข้อมูล
+        const user = users[0];
+        const isPasswordValid = await bcrypt.compare(values.Password, user.Password);
+
+        if (!isPasswordValid) {
+            return res.status(401).json(invalidCredentials);
+        }
+
+        // 4. ส่งข้อมูลผู้ใช้กลับไป (ลบ Password ออกก่อน)
+        const { Password: _, ...userWithoutPassword } = user;
+        return res.status(200).json({
+            success: true,
+            message: 'เข้าสู่ระบบสำเร็จ',
+            role: 'user',
+            user: userWithoutPassword
+        });
+    } catch (error) {
+        console.error('Login (Student_ID) error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ'
+        });
+    }
+}
 
 // 3. API เปลี่ยนรหัสผ่าน (POST /api/auth/Resetpassword)
 router.post('/request-reset', async (req, res) => {
