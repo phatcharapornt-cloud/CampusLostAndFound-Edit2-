@@ -17,10 +17,47 @@ function calculateTextSimilarity(str1, str2) {
     return matchCount / Math.max(words1.length, words2.length);
 }
 
+// ฟังก์ชันตรวจสอบรายการ Match ที่ผู้ใช้งานไม่กดRequestClaim ภายใน 24 ชั่วโมง
+async function checkAndProcessExpiredMatches() {
+    try {
+        // ค้นหารายการ Match ที่ส่งให้ User แล้วเกิน 24 ชั่วโมง (อ้างอิงเวลาจาก Notification)
+        const expiredQuery = `
+            SELECT m.Match_ID, m.Lost_ID, m.Found_ID
+            FROM MatchItem m
+            JOIN Notification n ON m.Match_ID = n.Match_ID
+            WHERE m.Match_status = 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน'
+              AND TIMESTAMPDIFF(HOUR, n.Notice_at, NOW()) >= 24
+        `;
+        const [expiredMatches] = await db.query(expiredQuery);
+
+        for (const match of expiredMatches) {
+            // 1. อัปเดตสถานะ Matchเป็น 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน'
+            await db.query(
+                "UPDATE MatchItem SET Match_status = 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน' WHERE Match_ID = ?",
+                [match.Match_ID]
+            );
+
+            // 2. อัปเดตสถานะของหายกลับเป็น 'ไม่พบ'
+            await db.query(
+                "UPDATE LostItem SET Lost_status = 'ไม่พบ' WHERE Lost_ID = ?",
+                [match.Lost_ID]
+            );
+
+            console.log(`[Auto Expire] Match_ID ${match.Match_ID} หมดอายุเกิน 24 ชม. -> รีเซ็ต Lost_ID ${match.Lost_ID} เป็น 'ไม่พบ'`);
+
+            // 3. เริ่มประมวลผลจับคู่ใหม่ทันที (จะไม่จับคู่กับ Found_ID เดิมเพราะยังมี record ใน MatchItem)
+            await processMatchingByLostItem(match.Lost_ID);
+        }
+    } catch (error) {
+        console.error('Error in checkAndProcessExpiredMatches:', error);
+    }
+}
+
+
 // 1. ประมวลผลการจับคู่ เมื่อผู้ใช้งานทำการแจ้งสิ่งของที่หาย
 async function processMatchingByLostItem(lostId) {
     try {
-        const [lostItems] = await db.query('SELECT * FROM LostItem WHERE Lost_ID = ?', [lostId]);
+        const [lostItems] = await db.query("SELECT * FROM LostItem WHERE Lost_ID = ? AND Lost_status = 'ไม่พบ'", [lostId]);
         if (lostItems.length === 0) return;
         const lost = lostItems[0];
 
@@ -135,6 +172,7 @@ async function processMatchingByFoundItem(foundId) {
 
 module.exports = {
     calculateTextSimilarity,
+    checkAndProcessExpiredMatches,
     processMatchingByLostItem,
     processMatchingByFoundItem
 };
