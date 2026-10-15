@@ -101,10 +101,28 @@ function validateRegistration(body) {
     return { values, errors };
 }
 
+// ตรวจสอบข้อมูลเข้าสู่ระบบ (Login) ด้วยรหัสนักศึกษาและรหัสผ่าน
+// ตรวจแค่รูปแบบรหัสนักศึกษาและว่ากรอกรหัสผ่านแล้ว ไม่ตรวจเงื่อนไขความปลอดภัยของรหัสผ่านซ้ำ
+// (ความถูกต้องของรหัสผ่านตรวจด้วย bcrypt ใน routes/auth.js)
+function validateLogin(body) {
+    const values = {
+        Student_ID: toText(body.Student_ID).trim(),
+        Password: toText(body.Password),
+    };
+
+    const errors = {};
+    const studentIdError = validateStudentId(values.Student_ID);
+    if (studentIdError) errors.Student_ID = studentIdError;
+    if (!values.Password) errors.Password = 'กรุณากรอกรหัสผ่าน';
+
+    return { values, errors };
+}
+
 module.exports = {
     STUDENT_ID_PATTERN,
     UNIVERSITY_EMAIL_DOMAIN,
     PASSWORD_RULES,
     getFailedPasswordRules,
     validateRegistration,
+    validateLogin,
 };
