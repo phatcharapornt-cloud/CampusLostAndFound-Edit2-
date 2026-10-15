@@ -5,23 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Campus Lost & Found</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" 
-            rel="stylesheet"> 
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <style> 
-            /*ล้างค่าขอบทั้งในและนอก ที่เบราเซอร์ให้มา*/
-        *{
-            margin: 0;                  /*ลบระยะห่างภายนอก*/
-            padding: 0;                  /* ลบกระยะห่างภายใน */
+    <style>
+        /* ล้างค่าขอบทั้งในและนอก ที่เบราว์เซอร์ให้มา */
+        * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
             font-family: 'Prompt', sans-serif;
         }
-        
+        :root {
+            --primary: #f26522;
+            --primary-hover: #e05413;
+            --text: #111111;
+            --text-label: #444444;
+            --text-muted: #666666;
+            --border: #e0e0e0;
+            --success: #1f9d55;
+            --success-bg: #e8f6ee;
+            --error: #d93025;
+            --error-bg: #fdecea;
+        }
         img {
             max-width: 100%;
             height: auto;
         }
-        /* พื้นหลังหน้าเว็บสำหรับวางเครื่องมือ */
+        /* พื้นหลังหน้าเว็บ */
         body {
             background-color: #f4f5f8;
             display: flex;
@@ -29,7 +39,7 @@
             align-items: center;
             min-height: 100vh;
         }
-        /* กำหนดตัวขนาดเครื่อง */
+        /* กรอบจำลองหน้าจอมือถือ */
         .app-container {
             width: 100%;
             max-width: 390px;
@@ -38,85 +48,89 @@
             border-radius: 61px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
             border: 8px solid #2b2b2b;
             position: relative;
-            padding: 24px 20px;
         }
-        /* กำหนด ส่วนheader */
-        .app-header {
-            padding: 12px 0;
-            display: flex;               /*ทำให้องค์ประกอบในกล่องอยู่ในแถวหรือคอลัมน์เดียวกัน*/   
-            justify-content: center;            /*เป็นการทำให้ header อยู่ตรงกลาง*/
-            align-items: center;        /*จัดของข้างในให้อยู่ตรงกลาง*/
-        }
-            /* สร้าง dynamic */
         .dynamic-island {
             width: 110px;
             height: 28px;
-            background-color: #000000 ;
+            background-color: #000000;
             border-radius: 20px;
-
-            position: absolute; /*อิงตำแหน่งจากapp-container*/ 
-            top : 30px ;          /* ระยะห่างจากขอบจอ */
-            left: 50%;              /* ขยับมาเริ่มที่จุดกึ่งกลางของหน้าจอ */
-            transform: translateX(-50%);     /* ดึงตัวแถบกลับมาทางซ้าย 50% เพื่อให้อยู่ตรงกลาง */   
+            position: absolute;              /* อิงตำแหน่งจาก app-container */
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);     /* จัดให้อยู่กึ่งกลาง */
+            z-index: 2;
         }
-            /* แสดง เนื้อหาหลักในแอพ */
+        /* เนื้อหาหลัก เลื่อนขึ้นลงได้ถ้าข้อความแจ้งเตือนทำให้ยาวเกินจอ */
         .app-content {
-            padding:30px 24px ;
+            height: 100%;
+            overflow-y: auto;
+            scrollbar-width: none;
+            padding: 66px 20px 28px;
             display: flex;
-            flex-direction: column;         /*จัดเรียงบนลงล่าง*/
-            align-items: center; 
-            flex: 1;
-            justify-content: flex-start;
+            flex-direction: column;
+            align-items: center;
         }
-            /* ขนาดและตำแหน่งlogo */
+        .app-content::-webkit-scrollbar { display: none; }
+
         .app-logo {
             width: 215px;
-            height: auto;
-            margin-bottom: 20px;
-            margin-top: 20px;
+            margin-bottom: -6px;
         }
-            /* ข้อความส่วนหัว ต้อนรับ และคำอธิบาย */
         h1 {
             font-size: 28px;
             font-weight: 650;
-            color: #111111;
-            margin-bottom: 10px;
-            align-self: center;         /*ใช้กับตัวใดตัวนึง*/
-            position: relative;
-            top: -70px;
-        }
-
-        .subtitle {
-            font-size: 14px;
-            color: #666666;
-            margin-bottom: 24px;
-            text-align: center;
-            position: relative;
-            top: -70px;
-        }
-            /* จัดกลุ่ม */
-        .form-group {
-            width: 100%;
-            margin-bottom: 16px; /*ระยะห่างของกล่อง*/
-            position: relative;
-            top: -75px;
-        }
-
-        .form-label {
-            display: block; /*กำหนดตัวอักษร เพื่อให้ผลเป็นบล็อคแยกกัน และช่วยดันให้ช่องกรอกข้อมูล ดันไปบรรทัดข้างล่าง*/
-            font-size: 13px;
-            color: #444444;
+            color: var(--text);
             margin-bottom: 6px;
         }
-            /* สร้างกล่อง ไว้inputข้อความ */
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .login-form {
+            width: 100%;
+        }
+
+        /* แจ้งเตือนด้านบนฟอร์ม (สมัครสำเร็จ / รหัสผิด / เชื่อมต่อไม่ได้) */
+        .form-alert {
+            display: none;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 12.5px;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            line-height: 1.45;
+        }
+        .form-alert.is-visible { display: flex; }
+        .form-alert i { margin-top: 2px; }
+        .form-alert.is-error {
+            background-color: var(--error-bg);
+            color: var(--error);
+        }
+        .form-alert.is-success {
+            background-color: var(--success-bg);
+            color: var(--success);
+        }
+
+        .form-group {
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-label);
+            margin-bottom: 6px;
+        }
+        /* กล่องช่องกรอก (มีไอคอนด้านหน้า) */
         .input-wrapper {
-            display: flex;                         /* คำสั่งทำให้องค์ประกอบย่อยยืดหยุ่น*/
+            display: flex;
             align-items: center;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border);
             border-radius: 13px;
             padding: 0 14px;
             height: 45px;
@@ -124,9 +138,12 @@
             transition: border-color 0.2s;
         }
         .input-wrapper:focus-within {
-            border-color: #f26522;
+            border-color: var(--primary);
         }
-        .input-wrapper i {
+        .input-wrapper.is-invalid {
+            border-color: var(--error);
+        }
+        .input-wrapper > i {
             color: #888888;
             font-size: 16px;
             margin-right: 10px;
@@ -135,34 +152,53 @@
             border: none;
             outline: none;
             width: 100%;
+            min-width: 0;
             font-size: 14px;
             color: #333333;
+            background: transparent;
         }
-        .input-wrapper .toggle-password {
-            margin-right: 0;
+        .input-wrapper input::placeholder { color: #9a9a9a; }
+        .toggle-password {
+            border: none;
+            background: none;
+            color: #888888;
+            font-size: 16px;
             margin-left: 10px;
+            padding: 6px;
+            margin-right: -6px;
             cursor: pointer;
+            border-radius: 8px;
         }
-            /* ลืมรหัสผ่าน */
-        .forgot-password-container {           /*กล่องสำหรับลืมรหัสผ่าน*/
+        .toggle-password:focus-visible {
+            outline: 2px solid var(--primary);
+        }
+        .field-error {
+            font-size: 11.5px;
+            color: var(--error);
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+        .field-error:empty { display: none; }
+
+        /* ลืมรหัสผ่าน */
+        .forgot-password-container {
             width: 100%;
             text-align: right;
             margin-top: 4px;
             margin-bottom: 24px;
-            position: relative;
-            top: -75px;
         }
         .forgot-password {
-            color: #f26522;
+            color: var(--primary);
             font-size: 13px;
             text-decoration: none;
             font-weight: 500;
         }
-              /* สร้างปุ่มสำหรับเข้าสู่ระบบ */
+
+        /* ปุ่มเข้าสู่ระบบ */
         .button-submit {
             width: 100%;
             height: 50px;
-            background-color: #f26522;
+            background-color: var(--primary);
             color: #ffffff;
             border: none;
             border-radius: 15px;
@@ -175,77 +211,255 @@
             gap: 8px;
             box-shadow: 0 4px 12px rgba(242, 101, 34, 0.3);
             transition: background-color 0.2s;
-            position: relative;
-            top: -75px;
-            
         }
-              /* สถานะเมื่อเอาเมาส์ไปชี้บนปุ่ม */
         .button-submit:hover {
-            background-color: #e05413;        /*สีจะเข้มขึ้นเมื่อเอาเมาส์ไปวางด้านบนปุ่ม*/
-        }  
-        /* ส่วนของคนที่ไม่มีบัญชีแล้วต้องการ signup */
+            background-color: var(--primary-hover);
+        }
+        .button-submit:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
+        /* ส่วนของคนที่ยังไม่มีบัญชี */
         .register-link {
             margin-top: 24px;
             font-size: 14px;
-            color: #666666;
-            position: relative;
-            top: -70px;
-            align-self: center; 
-
+            color: var(--text-muted);
+            text-align: center;
         }
         .register-link a {
-            color: #f26522;
+            color: var(--primary);
             text-decoration: none;
             font-weight: 600;
         }
 
+        /* เปิดบนมือถือจริง: แสดงเต็มจอ ไม่ต้องมีกรอบ */
+        @media (max-width: 430px) {
+            .app-container {
+                max-width: none;
+                height: 100vh;
+                height: 100dvh;
+                border: none;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            .dynamic-island { display: none; }
+            .app-content { padding-top: 32px; }
+        }
     </style>
-    
 </head>
 
 <body>
-     <!-- แสดงตัวเครื่องมือถือ -->
-    <div class = "app-container">
-        <div class = "dynamic-island"> </div> 
-            <div class="app-content">
-                <img src="logo.png" class = "app-logo">
-            </div>
+    <!-- แสดงตัวเครื่องมือถือ -->
+    <div class="app-container">
+        <div class="dynamic-island"></div>
 
-        <h1> welcome Back</h1>
-        <p class = subtitle> เข้าสู่ระบบ</p>
+        <div class="app-content">
+            <img src="logo.png" class="app-logo" alt="Campus Finder Lost & Found">
 
-        <div class = "form-group">
-            <label class ="form-label">รหัสนักศึกษา</label>
-                <div class = " input-wrapper">
-                    <i class="fa-regular fa-address-card"></i>
-                    <input type="text" placeholder="เช่น 6xxxxxxx">
+            <h1>welcome Back</h1>
+            <p class="subtitle">เข้าสู่ระบบ</p>
+
+            <form class="login-form" id="login-form" novalidate>
+                <div class="form-alert" id="form-alert" role="alert">
+                    <i class="fa-solid fa-circle-exclamation" id="form-alert-icon"></i>
+                    <span id="form-alert-text"></span>
                 </div>
-        </div>
-            <!-- =แสดงช่องกรอกรหัสผ่าน -->
-        <div class="form-group">
-            <label class="form-label">รหัสผ่าน</label>
-                <div class="input-wrapper">
-                    <i class="fa-solid fa-lock"></i>
-                    <input type="password" placeholder="••••••••">
-                    <i class="fa-regular fa-eye toggle-password"></i>    
-                </div>
-        </div>
-            <!-- ส่วนของลิงค์ลืมรหัส -->
-        <div class = " forgot-password-container"> 
-                <a href="resetpass.html" class="forgot-password">ลืมรหัสผ่าน?</a>
-        </div>
-            <!-- ปุ่มเข้าสู่ระบบ -->
-        <button class="button-submit">login</button>  
-          <!-- แสดงการsingup ถ้ายังไม่มีบัญชี -->
-        <div class="register-link">
-                ยังไม่มีบัญชี? <a href="register.html">ลงทะเบียน</a>
-        </div>
 
+                <!-- ช่องกรอกรหัสนักศึกษา -->
+                <div class="form-group">
+                    <label class="form-label" for="Student_ID">รหัสนักศึกษา</label>
+                    <div class="input-wrapper" id="Student_ID-wrapper">
+                        <i class="fa-regular fa-address-card"></i>
+                        <input type="text" id="Student_ID" name="Student_ID" placeholder="เช่น 6xxxxxxx" inputmode="numeric" autocomplete="username" maxlength="8" aria-describedby="Student_ID-error">
+                    </div>
+                    <div class="field-error" id="Student_ID-error" aria-live="polite"></div>
+                </div>
+
+                <!-- ช่องกรอกรหัสผ่าน -->
+                <div class="form-group">
+                    <label class="form-label" for="Password">รหัสผ่าน</label>
+                    <div class="input-wrapper" id="Password-wrapper">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="Password" name="Password" placeholder="••••••••" autocomplete="current-password" aria-describedby="Password-error">
+                        <button type="button" class="toggle-password" id="toggle-password" aria-label="แสดงรหัสผ่าน">
+                            <i class="fa-regular fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="field-error" id="Password-error" aria-live="polite"></div>
+                </div>
+
+                <!-- ลิงก์ลืมรหัสผ่าน -->
+                <div class="forgot-password-container">
+                    <a href="resetpass.html" class="forgot-password">ลืมรหัสผ่าน?</a>
+                </div>
+
+                <!-- ปุ่มเข้าสู่ระบบ -->
+                <button type="submit" class="button-submit" id="submit-btn">login</button>
+
+                <!-- ไปหน้าสมัครสมาชิก ถ้ายังไม่มีบัญชี -->
+                <div class="register-link">
+                    ยังไม่มีบัญชี? <a href="register.html">ลงทะเบียน</a>
+                </div>
+            </form>
+        </div>
     </div>
 
+    <script>
+        // ที่อยู่ของ Backend (ตรงกับ PORT ในไฟล์ Backend/.env)
+        const API_BASE_URL = 'http://localhost:5001';
+        // หน้าที่จะไปหลังเข้าสู่ระบบสำเร็จ (เปลี่ยนเป็นหน้าหลักของแอป)
+        const HOME_PAGE = 'home.html';
+        // key ที่ใช้เก็บข้อมูลผู้ใช้ที่ล็อกอินอยู่ใน localStorage (หน้าอื่นอ่านจาก key นี้เพื่อเอา User_ID)
+        const CURRENT_USER_KEY = 'currentUser';
 
+        const STUDENT_ID_PATTERN = /^\d{8}$/;
+        const SUBMIT_LABEL = 'login';
 
-         
-         
+        const form = document.getElementById('login-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const formAlert = document.getElementById('form-alert');
+        const formAlertIcon = document.getElementById('form-alert-icon');
+        const formAlertText = document.getElementById('form-alert-text');
+        const fields = {
+            Student_ID: document.getElementById('Student_ID'),
+            Password: document.getElementById('Password'),
+        };
+
+        let submitAttempted = false;
+        const touched = new Set();
+
+        function getValues() {
+            return {
+                Student_ID: fields.Student_ID.value.trim(),
+                Password: fields.Password.value,
+            };
+        }
+
+        function validate(values) {
+            const errors = { Student_ID: '', Password: '' };
+            if (!values.Student_ID) errors.Student_ID = 'กรุณากรอกรหัสนักศึกษา';
+            else if (!STUDENT_ID_PATTERN.test(values.Student_ID)) errors.Student_ID = 'รหัสนักศึกษาต้องเป็นตัวเลข 8 หลัก';
+            if (!values.Password) errors.Password = 'กรุณากรอกรหัสผ่าน';
+            return errors;
+        }
+
+        function setFieldError(name, message) {
+            document.getElementById(`${name}-error`).textContent = message || '';
+            document.getElementById(`${name}-wrapper`).classList.toggle('is-invalid', Boolean(message));
+            fields[name].setAttribute('aria-invalid', message ? 'true' : 'false');
+        }
+
+        // แสดง error เฉพาะช่องที่ผู้ใช้กรอกแล้ว หรือหลังจากกดเข้าสู่ระบบ
+        function renderErrors() {
+            const errors = validate(getValues());
+            for (const name of Object.keys(fields)) {
+                setFieldError(name, submitAttempted || touched.has(name) ? errors[name] : '');
+            }
+            return errors;
+        }
+
+        function showFormAlert(message, type = 'error') {
+            formAlertText.textContent = message || '';
+            formAlert.classList.toggle('is-visible', Boolean(message));
+            formAlert.classList.toggle('is-error', type === 'error');
+            formAlert.classList.toggle('is-success', type === 'success');
+            formAlertIcon.className = type === 'success' ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-exclamation';
+        }
+
+        // รหัสนักศึกษา: รับเฉพาะตัวเลข สูงสุด 8 หลัก
+        fields.Student_ID.addEventListener('input', () => {
+            const digitsOnly = fields.Student_ID.value.replace(/\D/g, '').slice(0, 8);
+            if (fields.Student_ID.value !== digitsOnly) fields.Student_ID.value = digitsOnly;
+        });
+
+        for (const [name, input] of Object.entries(fields)) {
+            input.addEventListener('blur', () => {
+                if (input.value.trim() !== '') touched.add(name);
+                renderErrors();
+            });
+            input.addEventListener('input', () => {
+                if (formAlert.classList.contains('is-error')) showFormAlert('');
+                renderErrors();
+            });
+        }
+
+        // ปุ่มรูปตา แสดง/ซ่อนรหัสผ่าน
+        document.getElementById('toggle-password').addEventListener('click', (event) => {
+            const button = event.currentTarget;
+            const isHidden = fields.Password.type === 'password';
+            fields.Password.type = isHidden ? 'text' : 'password';
+            button.querySelector('i').className = isHidden ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+            button.setAttribute('aria-label', isHidden ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน');
+        });
+
+        function setLoading(isLoading) {
+            submitBtn.disabled = isLoading;
+            submitBtn.innerHTML = isLoading
+                ? '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเข้าสู่ระบบ...'
+                : SUBMIT_LABEL;
+        }
+
+        // มาจากหน้าสมัครสมาชิก (register.html ส่ง ?registered=1&sid=รหัสนักศึกษา มา): เติมรหัสให้และแจ้งว่าสมัครสำเร็จ
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('registered') === '1') {
+            const sid = (params.get('sid') || '').replace(/\D/g, '').slice(0, 8);
+            if (sid) fields.Student_ID.value = sid;
+            showFormAlert('สมัครใช้งานสำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านที่ตั้งไว้', 'success');
+            (sid ? fields.Password : fields.Student_ID).focus();
+            history.replaceState(null, '', window.location.pathname);
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            submitAttempted = true;
+            showFormAlert('');
+
+            const errors = renderErrors();
+            const firstInvalid = Object.keys(fields).find((name) => errors[name]);
+            if (firstInvalid) {
+                fields[firstInvalid].focus();
+                return;
+            }
+
+            setLoading(true);
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(getValues()),
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok && data.success && data.user) {
+                    // เก็บข้อมูลผู้ใช้ไว้ให้หน้าอื่นใช้ (เช่น User_ID ตอนแจ้งของหาย)
+                    try {
+                        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify({ role: data.role, ...data.user }));
+                    } catch (storageError) {
+                        console.warn('ไม่สามารถบันทึกข้อมูลผู้ใช้ลง localStorage ได้', storageError);
+                    }
+                    window.location.href = HOME_PAGE;
+                    return;
+                }
+
+                // แสดง error ที่ Backend ส่งกลับมา
+                const serverErrors = data.errors || {};
+                for (const [name, message] of Object.entries(serverErrors)) {
+                    if (fields[name]) setFieldError(name, message);
+                }
+                if (!Object.keys(serverErrors).some((name) => fields[name])) {
+                    showFormAlert(data.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง');
+                }
+                setLoading(false);
+                if (response.status === 401) {
+                    fields.Password.focus();
+                    fields.Password.select();
+                }
+            } catch (error) {
+                showFormAlert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว และลองใหม่อีกครั้ง');
+                setLoading(false);
+            }
+        });
+    </script>
 </body>
 </html>
