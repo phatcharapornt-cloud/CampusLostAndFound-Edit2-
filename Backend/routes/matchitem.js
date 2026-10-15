@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
-const {processMatchingByLostItem} = require('../service/matchingService');
+const { processMatchingByLostItem, checkAndProcessExpiredMatches } = require('../service/matchingService');
 
 // 1. API การประมวลผลจับคู่สิ่งของที่หาย (POST /api/match/run/:lostId)
 router.post('/run/:lostId', async (req, res) => {
     try {
         const { lostId } = req.params;
+        await checkAndProcessExpiredMatches(); //ตรวจสอบรายการที่หมดอายุก่อน
         await processMatchingByLostItem(lostId);
         res.status(200).json({
             success: true,
@@ -24,12 +25,14 @@ router.post('/run/:lostId', async (req, res) => {
 // 2. API ดึงรายการจับคู่สิ่งของที่มากกว่า 80% เพื่อรอการอนุมัติ (GET /api/match/pending)
 router.get('/pending', async (req, res) => {
     try {
+        await checkAndProcessExpiredMatches(); // ตรวจสอบและจัดการรายการหมดอายุเกิน 24 ชม. ก่อนดึงข้อมูล
         const query = `
             SELECT 
                 m.Match_ID,
                 m.Match_score,
                 m.Match_date,
                 m.Match_time,
+                m.Match_status,
                 
                 -- ข้อมูลของหาย
                 l.Lost_ID,
@@ -66,8 +69,9 @@ router.get('/pending', async (req, res) => {
             LEFT JOIN Location loc ON l.Location_ID = loc.Location_ID
             LEFT JOIN User u_lost ON l.User_ID = u_lost.User_ID
 
-            -- กรองรายการที่ Admin เคยกดอนุมัติ (ส่ง Notification ให้ User) ออกไป
-            WHERE NOT EXISTS ( 
+            -- กรองเฉพาะสิ่งของที่หายที่ยังมีสถานะ 'ไม่พบ' เท่านั้น
+            WHERE l.Lost_status = 'ไม่พบ'
+              AND NOT EXISTS ( 
                 SELECT 1 FROM Notification n 
                 WHERE n.Match_ID = m.Match_ID AND n.User_ID = l.User_ID
             )
@@ -133,6 +137,12 @@ router.put('/approve/:matchId', async (req, res) => {
         await db.query(
             `UPDATE LostItem SET Lost_status = 'พบ' WHERE Lost_ID = ?`,
             [match.Lost_ID]
+        );
+
+        // อัปเดตสถานะ Match เป็น "ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน"
+        await db.query(
+            `UPDATE MatchItem SET Match_status = 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน' WHERE Match_ID = ?`,
+            [matchId]
         );
 
         res.status(200).json({
