@@ -1,0 +1,110 @@
+// ฟังก์ชันตรวจสอบข้อมูลการสมัครสมาชิก (Signup)
+// หมายเหตุ: เงื่อนไขชุดเดียวกันนี้ถูกตรวจซ้ำในหน้า App-user/register.html ด้วย ถ้าแก้ที่นี่ต้องแก้ที่นั่นให้ตรงกัน
+
+// รหัสนักศึกษา KMITL เป็นตัวเลข 8 หลัก
+const STUDENT_ID_PATTERN = /^\d{8}$/;
+
+// อีเมลของมหาวิทยาลัยต้องอยู่ในรูปแบบ รหัสนักศึกษา@kmitl.ac.th
+const UNIVERSITY_EMAIL_DOMAIN = 'kmitl.ac.th';
+
+// ชื่อ/นามสกุล: ภาษาไทยหรือภาษาอังกฤษ เว้นวรรค จุด ขีด และ ' ได้ (ความยาวตามคอลัมน์ VARCHAR(50))
+const NAME_PATTERN = /^[฀-๿a-zA-Z .'-]+$/;
+const NAME_MAX_LENGTH = 50;
+
+// รหัสผ่าน: ใช้ได้เฉพาะอักขระ ASCII ที่พิมพ์ได้ (ไม่มีช่องว่าง ไม่มีภาษาไทย)
+const PASSWORD_ALLOWED_PATTERN = /^[\x21-\x7E]*$/;
+// อักขระพิเศษ = เครื่องหมายวรรคตอน ASCII ทั้งหมด เช่น ! @ # $ % ^ & * ( ) - _ = + [ ] { } ; : ' " , . < > / ? \ | ` ~
+const SPECIAL_CHAR_PATTERN = /[!-\/:-@\[-`{-~]/;
+
+const PASSWORD_RULES = [
+    { key: 'length',  message: 'ความยาว 8-16 ตัวอักษร',                 test: (p) => p.length >= 8 && p.length <= 16 },
+    { key: 'upper',   message: 'มีตัวอักษรพิมพ์ใหญ่อย่างน้อย 1 ตัว (A-Z)', test: (p) => /[A-Z]/.test(p) },
+    { key: 'lower',   message: 'มีตัวอักษรพิมพ์เล็กอย่างน้อย 1 ตัว (a-z)', test: (p) => /[a-z]/.test(p) },
+    { key: 'digit',   message: 'มีตัวเลขอย่างน้อย 1 ตัว (0-9)',           test: (p) => /[0-9]/.test(p) },
+    { key: 'special', message: 'มีอักขระพิเศษอย่างน้อย 1 ตัว',           test: (p) => SPECIAL_CHAR_PATTERN.test(p) },
+];
+
+// แปลงค่าที่รับมาให้เป็น string (รองรับกรณีส่งรหัสนักศึกษามาเป็นตัวเลข)
+function toText(value) {
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number') return String(value);
+    return '';
+}
+
+function validateName(name, label) {
+    if (!name) return `กรุณากรอก${label}`;
+    if (name.length > NAME_MAX_LENGTH) return `${label}ต้องไม่เกิน ${NAME_MAX_LENGTH} ตัวอักษร`;
+    if (!NAME_PATTERN.test(name)) return `${label}ใช้ได้เฉพาะตัวอักษรภาษาไทยหรือภาษาอังกฤษ`;
+    return null;
+}
+
+function validateStudentId(studentId) {
+    if (!studentId) return 'กรุณากรอกรหัสนักศึกษา';
+    if (!STUDENT_ID_PATTERN.test(studentId)) return 'รหัสนักศึกษาต้องเป็นตัวเลข 8 หลัก';
+    return null;
+}
+
+function validateEmail(email, studentId) {
+    if (!email) return 'กรุณากรอกอีเมล';
+    if (!email.endsWith(`@${UNIVERSITY_EMAIL_DOMAIN}`)) {
+        return `กรุณาใช้อีเมลของมหาวิทยาลัย (@${UNIVERSITY_EMAIL_DOMAIN})`;
+    }
+    if (studentId && email !== `${studentId}@${UNIVERSITY_EMAIL_DOMAIN}`) {
+        return `อีเมลต้องตรงกับรหัสนักศึกษา (${studentId}@${UNIVERSITY_EMAIL_DOMAIN})`;
+    }
+    return null;
+}
+
+// คืนค่ารายการเงื่อนไขรหัสผ่านที่ยังไม่ผ่าน (array ว่าง = ผ่านทั้งหมด)
+function getFailedPasswordRules(password) {
+    return PASSWORD_RULES.filter((rule) => !rule.test(password));
+}
+
+function validatePassword(password) {
+    if (!password) return 'กรุณากรอกรหัสผ่าน';
+    if (!PASSWORD_ALLOWED_PATTERN.test(password)) {
+        return 'รหัสผ่านใช้ได้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข และอักขระพิเศษ (ห้ามมีช่องว่างหรือภาษาไทย)';
+    }
+    const failed = getFailedPasswordRules(password);
+    if (failed.length > 0) {
+        return `รหัสผ่านยังไม่ผ่านเงื่อนไข: ${failed.map((rule) => rule.message).join(', ')}`;
+    }
+    return null;
+}
+
+// ตรวจสอบข้อมูลสมัครสมาชิกทั้งหมด
+// คืนค่า { values: ข้อมูลที่จัดรูปแบบแล้ว, errors: { ชื่อฟิลด์: ข้อความ } }
+function validateRegistration(body) {
+    const values = {
+        FName: toText(body.FName).trim(),
+        LName: toText(body.LName).trim(),
+        Student_ID: toText(body.Student_ID).trim(),
+        Email: toText(body.Email).trim().toLowerCase(),
+        Password: toText(body.Password), // รหัสผ่านไม่ตัดช่องว่าง เพื่อไม่ให้รหัสที่ผู้ใช้ตั้งเปลี่ยนไป
+    };
+
+    const studentIdError = validateStudentId(values.Student_ID);
+    const checks = {
+        FName: validateName(values.FName, 'ชื่อ'),
+        LName: validateName(values.LName, 'นามสกุล'),
+        Student_ID: studentIdError,
+        // ถ้ารหัสนักศึกษาผิดรูปแบบ จะตรวจแค่โดเมนอีเมล ไม่เทียบกับรหัสนักศึกษา
+        Email: validateEmail(values.Email, studentIdError ? null : values.Student_ID),
+        Password: validatePassword(values.Password),
+    };
+
+    const errors = {};
+    for (const [field, message] of Object.entries(checks)) {
+        if (message) errors[field] = message;
+    }
+
+    return { values, errors };
+}
+
+module.exports = {
+    STUDENT_ID_PATTERN,
+    UNIVERSITY_EMAIL_DOMAIN,
+    PASSWORD_RULES,
+    getFailedPasswordRules,
+    validateRegistration,
+};
