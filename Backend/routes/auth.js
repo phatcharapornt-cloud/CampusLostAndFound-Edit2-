@@ -2,46 +2,68 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
+const { validateRegistration } = require('../utils/validators');
 
 //1. API สมัครสมาชิก (POST /api/auth/register(signup))
+// Body (JSON): { FName, LName, Student_ID, Email, Password }
+// 201 = สมัครสำเร็จ | 400 = ข้อมูลไม่ผ่านเงื่อนไข (errors แยกตามฟิลด์) | 409 = รหัสนักศึกษา/อีเมลซ้ำ
 router.post('/register', async (req, res) => {
-    const { FName, LName, Student_ID, Email, Password } = req.body;
+    // 1. ตรวจสอบความถูกต้องของข้อมูล (ชื่อ, รหัสนักศึกษา 8 หลัก, อีเมล รหัสนักศึกษา@kmitl.ac.th, เงื่อนไขรหัสผ่าน)
+    const { values, errors } = validateRegistration(req.body ?? {});
 
-    //ตรวจสอบว่ากรอกข้อมูลครบถ้วนหรือไม่
-    if (!FName || !LName || !Student_ID || !Email || !Password) {
-        return res.status(400).json({ 
+    if (Object.keys(errors).length > 0) {
+        const missingField = Object.values(values).some((value) => value === '');
+        return res.status(400).json({
             success: false,
-            message: 'กรุณากรอกข้อมูลให้ครบถ้วน' 
+            message: missingField ? 'กรุณากรอกข้อมูลให้ครบถ้วน' : Object.values(errors)[0],
+            errors
         });
     }
 
+    const { FName, LName, Student_ID, Email, Password } = values;
+
     try {
-        //1. ตรวจสอบว่ามี Email หรือ Student_ID เคยทำการลงทะเบียนไปแล้วหรือยัง
-        const checkUserQuery = 'SELECT * FROM User WHERE Email = ? OR Student_ID = ?';
+        // 2. ตรวจสอบว่ามี Email หรือ Student_ID เคยทำการลงทะเบียนไปแล้วหรือยัง
+        const checkUserQuery = 'SELECT Student_ID, Email FROM User WHERE Email = ? OR Student_ID = ?';
         const [existingUser] = await db.query(checkUserQuery, [Email, Student_ID]);
 
         if (existingUser.length > 0) {
-            return res.status(400).json({ 
+            const duplicateErrors = {};
+            if (existingUser.some((user) => user.Student_ID === Student_ID)) {
+                duplicateErrors.Student_ID = 'รหัสนักศึกษานี้ได้ทำการลงทะเบียนแล้ว';
+            }
+            if (existingUser.some((user) => user.Email.toLowerCase() === Email)) {
+                duplicateErrors.Email = 'อีเมลนี้ได้ทำการลงทะเบียนแล้ว';
+            }
+            return res.status(409).json({
                 success: false,
-                message: 'อีเมลหรือรหัสนักศึกษานี้ได้ทำการลงทะเบียนแล้ว' 
+                message: 'อีเมลหรือรหัสนักศึกษานี้ได้ทำการลงทะเบียนแล้ว',
+                errors: duplicateErrors
             });
         }
 
-        //2. เข้ารหัส Password ด้วย bcrypt
+        // 3. เข้ารหัส Password ด้วย bcrypt
         const hashedPassword = await bcrypt.hash(Password, 10);
 
-        //3. บันทึกข้อมูลผู้ใช้ใหม่ลงในฐานข้อมูล
+        // 4. บันทึกข้อมูลผู้ใช้ใหม่ลงในตาราง User
         const insertUserQuery = 'INSERT INTO User (FName, LName, Student_ID, Email, Password) VALUES (?, ?, ?, ?, ?)';
         const [result] = await db.query(insertUserQuery, [FName, LName, Student_ID, Email, hashedPassword]);
 
-        //4. ส่งผลลัพธ์กลับไปยังผู้ใช้
-        res.status(201).json({ 
+        // 5. ส่งผลลัพธ์กลับไปยังผู้ใช้
+        res.status(201).json({
             success: true,
             message: 'ลงทะเบียนสำเร็จ',
-            userId: result.insertId 
+            userId: result.insertId
         });
-        
+
     } catch (error) {
+        // กรณีมีคนสมัครด้วยข้อมูลเดียวกันพร้อมกัน ฐานข้อมูลจะปฏิเสธเพราะคอลัมน์เป็น UNIQUE
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                success: false,
+                message: 'อีเมลหรือรหัสนักศึกษานี้ได้ทำการลงทะเบียนแล้ว'
+            });
+        }
         console.error('Register error:', error);
         res.status(500).json({ 
             success: false,
