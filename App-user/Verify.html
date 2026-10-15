@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Lost & Found</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" 
+            rel="stylesheet"> 
+
+<style>
+    *{
+        margin: 0;                  /*ลบระยะห่างภายนอก*/
+        padding: 0;                  /* ลบกระยะห่างภายใน */
+        box-sizing: border-box;
+        font-family: 'Prompt', sans-serif;
+    }
+    body {
+        background-color: #f4f5f8;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+    }
+    .verify-container {
+        width: 100%;
+        max-width: 390px;            
+        height: 800px;
+        background-color: #ffffff;
+        border-radius: 61px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        border: 8px solid #2b2b2b;
+        position: relative;
+        padding: 24px 20px;
+    }
+     .verify-header {
+        padding: 12px 0;
+        display: flex;               /*ทำให้องค์ประกอบในกล่องอยู่ในแถวหรือคอลัมน์เดียวกัน*/   
+        justify-content: center;            /*เป็นการทำให้ header อยู่ตรงกลาง*/
+        align-items: center;        /*จัดของข้างในให้อยู่ตรงกลาง*/
+    }
+    .dynamic-island {
+        width: 110px;
+        height: 28px;
+        background-color: #000000 ;
+        border-radius: 20px;
+
+        position: absolute; /*อิงตำแหน่งจากapp-container*/ 
+        top : 30px ;          /* ระยะห่างจากขอบจอ */
+        left: 50%;              /* ขยับมาเริ่มที่จุดกึ่งกลางของหน้าจอ */
+        transform: translateX(-50%);     /* ดึงตัวแถบกลับมาทางซ้าย 50% เพื่อให้อยู่ตรงกลาง */   
+    }
+    /* กล่องหลักหน้าแอพ */
+    .verify-content {
+        padding:80px 24px 30px ;
+        display: flex;
+        flex-direction: column;         /*จัดเรียงบนลงล่าง*/
+        align-items: center; 
+        flex: 1;
+    }
+    .icon-container {
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: center;
+        transform: translateY(-340px);
+    }
+    h1 {
+        font-size: 28px;
+        font-weight: 650;
+        color: #111111;
+        margin-bottom: 10px;
+        align-self: center;         /*ใช้กับตัวใดตัวนึง*/
+        position: absolute;
+        top: 150px;
+    }
+    .subtitle {
+        font-size: 15px;
+        color: #4b5563;
+        line-height: 1.5;
+        margin-bottom: 28px;
+        transform: translateY(-300px);
+    }
+    /* คอนเทนเนอร์กล่องใส่รหัส OTP 6 ช่อง */
+    .otp-container {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 24px;
+        transform: translateY(-300px);
+    }
+    /* สไตล์ของช่องกรอกรหัสแต่ละช่อง */
+    .otp-input {
+        width: 48px;
+        height: 56px;
+        border: 1.5px solid #d1d5db;
+        border-radius: 12px;
+        text-align: center;
+        font-size: 20px;
+        font-weight: 600;
+        outline: none;
+        transition: all 0.2s;
+        background-color: #ffffff;
+    }
+    /* เปลี่ยนสีขอบเมื่อคลิกเลือกช่อง */
+    .otp-input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+    /* ข้อความส่งรหัสอีกครั้ง */
+    .resend-text {
+        font-size: 15px;
+        color: #6b7280;
+        /* margin-bottom: 28px; */
+        /* transform: translateY(-200px); */
+    }
+    /* ปุ่มยืนยันรหัส */
+    .btn-verify {
+        width: 100%;
+        padding: 14px;
+        background-color: #f26522;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        /* margin-bottom: 24px; */
+        transform: translateY(-260px);
+    }
+    /* คอนเทนเนอร์จัดวางลิงก์ด้านล่าง */
+    .links {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    /* ลิงก์สีส้ม กลับไปหน้าเข้าสู่ระบบ */
+    .link-primary {
+        color: #f97316;
+        text-decoration: none;
+        font-size: 16px;
+        font-weight: 700;
+        transform: translateY(-220px);
+        text-align: center;
+    }
+    /* สไตล์สำหรับข้อความนับถอยหลัง */
+    .resend-box {
+        font-size: 15px;
+        color: #6b7280;
+        /* margin-top: 15px; */
+        transform: translateY(-290px);
+        text-align: center;
+    }
+
+    /* สไตล์ปุ่มส่งรหัสอีกครั้ง (เมื่อนับเวลาหมด) */
+    .resend-link {
+        color: #f97316;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        /* transform: translateY(-200px); */
+    }
+    .resend-link:hover {
+        text-decoration: underline;
+    }
+
+</style>
+</head>
+    
+<body>
+    <div class="verify-container">
+        <div class="dynamic-island"></div>
+        <div class="verify-content"></div>
+        <div class="icon-container">
+            <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- กล่องรหัส PIN ด้านบนซองจดหมาย -->
+                <rect x="22" y="10" width="28" height="14" rx="4" stroke="#111827" stroke-width="2.5" fill="white"/>
+                <circle cx="26" cy="17" r="1.5" fill="#111827"/>
+                <circle cx="30" cy="17" r="1.5" fill="#111827"/>
+                <circle cx="34" cy="17" r="1.5" fill="#111827"/>
+                <circle cx="38" cy="17" r="1.5" fill="#111827"/>
+                <circle cx="42" cy="17" r="1.5" fill="#111827"/>
+                <!-- จุดแจ้งเตือนสีแดง -->
+                <circle cx="49" cy="12" r="5" fill="#ef4444"/>
+                <!-- ตัวซองจดหมาย -->
+                <rect x="12" y="20" width="48" height="36" rx="8" stroke="#111827" stroke-width="2.5" fill="white"/>
+                <path d="M14 24L36 39L58 24" stroke="#111827" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>    
+        </div>
+
+        <h1>รหัสยืนยัน</h1>
+        <p class="subtitle">เราได้ส่งรหัสยืนยัน 6 หลักไปยังอุปกรณ์ของคุณแล้ว
+            <span class="email"><span id="display-student-id">64031234</span>@kmitl.ac.th</span>
+        </p>
+
+        <!-- ช่องใส่รหัส OTP 6 ช่อง -->
+        <div class="otp-container">
+            <input type="text" maxlength="1" class="otp-input" />
+            <input type="text" maxlength="1" class="otp-input" />
+            <input type="text" maxlength="1" class="otp-input" />
+            <input type="text" maxlength="1" class="otp-input" />
+            <input type="text" maxlength="1" class="otp-input" />
+            <input type="text" maxlength="1" class="otp-input" />
+        </div>
+        <div class="resend-box" id="resend-container">
+            ส่งรหัสอีกครั้งได้ใน <span id="timer">0:60</span>
+        </div>
+        <!-- ปุ่มยืนยัน -->
+        <button class="btn-verify" disabled>ยืนยันรหัส</button>
+        <div class="links">
+            <a href="login.html" class="link-primary">กลับไปหน้าเข้าสู่ระบบ</a>
+        </div>
+    </div>
+
+    <script>
+        // 1. ตั้งค่าเวลาเริ่มต้นนับถอยหลัง (หน่วยเป็นวินาที)
+        let timeLeft = 60; // 60 วินาที = 1 นาที
+
+        const timerElement = document.getElementById('timer');
+        const resendContainer = document.getElementById('resend-container');
+
+        // ฟังก์ชันเริ่มนับถอยหลัง
+        function startTimer() {
+            // ใช้ setInterval ให้ทำงานทุกๆ 1,000 มิลลิวินาที (1 วินาที)
+            const countdown = setInterval(() => {
+                // คำนวณหา นาที และ วินาที
+                let minutes = Math.floor(timeLeft / 60);
+                let seconds = timeLeft % 60;
+
+                // ใส่เลข 0 ด้านหน้า วินาที ถ้าค่าน้อยกว่า 10 (เช่น 0:09)
+                seconds = seconds < 10 ? '0' + seconds : seconds;
+
+                // แสดงผลเวลาลงในหน้าเว็บ
+                timerElement.textContent = `${minutes}:${seconds}`;
+
+                // เช็คว่าหมดเวลาหรือยัง
+                if (timeLeft <= 0) {
+                    clearInterval(countdown); // หยุดการนับถอยหลัง
+
+                    // เปลี่ยนข้อความเมื่อหมดเวลา ให้สามารถกดส่งใหม่ได้
+                    resendContainer.innerHTML = `ไม่ได้รับรหัสผ่าน <a href="#" id="resend-btn" class="resend-link">ส่งรหัสผ่านใหม่</a>`;
+
+                    // เพิ่มเหตุการณ์เมื่อคลิกปุ่มส่งรหัสใหม่
+                    document.getElementById('resend-btn').addEventListener('click', (e) => {
+                        e.preventDefault();
+                        alert('ส่งรหัส OTP ใหม่เรียบร้อยแล้ว!');
+                        
+                        // รีเซ็ตเวลาและเริ่มนับใหม่
+                        timeLeft = 60;
+                        resendContainer.innerHTML = `ไม่ได้รับรหัสผ่าน ส่งรหัสผ่านใหม่ <span id="timer">1:00</span>`;
+                        // ดึง Element กลับมาใหม่และเริ่มจับเวลาอีกครั้ง
+                        window.location.reload(); 
+                    });
+                } else {
+                    timeLeft--; // ลดเวลาลงทีละ 1 วินาที
+                }
+            }, 1000);
+        }
+
+        // เริ่มทำงานนับถอยหลังทันทีเมื่อโหลดหน้าเว็บ
+        startTimer();
+
+        // ทำงานทันทีเมื่อโหลดหน้าเว็บเสร็จ
+        window.addEventListener('DOMContentLoaded', () => {
+            // ดึงค่ารหัสนักศึกษาที่บันทึกไว้ใน sessionStorage จากหน้าแรก
+            const savedStudentId = sessionStorage.getItem('resetStudentId');
+
+            // หากมีข้อมูลบันทึกอยู่ ให้เปลี่ยนข้อความในแท็ก id="display-student-id"
+            if (savedStudentId) {
+                document.getElementById('display-student-id').textContent = savedStudentId;
+            }
+        });
+    </script>
+    
+</body>
+</html>

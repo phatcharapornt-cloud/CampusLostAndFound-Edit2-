@@ -9,6 +9,7 @@
             rel="stylesheet"> 
 
 <style>
+    /* เซ็ตระยะขอบเดิมและการตั้งพื้นฐาน */
     *{
         margin: 0;                  /*ลบระยะห่างภายนอก*/
         padding: 0;                  /* ลบกระยะห่างภายใน */
@@ -167,8 +168,7 @@
 <body>
     <div class="reset-container">
             <div class="dynamic-island"></div>
-        <!-- <div class="reset-content"></div> -->
-         <div class="reset-content"></div>
+            <div class="reset-content"></div>
             <div class="reset-icon">
                 <i class="fa-solid fa-arrow-rotate-left"></i>
             </div>
@@ -180,14 +180,36 @@
             <input type="text" placeholder="เช่น 640599">
         </div>
 
-        <button type="button" class="submit-btn" onclick="window.location.href='#'">ยืนยันเพื่อส่งอีเมล</button>
+        <button type="button" class="submit-btn" onclick="window.location.href='Verify.html'">ยืนยันเพื่อส่งอีเมล</button>
 
         <div class="back-to-login">
             <a href="login.html">กลับไปหน้าเข้าสู่ระบบ</a>
         </div>
-
+        </div>
 
     </div>
+    <script>
+    // ดึงองค์ประกอบฟอร์มมาจากหน้าเว็บ
+        const form = document.getElementById('forgot-password-form');
+        const studentIdInput = document.getElementById('student-id-input');
+
+        // เมื่อผู้ใช้กดปุ่มส่งฟอร์ม (Submit)
+        form.addEventListener('submit', function(event) {
+            event.preventDefault(); // ป้องกันไม่ให้หน้าเว็บรีเฟรชตามค่าเริ่มต้น
+
+            const studentId = studentIdInput.value.trim(); // ดึงค่าที่ผู้ใช้พิมพ์ ตัดช่องว่างออก
+
+            if (studentId) {
+                // บันทึกรหัสนักศึกษาลงใน sessionStorage ชื่อ 'resetStudentId'
+                sessionStorage.setItem('resetStudentId', studentId);
+
+                // เปลี่ยนหน้าไปยังหน้ายืนยัน 
+                window.location.href = 'Verify.html';
+            }
+        });
+    </script>
+
+
     
 </body>
 </html>
