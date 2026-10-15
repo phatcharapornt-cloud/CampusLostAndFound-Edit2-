@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS LostItem (
     Lost_time TIME NULL,
     Lost_description VARCHAR(200) NOT NULL,
     Lost_photo VARCHAR(255) NULL,
-    Lost_status ENUM('พบ', 'ไม่พบ','ได้รับสิ่งของคืนแล้ว') NOT NULL DEFAULT 'ไม่พบ',
+    Lost_status ENUM('พบ', 'ไม่พบ','ยกเลิกรายการ','ได้รับสิ่งของคืนแล้ว') NOT NULL DEFAULT 'ไม่พบ',
     FOREIGN KEY (User_ID) REFERENCES User(User_ID) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Category_ID) REFERENCES Category(Category_ID) ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (Location_ID) REFERENCES Location(Location_ID) ON DELETE RESTRICT ON UPDATE CASCADE
@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS MatchItem (
     Lost_ID INT NOT NULL,
     Found_ID INT NOT NULL,
     Match_score DECIMAL(5,2) NOT NULL,
+    Match_status ENUM('ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน', 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน', 'ผู้ใช้งานยืนยันการขอรับสิ่งของคืน') DEFAULT NULL,
     Match_date DATE NOT NULL default (CURRENT_DATE),
     Match_time TIME NOT NULL default (CURRENT_TIME),
     FOREIGN KEY (Lost_ID) REFERENCES LostItem(Lost_ID) ON DELETE CASCADE ON UPDATE CASCADE,
