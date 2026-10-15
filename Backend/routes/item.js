@@ -249,8 +249,8 @@ router.delete('/lostitem/:lostId', async (req, res) => {
     const { lostId } = req.params;
     const { User_ID } = req.body;
 
-   try {
-        // 1. ค้นหาข้อมูลรายการของหายก่อน เพื่อดึง User_ID และชื่อสิ่งของมาใช้ทำ Notification
+    try {
+        // 1. ค้นหาข้อมูลรายการของหายก่อน เพื่อดึง User_ID และชื่อสิ่งของมาทำ Notification
         let selectQuery = 'SELECT User_ID, LostItem_name FROM LostItem WHERE Lost_ID = ?';
         let selectParams = [lostId];
 
@@ -271,20 +271,19 @@ router.delete('/lostitem/:lostId', async (req, res) => {
         const lostItem = items[0];
         const targetUserId = User_ID || lostItem.User_ID;
 
-        // 2. ลบข้อมูลสิ่งของที่หายออกจากตาราง LostItem
-        await db.query('DELETE FROM LostItem WHERE Lost_ID = ?', [lostId]);
+        // 2. อัปเดตสถานะของสิ่งของที่หายเป็น 'ยกเลิกรายการ' 
+        await db.query("UPDATE LostItem SET Lost_status = 'ยกเลิกรายการ' WHERE Lost_ID = ?", [lostId]);
 
-        // 3. บันทึก Notification แจ้งเตือนไปยังผู้ใช้งานว่ายกเลิกสำเร็จ
-        // หมายเหตุ: กำหนด Lost_ID เป็น NULL เพื่อป้องกันการโดนลบตาม (CASCADE Delete)
-        const notiMessage = `ท่านได้ทำการยกเลิกรายการสิ่งของ "${lostItem.LostItem_name}" สำเร็จแล้ว`;
+        // 3. บันทึก Notification แจ้งเตือนไปยังผู้ใช้งาน 
+        const notiMessage = `ท่านได้ทำการยกเลิกรายการสิ่งของ "${lostItem.LostItem_name}" เรียบร้อยแล้ว`;
         await db.query(
-            `INSERT INTO Notification (User_ID, Lost_ID, Message) VALUES (?, NULL, ?)`,
-            [targetUserId, notiMessage]
+            `INSERT INTO Notification (User_ID, Lost_ID, Message) VALUES (?, ?, ?)`,
+            [targetUserId, lostId, notiMessage]
         );
 
         res.status(200).json({
             success: true,
-            message: 'ยกเลิกรายการสิ่งของที่หายและบันทึกการแจ้งเตือนเรียบร้อยแล้ว'
+            message: 'ยกเลิกรายการสิ่งของที่หายเรียบร้อยแล้ว'
         });
 
     } catch (error) {
