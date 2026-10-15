@@ -73,6 +73,13 @@ router.post('/lostitem', async (req, res) => {
 
         const newLostId = result.insertId; //ดึง Lost_ID ที่ถูกบันทึกล่าสุด
 
+        // บันทึกการแจ้งเตือน กรณีเมื่อผู้ใช้งานแจ้งของหายสำเร็จ
+        const notiMessage = `แจ้งรายการสิ่งของที่หาย "${LostItem_name}" สำเร็จแล้ว ระบบกำลังเริ่มประมวลผลค้นหาและจับคู่สิ่งของให้คุณ`;
+        await db.query(
+            `INSERT INTO Notification (User_ID, Lost_ID, Message) VALUES (?, ?, ?)`,
+            [User_ID, newLostId, notiMessage]
+        );
+
         // เรียกฟังก์ชันประมวลผลการจับคู่สิ่งของให้อัตโนมัติ
         processMatchingByLostItem(newLostId);
 
@@ -133,6 +140,15 @@ router.post('/founditem/user', async (req, res) => {
             photoPath,
             status
         ]);
+
+        const newFoundId = result.insertId;
+        
+        // บันทึกการแจ้งเตือน ให้ผู้ใช้ทำการส่งมอบสิ่งของไปที่ส่วนกลาง (สถานะรอการอนุมัติ)
+        const notiMessage = `รายงานสิ่งของที่พบ "${FoundItem_name}" สำเร็จแล้ว กรุณานำสิ่งของส่งมอบที่ศูนย์ภายใน 30 นาที (รอเจ้าหน้าที่อนุมัติ)`;
+        await db.query(
+            `INSERT INTO Notification (User_ID, Found_ID, Message) VALUES (?, ?, ?)`,
+            [User_ID, newFoundId, notiMessage]
+        );
 
         res.status(201).json({
             success: true,
@@ -204,6 +220,13 @@ router.post('/founditem/admin', async (req, res) => {
 
         const newFoundId = result.insertId;
 
+        // บันทึกการแจ้งเตือน เมื่อAdminทำการแจ้งสิ่งของที่พบสำเร็จ
+        const adminNotiMessage = `บันทึกรายการสิ่งของที่พบ "${FoundItem_name}" สำเร็จแล้ว`;
+        await db.query(
+            `INSERT INTO Notification (Admin_ID, Found_ID, Message) VALUES (?, ?, ?)`,
+            [Admin_ID, newFoundId, adminNotiMessage]
+        );
+
         // ประมวลผลจับคู่อัตโนมัติทันที
         processMatchingByFoundItem(newFoundId);
 
@@ -226,27 +249,42 @@ router.delete('/lostitem/:lostId', async (req, res) => {
     const { lostId } = req.params;
     const { User_ID } = req.body;
 
-    try {
-        let deleteQuery = 'DELETE FROM LostItem WHERE Lost_ID = ?';
-        let queryParams = [lostId];
+   try {
+        // 1. ค้นหาข้อมูลรายการของหายก่อน เพื่อดึง User_ID และชื่อสิ่งของมาใช้ทำ Notification
+        let selectQuery = 'SELECT User_ID, LostItem_name FROM LostItem WHERE Lost_ID = ?';
+        let selectParams = [lostId];
 
         if (User_ID) {
-            deleteQuery += ' AND User_ID = ?';
-            queryParams.push(User_ID);
+            selectQuery += ' AND User_ID = ?';
+            selectParams.push(User_ID);
         }
 
-        const [result] = await db.query(deleteQuery, queryParams);
+        const [items] = await db.query(selectQuery, selectParams);
 
-        if (result.affectedRows === 0) {
+        if (items.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'ไม่พบรายการสิ่งของที่หาย หรือคุณไม่มีสิทธิ์ในการยกเลิกรายการนี้'
             });
         }
 
+        const lostItem = items[0];
+        const targetUserId = User_ID || lostItem.User_ID;
+
+        // 2. ลบข้อมูลสิ่งของที่หายออกจากตาราง LostItem
+        await db.query('DELETE FROM LostItem WHERE Lost_ID = ?', [lostId]);
+
+        // 3. บันทึก Notification แจ้งเตือนไปยังผู้ใช้งานว่ายกเลิกสำเร็จ
+        // หมายเหตุ: กำหนด Lost_ID เป็น NULL เพื่อป้องกันการโดนลบตาม (CASCADE Delete)
+        const notiMessage = `ท่านได้ทำการยกเลิกรายการสิ่งของ "${lostItem.LostItem_name}" สำเร็จแล้ว`;
+        await db.query(
+            `INSERT INTO Notification (User_ID, Lost_ID, Message) VALUES (?, NULL, ?)`,
+            [targetUserId, notiMessage]
+        );
+
         res.status(200).json({
             success: true,
-            message: 'ยกเลิกรายการสิ่งของที่หายเรียบร้อยแล้ว'
+            message: 'ยกเลิกรายการสิ่งของที่หายและบันทึกการแจ้งเตือนเรียบร้อยแล้ว'
         });
 
     } catch (error) {
