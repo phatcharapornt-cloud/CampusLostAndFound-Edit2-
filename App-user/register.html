@@ -529,7 +529,9 @@
 
                 if (response.ok && data.success) {
                     document.getElementById('success-overlay').classList.add('is-visible');
-                    setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+                    // ส่งรหัสนักศึกษาไปให้หน้า Login เติมให้อัตโนมัติ
+                    const loginUrl = `login.html?registered=1&sid=${encodeURIComponent(getValues().Student_ID)}`;
+                    setTimeout(() => { window.location.href = loginUrl; }, 1500);
                     return;
                 }
 
