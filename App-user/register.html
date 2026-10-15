@@ -1,19 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Campus Lost & Found</title>
-     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" 
-            rel="stylesheet"> 
-        
-        <style>
-            *{
-            margin: 0;                  /*ลบระยะห่างภายนอก*/
-            padding: 0;                  /* ลบกระยะห่างภายใน */
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;                  /* ลบระยะห่างภายนอก */
+            padding: 0;                 /* ลบระยะห่างภายใน */
             box-sizing: border-box;
             font-family: 'Prompt', sans-serif;
+        }
+        :root {
+            --primary: #f26522;
+            --primary-hover: #e05413;
+            --text: #111111;
+            --text-label: #444444;
+            --text-muted: #777777;
+            --border: #e0e0e0;
+            --success: #1f9d55;
+            --error: #d93025;
+            --error-bg: #fdecea;
         }
         body {
             background-color: #f4f5f8;
@@ -22,6 +32,8 @@
             align-items: center;
             min-height: 100vh;
         }
+
+        /* กรอบจำลองหน้าจอมือถือ */
         .rg-container {
             width: 100%;
             max-width: 390px;
@@ -30,98 +42,116 @@
             border-radius: 61px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
             border: 8px solid #2b2b2b;
             position: relative;
-            padding: 24px 20px;
         }
-        /* กำหนด ส่วนheader */
-        .rg-header {
-            padding: 12px 0;
-            display: flex;               /*ทำให้องค์ประกอบในกล่องอยู่ในแถวหรือคอลัมน์เดียวกัน*/   
-            justify-content: center;            /*เป็นการทำให้ header อยู่ตรงกลาง*/
-            align-items: center;        /*จัดของข้างในให้อยู่ตรงกลาง*/
-        }
+
         .dynamic-island {
             width: 110px;
             height: 28px;
-            background-color: #000000 ;
+            background-color: #000000;
             border-radius: 20px;
-
-            position: absolute; /*อิงตำแหน่งจากapp-container*/ 
-            top : 30px ;          /* ระยะห่างจากขอบจอ */
-            left: 50%;              /* ขยับมาเริ่มที่จุดกึ่งกลางของหน้าจอ */
-            transform: translateX(-50%);     /* ดึงตัวแถบกลับมาทางซ้าย 50% เพื่อให้อยู่ตรงกลาง */   
+            position: absolute;              /* อิงตำแหน่งจาก rg-container */
+            top: 22px;
+            left: 50%;
+            transform: translateX(-50%);     /* จัดให้อยู่กึ่งกลาง */
+            z-index: 2;
         }
-            /* แสดง เนื้อหาหลักในแอพ */
+        /* เนื้อหาหลัก เลื่อนขึ้นลงได้ถ้าข้อความแจ้งเตือนทำให้ยาวเกินจอ */
         .rg-content {
-            padding:80px 24px 30px ;
-            display: flex;
-            flex-direction: column;         /*จัดเรียงบนลงล่าง*/
-            align-items: center; 
-            flex: 1;
+            height: 100%;
+            overflow-y: auto;
+            scrollbar-width: none;
+            padding: 76px 20px 28px;
         }
+        .rg-content::-webkit-scrollbar { display: none; }
+
         h1 {
             font-size: 28px;
             font-weight: 650;
-            color: #111111;
-            margin-bottom: 10px;
-            align-self: center;         /*ใช้กับตัวใดตัวนึง*/
-            position: absolute;
-            top: 85px;
+            color: var(--text);
+            text-align: center;
+            margin-bottom: 22px;
         }
-        /* การจัดกลุ่ม */
+
         .form-group {
             margin-bottom: 14px;
         }
-        /* จัดกล่องสำหรับแถว เอาไว้ใส่ชื่อ นามสกุล */
+
+        /* แถวชื่อ-นามสกุล */
         .form-row {
             display: flex;
-            gap: 13px;                /*ช่องว่าง*/
+            gap: 13px;
         }
         .form-row .form-group {
-            flex: 1;                  /*ทำให้ช่องกรอกข้อมูลแบ่งพื้นที่เท่าๆกัน ยืดขยายตามแถว อัตโนมัติ*/
+            flex: 1;
+            min-width: 0;
         }
         label {
-            display: block;               /*กำหนดตัวอักษร เพื่อให้ผลเป็นบล็อคแยกกัน และช่วยดันให้ช่องกรอกข้อมูล ดันไปบรรทัดข้างล่าง*/
+            display: block;
             font-size: 13px;
             font-weight: 500;
-            color: #444444;
+            color: var(--text-label);
             margin-bottom: 8px;
         }
-                                    /* สร้างกล่องที่ครอบช่องกรอก */
+
         .input-wrapper {
             position: relative;
             display: flex;
             align-items: center;
         }
-                /* ใส่ข้อมูล*/
+
         input {
             width: 100%;
             padding: 10px 14px;
             font-size: 14px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border);
             border-radius: 13px;
             outline: none;
             background-color: #ffffff;
             color: #333333;
+            transition: border-color 0.15s;
         }
+        input::placeholder { color: #b0b0b0; }
         input:focus {
-            border-color: #f06529;
+            border-color: var(--primary);
         }
-        .eye-icon {
-            position: absolute;              /*ช่วยให้จัดตำแหน่งเทียบกับขอบของกล่อง ไม่หลุดออกไปข้างนอก*/
-            right: 12px;
+        input.is-invalid {
+            border-color: var(--error);
+        }
+        #Password {
+            padding-right: 42px;          /* เว้นที่ให้ปุ่มรูปตา */
+        }
+        .eye-btn {
+            position: absolute;
+            right: 6px;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
             color: #888888;
             cursor: pointer;
+            font-size: 15px;
+            border-radius: 8px;
         }
-        /* กล่องเงื่อนไข */
+        .eye-btn:focus-visible {
+            outline: 2px solid var(--primary);
+        }
+        /* ข้อความแจ้งข้อผิดพลาดใต้ช่องกรอก */
+        .field-error {
+            font-size: 11.5px;
+            color: var(--error);
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+        .field-error:empty { display: none; }
+
+        /* กล่องเงื่อนไขรหัสผ่าน */
         .rule-container {
             background-color: #f8f9fa;
             border-radius: 10px;
             padding: 14px;
-            margin-bottom: 55px; 
+            margin-bottom: 20px;
         }
         .rules-title {
             font-size: 12px;
@@ -129,32 +159,60 @@
             color: #333333;
             margin-bottom: 8px;
         }
-
+        .rule-list { list-style: none; }
         .rule-item {
             display: flex;
             align-items: center;
+            gap: 8px;
             font-size: 12px;
-            color: #777777;
+            color: var(--text-muted);
             margin-bottom: 6px;
+            transition: color 0.15s;
         }
+        .rule-item:last-child { margin-bottom: 0; }
+        .rule-item i {
+            width: 14px;
+            text-align: center;
+            font-size: 12px;
+        }
+        .rule-item.is-met { color: var(--success); }
+        .rule-item.is-unmet { color: var(--error); }
 
-        .rule-item:last-child {
-            margin-bottom: 0;
+        /* กล่องแจ้งข้อผิดพลาดจากเซิร์ฟเวอร์ */
+        .form-alert {
+            display: none;
+            align-items: flex-start;
+            gap: 8px;
+            background-color: var(--error-bg);
+            color: var(--error);
+            font-size: 12.5px;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            line-height: 1.45;
         }
-        .submit-btn  {
+        .form-alert.is-visible { display: flex; }
+        .form-alert i { margin-top: 2px; }
+
+        .submit-btn {
             width: 100%;
             padding: 12px;
-            background-color: #f26522;
+            background-color: var(--primary);
             color: white;
             border: none;
             border-radius: 14px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transform: translateY(-30px);       /* ย้ายตำแหน่งโดยไม่มีผลกระทบต่อส่วนอื่น ค่าน้อยยิ่งสูง*/
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
         }
-        .submit-btn:hover {
-            background-color: #e05413;
+        .submit-btn:hover { background-color: var(--primary-hover); }
+        .submit-btn:disabled {
+            opacity: 0.7;
+            cursor: wait;
         }
         .login-link {
             text-align: center;
@@ -163,79 +221,331 @@
             color: #555555;
         }
         .login-link a {
-            color: #f06529;
+            color: var(--primary);
             text-decoration: none;
             font-weight: 600;
-    }
+        }
 
-         </style>
+        /* หน้าจอแจ้งสมัครสำเร็จ */
+        .success-overlay {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(255, 255, 255, 0.96);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 32px;
+            z-index: 3;
+        }
+        .success-overlay.is-visible { display: flex; }
+        .success-overlay i {
+            font-size: 56px;
+            color: var(--success);
+            margin-bottom: 16px;
+        }
+        .success-overlay h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+        .success-overlay p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* เปิดบนมือถือจริง: แสดงเต็มจอ ไม่ต้องมีกรอบ */
+        @media (max-width: 430px) {
+            .rg-container {
+                max-width: none;
+                height: 100vh;
+                height: 100dvh;
+                border: none;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            .dynamic-island { display: none; }
+            .rg-content { padding-top: 48px; }
+        }
+    </style>
 </head>
 
 
 <body>
-
     <div class="rg-container">
         <div class="dynamic-island"></div>
-        <div class="rg-content"></div>
+
+        <div class="rg-content">
             <h1>สร้างบัญชี</h1>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label>ชื่อ</label>
-                <div class="input-wrapper">
-                    <input type="text" placeholder="สมใจ">
+            <form id="register-form" novalidate>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="FName">ชื่อ</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="FName" name="FName" placeholder="สมใจ" autocomplete="given-name" maxlength="50" aria-describedby="FName-error">
+                        </div>
+                        <div class="field-error" id="FName-error" aria-live="polite"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="LName">นามสกุล</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="LName" name="LName" placeholder="เพชรฆาต" autocomplete="family-name" maxlength="50" aria-describedby="LName-error">
+                        </div>
+                        <div class="field-error" id="LName-error" aria-live="polite"></div>
+                    </div>
                 </div>
-            </div> 
-            <div class="form-group">
-                <label>นามสกุล</label>
-                <div class="input-wrapper">
-                    <input type="text" placeholder="เพชรฆาต">
+
+                <div class="form-group">
+                    <label for="Student_ID">รหัสนักศึกษา</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="Student_ID" name="Student_ID" placeholder="6xxxxxxx" inputmode="numeric" autocomplete="username" maxlength="8" aria-describedby="Student_ID-error">
+                    </div>
+                    <div class="field-error" id="Student_ID-error" aria-live="polite"></div>
                 </div>
-            </div>
+
+                <div class="form-group">
+                    <label for="Email">Email</label>
+                    <div class="input-wrapper">
+                        <input type="email" id="Email" name="Email" placeholder="6xxxxxxx@kmitl.ac.th" autocomplete="email" maxlength="50" aria-describedby="Email-error">
+                    </div>
+                    <div class="field-error" id="Email-error" aria-live="polite"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="Password">รหัสผ่าน</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="Password" name="Password" placeholder="กรอกรหัสผ่าน" autocomplete="new-password" aria-describedby="Password-error password-rules">
+                        <button type="button" class="eye-btn" id="toggle-password" aria-label="แสดงรหัสผ่าน">
+                            <i class="fa-regular fa-eye-slash"></i>
+                        </button>
+                    </div>
+                    <div class="field-error" id="Password-error" aria-live="polite"></div>
+                </div>
+
+                <div class="rule-container" id="password-rules">
+                    <div class="rules-title">หมายเหตุ : เงื่อนไขความปลอดภัย</div>
+                    <ul class="rule-list">
+                        <li class="rule-item" data-rule="length"><i class="fa-regular fa-circle"></i>ความยาว 8-16 ตัวอักษร</li>
+                        <li class="rule-item" data-rule="upper"><i class="fa-regular fa-circle"></i>มีตัวอักษรพิมพ์ใหญ่อย่างน้อย 1 ตัว (A-Z)</li>
+                        <li class="rule-item" data-rule="lower"><i class="fa-regular fa-circle"></i>มีตัวอักษรพิมพ์เล็กอย่างน้อย 1 ตัว (a-z)</li>
+                        <li class="rule-item" data-rule="digit"><i class="fa-regular fa-circle"></i>มีตัวเลขอย่างน้อย 1 ตัว (0-9)</li>
+                        <li class="rule-item" data-rule="special"><i class="fa-regular fa-circle"></i>มีอักขระพิเศษอย่างน้อย 1 ตัว (เช่น ! @ # $ %)</li>
+                    </ul>
+                </div>
+
+                <div class="form-alert" id="form-alert" role="alert">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span id="form-alert-text"></span>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submit-btn">สมัครใช้งาน</button>
+
+                <div class="login-link">
+                    มีบัญชีอยู่แล้ว? <a href="login.html">เข้าสู่ระบบ</a>
+                </div>
+            </form>
         </div>
 
-            <div class="form-group">
-                <label>รหัสนักศึกษา</label>
-                <div class="input-wrapper">
-                    <input type="text" placeholder="6xxxxxxx">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Email</label>
-                <div class="input-wrapper">
-                    <input type="text" placeholder="6xxxxxxx@kmitl.ac.th">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>รหัสผ่าน</label>
-                <div class="input-wrapper">
-                    <input type="password" placeholder="กรอกรหัสผ่าน">   
-                    <i class="fa-regular fa-eye-slash eye-icon"></i>
-                </div>
-            </div>
-
-            <div class="rule-container">
-                <div class="rules-title">หมายเหตุ : เงื่อนไขความปลอดภัย</div>
-                    <div class="rule-item">ความยาว 8-16 ตัวอักษร</div>
-                    <div class="rule-item">มีตัวอักษรพิมพ์ใหญ่อย่างน้อย 1 ตัวอ (A-Z)</div>
-                    <div class="rule-item">มีตัวอักษรพิมพ์เล็กอย่างน้อย 1 ตัว (a-z)</div>
-                    <div class="rule-item">มีตัวเลขอย่างน้อย 1 ตัว (0-9)</div>
-                    <div class="rule-item">มีอักขระพิเศษอย่างน้อย 1 ตัว</div>
-            </div>
-
-            <button type="button" class="submit-btn" onclick="window.location.href='login.html'">สมัครใช้งาน</button>
-
-            <!-- <div class="login-link"></div> -->
-
+        <div class="success-overlay" id="success-overlay" aria-live="polite">
+            <i class="fa-solid fa-circle-check"></i>
+            <h2>สมัครใช้งานสำเร็จ</h2>
+            <p>กำลังพาไปหน้าเข้าสู่ระบบ...</p>
         </div>
-            
-    </div>   
-       
-   
-   
-    
+    </div>
 
+    <script>
+        // ที่อยู่ของ Backend (ตรงกับ PORT ในไฟล์ Backend/.env)
+        const API_BASE_URL = 'http://localhost:5001';
+
+        // ---------- เงื่อนไขการตรวจสอบ (ต้องตรงกับ Backend/utils/validators.js) ----------
+        const EMAIL_DOMAIN = 'kmitl.ac.th';
+        const STUDENT_ID_PATTERN = /^\d{8}$/;
+        const NAME_PATTERN = /^[฀-๿a-zA-Z .'-]+$/;
+        const PASSWORD_ALLOWED_PATTERN = /^[\x21-\x7E]*$/;
+        const PASSWORD_RULES = {
+            length:  (p) => p.length >= 8 && p.length <= 16,
+            upper:   (p) => /[A-Z]/.test(p),
+            lower:   (p) => /[a-z]/.test(p),
+            digit:   (p) => /[0-9]/.test(p),
+            special: (p) => /[!-\/:-@\[-`{-~]/.test(p),
+        };
+
+        const form = document.getElementById('register-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const formAlert = document.getElementById('form-alert');
+        const formAlertText = document.getElementById('form-alert-text');
+        const fields = {
+            FName: document.getElementById('FName'),
+            LName: document.getElementById('LName'),
+            Student_ID: document.getElementById('Student_ID'),
+            Email: document.getElementById('Email'),
+            Password: document.getElementById('Password'),
+        };
+        const ruleItems = document.querySelectorAll('.rule-item');
+
+        let submitAttempted = false;
+        const touched = new Set();          // ฟิลด์ที่ผู้ใช้กรอกแล้วออกจากช่อง
+        let autoFilledEmail = '';           // อีเมลที่ระบบเติมให้อัตโนมัติจากรหัสนักศึกษา
+
+        function getValues() {
+            return {
+                FName: fields.FName.value.trim(),
+                LName: fields.LName.value.trim(),
+                Student_ID: fields.Student_ID.value.trim(),
+                Email: fields.Email.value.trim().toLowerCase(),
+                Password: fields.Password.value,
+            };
+        }
+
+        function validateName(value, label) {
+            if (!value) return `กรุณากรอก${label}`;
+            if (!NAME_PATTERN.test(value)) return `${label}ใช้ได้เฉพาะตัวอักษรภาษาไทยหรือภาษาอังกฤษ`;
+            return '';
+        }
+
+        // ตรวจสอบทุกฟิลด์ คืนค่า { ชื่อฟิลด์: ข้อความ } (ข้อความว่าง = ผ่าน)
+        function validate(values) {
+            const errors = {};
+            errors.FName = validateName(values.FName, 'ชื่อ');
+            errors.LName = validateName(values.LName, 'นามสกุล');
+
+            if (!values.Student_ID) errors.Student_ID = 'กรุณากรอกรหัสนักศึกษา';
+            else if (!STUDENT_ID_PATTERN.test(values.Student_ID)) errors.Student_ID = 'รหัสนักศึกษาต้องเป็นตัวเลข 8 หลัก';
+            else errors.Student_ID = '';
+
+            if (!values.Email) errors.Email = 'กรุณากรอกอีเมล';
+            else if (!values.Email.endsWith(`@${EMAIL_DOMAIN}`)) errors.Email = `กรุณาใช้อีเมลของมหาวิทยาลัย (@${EMAIL_DOMAIN})`;
+            else if (!errors.Student_ID && values.Email !== `${values.Student_ID}@${EMAIL_DOMAIN}`) {
+                errors.Email = `อีเมลต้องตรงกับรหัสนักศึกษา (${values.Student_ID}@${EMAIL_DOMAIN})`;
+            } else errors.Email = '';
+
+            const p = values.Password;
+            if (!p) errors.Password = 'กรุณากรอกรหัสผ่าน';
+            else if (!PASSWORD_ALLOWED_PATTERN.test(p)) errors.Password = 'ใช้ได้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข และอักขระพิเศษ (ห้ามมีช่องว่างหรือภาษาไทย)';
+            else if (!Object.values(PASSWORD_RULES).every((test) => test(p))) errors.Password = 'รหัสผ่านยังไม่ผ่านเงื่อนไขความปลอดภัยด้านล่าง';
+            else errors.Password = '';
+
+            return errors;
+        }
+
+        function setFieldError(name, message) {
+            const input = fields[name];
+            document.getElementById(`${name}-error`).textContent = message || '';
+            input.classList.toggle('is-invalid', Boolean(message));
+            input.setAttribute('aria-invalid', message ? 'true' : 'false');
+        }
+
+        // แสดง error เฉพาะฟิลด์ที่ผู้ใช้กรอกไปแล้ว หรือหลังจากกดสมัคร
+        function renderErrors() {
+            const errors = validate(getValues());
+            for (const name of Object.keys(fields)) {
+                const shouldShow = submitAttempted || touched.has(name);
+                setFieldError(name, shouldShow ? errors[name] : '');
+            }
+            return errors;
+        }
+
+        // อัปเดตเครื่องหมายถูกในกล่องเงื่อนไขรหัสผ่านแบบ real-time
+        function renderPasswordRules() {
+            const password = fields.Password.value;
+            ruleItems.forEach((item) => {
+                const met = password.length > 0 && PASSWORD_RULES[item.dataset.rule](password);
+                item.classList.toggle('is-met', met);
+                item.classList.toggle('is-unmet', !met && submitAttempted);   // ขึ้นสีแดงหลังกดสมัครแล้วเท่านั้น
+                item.querySelector('i').className = met ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle';
+            });
+        }
+
+        function showFormAlert(message) {
+            formAlertText.textContent = message;
+            formAlert.classList.toggle('is-visible', Boolean(message));
+        }
+
+        // รหัสนักศึกษา: รับเฉพาะตัวเลข และเติมอีเมลให้อัตโนมัติเมื่อครบ 8 หลัก
+        fields.Student_ID.addEventListener('input', () => {
+            const digitsOnly = fields.Student_ID.value.replace(/\D/g, '').slice(0, 8);
+            if (fields.Student_ID.value !== digitsOnly) fields.Student_ID.value = digitsOnly;
+
+            const currentEmail = fields.Email.value.trim();
+            if (currentEmail === '' || currentEmail === autoFilledEmail) {
+                autoFilledEmail = STUDENT_ID_PATTERN.test(digitsOnly) ? `${digitsOnly}@${EMAIL_DOMAIN}` : '';
+                fields.Email.value = autoFilledEmail;
+            }
+        });
+
+        for (const [name, input] of Object.entries(fields)) {
+            input.addEventListener('blur', () => {
+                if (input.value.trim() !== '') touched.add(name);
+                renderErrors();
+            });
+            input.addEventListener('input', () => {
+                showFormAlert('');
+                renderErrors();
+                if (name === 'Password') renderPasswordRules();
+            });
+        }
+
+        // ปุ่มรูปตา แสดง/ซ่อนรหัสผ่าน
+        document.getElementById('toggle-password').addEventListener('click', (event) => {
+            const button = event.currentTarget;
+            const isHidden = fields.Password.type === 'password';
+            fields.Password.type = isHidden ? 'text' : 'password';
+            button.querySelector('i').className = isHidden ? 'fa-regular fa-eye' : 'fa-regular fa-eye-slash';
+            button.setAttribute('aria-label', isHidden ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน');
+        });
+
+        function setLoading(isLoading) {
+            submitBtn.disabled = isLoading;
+            submitBtn.innerHTML = isLoading
+                ? '<i class="fa-solid fa-spinner fa-spin"></i> กำลังสมัคร...'
+                : 'สมัครใช้งาน';
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            submitAttempted = true;
+            showFormAlert('');
+
+            const errors = renderErrors();
+            renderPasswordRules();
+
+            const firstInvalid = Object.keys(fields).find((name) => errors[name]);
+            if (firstInvalid) {
+                fields[firstInvalid].focus();
+                return;
+            }
+
+            setLoading(true);
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(getValues()),
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok && data.success) {
+                    document.getElementById('success-overlay').classList.add('is-visible');
+                    setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+                    return;
+                }
+
+                // แสดง error ที่ Backend ส่งกลับมาใต้ช่องที่เกี่ยวข้อง (เช่น รหัสนักศึกษาซ้ำ)
+                const serverErrors = data.errors || {};
+                for (const [name, message] of Object.entries(serverErrors)) {
+                    if (fields[name]) setFieldError(name, message);
+                }
+                const hasFieldErrors = Object.keys(serverErrors).some((name) => fields[name]);
+                if (!hasFieldErrors) showFormAlert(data.message || 'เกิดข้อผิดพลาดในการลงทะเบียน กรุณาลองใหม่อีกครั้ง');
+                setLoading(false);
+            } catch (error) {
+                showFormAlert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว และลองใหม่อีกครั้ง');
+                setLoading(false);
+            }
+        });
+    </script>
 </body>
 </html>
