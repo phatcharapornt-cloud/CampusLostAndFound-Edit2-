@@ -69,6 +69,16 @@ router.put('/approvefound/:id', async (req, res) => {
                 message: 'ไม่พบรายการที่รออนุมัติ หรือรายการนี้ถูกอนุมัติไปแล้ว'
             });
         }
+
+        // บันทึกการแจ้งเตือนรายการสิ่งของที่พบ
+        if (foundItem.User_ID) {
+            const notiMessage = `อนุมัติรายการสิ่งของที่พบ "${foundItem.FoundItem_name}" เรียบร้อยแล้ว`;
+            await db.query(
+                `INSERT INTO Notification (User_ID, Found_ID, Message) VALUES (?, ?, ?)`,
+                [foundItem.User_ID, id, notiMessage]
+            );
+        }
+
         //ประมวลผลจับคู่กับรายการของหายในระบบทันทีที่อนุมัติสำเร็จ
         processMatchingByFoundItem(id);
 
@@ -96,8 +106,28 @@ router.delete('/rejectfound/:id', async (req, res) => {
         if (result.affectedRows === 0) {
             return res.status(404).json({
                 success: false,
-                message: 'ไม่พบรายการที่ต้องการลบ'
+                message: 'ไม่พบรายการสิ่งของที่ต้องการปฏิเสธ'
             });
+        }
+
+        const foundItem = foundItems[0];
+
+        // เปลี่ยนสถานะเป็น 'ถูกปฏิเสธ' (ไม่ลบข้อมูลออกจากฐานข้อมูล)
+        const updateQuery = `
+            UPDATE FoundItem 
+            SET Found_status = 'ถูกปฏิเสธ', Admin_ID = ? 
+            WHERE Found_ID = ?
+        `;
+
+        await db.query(updateQuery, [Admin_ID || null, id]);
+
+        // บันทึก Notification แจ้งเตือนไปยังผู้ใช้งานที่แจ้งพบสิ่งของ
+        if (foundItem.User_ID) {
+            const notiMessage = `รายการสิ่งของที่พบของคุณถูกปฏิเสธ`;
+            await db.query(
+                `INSERT INTO Notification (User_ID, Found_ID, Message) VALUES (?, ?, ?)`,
+                [foundItem.User_ID, id, notiMessage]
+            );
         }
 
         res.status(200).json({

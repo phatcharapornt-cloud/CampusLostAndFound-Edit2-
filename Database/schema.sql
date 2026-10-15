@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS FoundItem (
     Found_time TIME NOT NULL,
     Found_description VARCHAR(200) NOT NULL,
     Found_photo VARCHAR(255) NOT NULL,
-    Found_status ENUM('รอการอนุมัติ', 'อนุมัติแล้ว', 'คืนสิ่งของแล้ว') NOT NULL DEFAULT 'รอการอนุมัติ',
+    Found_status ENUM('รอการอนุมัติ', 'อนุมัติแล้ว' ,'ถูกปฏิเสธ', 'คืนสิ่งของแล้ว') NOT NULL DEFAULT 'รอการอนุมัติ',
     Foundcheck_at DATETIME NOT NULL Default CURRENT_TIMESTAMP,
     FOREIGN KEY (User_ID) REFERENCES User(User_ID) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Admin_ID) REFERENCES Admin(Admin_ID) ON DELETE RESTRICT ON UPDATE CASCADE,
