@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const { processMatchingByLostItem } = require('../service/matchingService');
 
 // 1. API ผู้ใช้งานกด Request Claim (POST /api/claim/request)
 router.post('/request', async (req, res) => {
@@ -16,8 +17,10 @@ router.post('/request', async (req, res) => {
     try {
         // ดึงข้อมูลการจับคู่และรายละเอียด LostItem
         const selectMatchQuery = `
-            SELECT m.Lost_ID, m.Found_ID, l.LostItem_name, l.Lost_description FROM MatchItem m
+            SELECT m.Match_ID, m.Lost_ID, m.Found_ID, m.Match_status, l.LostItem_name, l.Lost_description, n.Notice_at 
+            FROM MatchItem m
             JOIN LostItem l ON m.Lost_ID = l.Lost_ID
+            LEFT JOIN Notification n ON n.Match_ID = m.Match_ID
             WHERE m.Match_ID = ?
         `;
         const [matches] = await db.query(selectMatchQuery, [Match_ID]);
@@ -30,6 +33,36 @@ router.post('/request', async (req, res) => {
         }
 
         const matchData = matches[0];
+
+        // ตรวจสอบว่าเกิน 24 ชม. หรือถูกปฏิเสธไปแล้วหรือไม่
+        if (matchData.Notice_at) {
+            const noticeTime = new Date(matchData.Notice_at).getTime();
+            const currentTime = new Date().getTime();
+            const diffInHours = (currentTime - noticeTime) / (1000 * 60 * 60);
+
+            if (diffInHours >= 24 || matchData.Match_status === 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน') {
+                // 1. ปรับสถานะ Match เป็น 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน'
+                await db.query(
+                    "UPDATE MatchItem SET Match_status = 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน' WHERE Match_ID = ?",
+                    [Match_ID]
+                );
+
+                // 2. ปรับสถานะสิ่งของที่หายกลับเป็น 'ไม่พบ'
+                await db.query(
+                    "UPDATE LostItem SET Lost_status = 'ไม่พบ' WHERE Lost_ID = ?",
+                    [matchData.Lost_ID]
+                );
+
+                // 3. รันประมวลผลจับคู่ใหม่ทันที (จะไม่จับคู่กับ Found_ID เดิม)
+                processMatchingByLostItem(matchData.Lost_ID);
+
+                return res.status(400).json({
+                    success: false,
+                    message: 'รายการนี้หมดอายุเกิน 24 ชั่วโมงแล้ว ไม่สามารถส่งคำขอรับสิ่งของคืนได้ ระบบได้ทำการเริ่มค้นหาของให้อีกครั้งเรียบร้อยแล้ว'
+                });
+            }
+        }
+
         // Claim_detail: ดึงข้อมูลรายละเอียดของสิ่งของที่หาย
         const claimDetail = `${matchData.LostItem_name} - ${matchData.Lost_description}`.substring(0, 200);
 
@@ -53,6 +86,12 @@ router.post('/request', async (req, res) => {
         await db.query(
             'UPDATE Notification SET Claim_ID = ? WHERE Match_ID = ? AND User_ID = ?',
             [newClaimId, Match_ID, User_ID]
+        );
+
+        // อัปเดตสถานะ Match เป็น "ผู้ใช้งานยืนยันการขอรับสิ่งของคืน"
+        await db.query(
+            "UPDATE MatchItem SET Match_status = 'ผู้ใช้งานยืนยันการขอรับสิ่งของคืน' WHERE Match_ID = ?",
+            [Match_ID]
         );
 
         res.status(201).json({
