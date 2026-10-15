@@ -129,6 +129,12 @@ router.put('/approve/:matchId', async (req, res) => {
             [lost.User_ID, match.Lost_ID, match.Found_ID, matchId, notiMessage]
         );
 
+        // อัปเดตสถานะของสิ่งของที่หายเป็น "พบ"
+        await db.query(
+            `UPDATE LostItem SET Lost_status = 'พบ' WHERE Lost_ID = ?`,
+            [match.Lost_ID]
+        );
+
         res.status(200).json({
             success: true,
             message: 'อนุมัติการจับคู่และส่งการแจ้งเตือนไปยังผู้ใช้งานเรียบร้อยแล้ว'
