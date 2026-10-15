@@ -221,7 +221,44 @@ router.post('/founditem/admin', async (req, res) => {
     }
 });
 
-// 4. API ดึงหมวดหมู่และสถานที่ (ใช้ส่งให้ Frontend ทำตัวเลข/Dropdown)
+// 4. API ผู้ใช้งานยกเลิกรายการสิ่งของที่หาย (DELETE /api/items/lostitem/:lostId)
+router.delete('/lostitem/:lostId', async (req, res) => {
+    const { lostId } = req.params;
+    const { User_ID } = req.body;
+
+    try {
+        let deleteQuery = 'DELETE FROM LostItem WHERE Lost_ID = ?';
+        let queryParams = [lostId];
+
+        if (User_ID) {
+            deleteQuery += ' AND User_ID = ?';
+            queryParams.push(User_ID);
+        }
+
+        const [result] = await db.query(deleteQuery, queryParams);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'ไม่พบรายการสิ่งของที่หาย หรือคุณไม่มีสิทธิ์ในการยกเลิกรายการนี้'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'ยกเลิกรายการสิ่งของที่หายเรียบร้อยแล้ว'
+        });
+
+    } catch (error) {
+        console.error('Error canceling lost item:', error);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการยกเลิกรายการสิ่งของที่หาย'
+        });
+    }
+});
+
+// 5. API ดึงหมวดหมู่และสถานที่ (ใช้ส่งให้ Frontend ทำตัวเลข/Dropdown)
 
     // 1. ดึงหมวดหมู่ (GET /api/items/categories)
         router.get('/categories', async (req, res) => {
