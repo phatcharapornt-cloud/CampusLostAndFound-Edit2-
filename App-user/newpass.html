@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Lost & Found</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        :root {
+            --primary: #f26522;
+            --primary-hover: #e05413;
+            --text: #111111;
+            --text-label: #444444;
+            --text-muted: #666666;
+            --border: #e0e0e0;
+            --success: #1f9d55;
+            --error: #d93025;
+            --error-bg: #fdecea;
+        }
+        body {
+            background-color: #f4f5f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        /* กรอบจำลองหน้าจอมือถือ */
+        .np-container {
+            width: 100%;
+            max-width: 390px;
+            height: 800px;
+            background-color: #ffffff;
+            border-radius: 61px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
+            border: 8px solid #2b2b2b;
+            position: relative;
+        }
+        .dynamic-island {
+            width: 110px;
+            height: 28px;
+            background-color: #000000;
+            border-radius: 20px;
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+        }
+        .np-content {
+            height: 100%;
+            overflow-y: auto;
+            scrollbar-width: none;
+            padding: 96px 20px 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .np-content::-webkit-scrollbar { display: none; }
+
+        .np-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 1.5px solid var(--primary);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            margin-bottom: 18px;
+        }
+        h1 {
+            font-size: 28px;
+            font-weight: 650;
+            color: var(--text);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .np-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+        .np-subtitle strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+        .np-form { width: 100%; }
+
+        /* แจ้งเตือนด้านบนฟอร์ม */
+        .form-alert {
+            display: none;
+            align-items: flex-start;
+            gap: 8px;
+            background-color: var(--error-bg);
+            color: var(--error);
+            font-size: 12.5px;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            line-height: 1.45;
+        }
+        .form-alert.is-visible { display: flex; }
+        .form-alert i { margin-top: 2px; }
+        .form-alert a {
+            color: var(--error);
+            font-weight: 600;
+        }
+
+        .form-group { margin-bottom: 14px; }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-label);
+            margin-bottom: 8px;
+        }
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        input {
+            width: 100%;
+            padding: 10px 42px 10px 14px;   /* เว้นที่ขวาให้ปุ่มรูปตา */
+            font-size: 14px;
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            outline: none;
+            background-color: #ffffff;
+            color: #333333;
+            transition: border-color 0.15s;
+        }
+        input::placeholder { color: #b0b0b0; }
+        input:focus { border-color: var(--primary); }
+        input.is-invalid { border-color: var(--error); }
+        .eye-btn {
+            position: absolute;
+            right: 6px;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            color: #888888;
+            cursor: pointer;
+            font-size: 15px;
+            border-radius: 8px;
+        }
+        .eye-btn:focus-visible { outline: 2px solid var(--primary); }
+        .field-error {
+            font-size: 11.5px;
+            color: var(--error);
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+        .field-error:empty { display: none; }
+
+        /* กล่องเงื่อนไขรหัสผ่าน (ชุดเดียวกับหน้าสมัครสมาชิก) */
+        .rule-container {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 20px;
+        }
+        .rules-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 8px;
+        }
+        .rule-list { list-style: none; }
+        .rule-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #777777;
+            margin-bottom: 6px;
+            transition: color 0.15s;
+        }
+        .rule-item:last-child { margin-bottom: 0; }
+        .rule-item i {
+            width: 14px;
+            text-align: center;
+            font-size: 12px;
+        }
+        .rule-item.is-met { color: var(--success); }
+        .rule-item.is-unmet { color: var(--error); }
+
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        .submit-btn:hover { background-color: var(--primary-hover); }
+        .submit-btn:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 16px;
+        }
+        .back-link a {
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        /* หน้าจอแจ้งเปลี่ยนรหัสผ่านสำเร็จ */
+        .success-overlay {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(255, 255, 255, 0.96);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 32px;
+            z-index: 3;
+        }
+        .success-overlay.is-visible { display: flex; }
+        .success-overlay i {
+            font-size: 56px;
+            color: var(--success);
+            margin-bottom: 16px;
+        }
+        .success-overlay h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+        .success-overlay p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* เปิดบนมือถือจริง: แสดงเต็มจอ ไม่ต้องมีกรอบ */
+        @media (max-width: 430px) {
+            .np-container {
+                max-width: none;
+                height: 100vh;
+                height: 100dvh;
+                border: none;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            .dynamic-island { display: none; }
+            .np-content { padding-top: 56px; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="np-container">
+        <div class="dynamic-island"></div>
+
+        <div class="np-content">
+            <div class="np-icon">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h1>ตั้งรหัสผ่านใหม่</h1>
+            <p class="np-subtitle">สำหรับรหัสนักศึกษา <strong id="display-student-id"></strong></p>
+
+            <form class="np-form" id="newpass-form" novalidate>
+                <div class="form-alert" id="form-alert" role="alert">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span id="form-alert-text"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="NewPassword">รหัสผ่านใหม่</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="NewPassword" name="NewPassword" placeholder="กรอกรหัสผ่านใหม่" autocomplete="new-password" aria-describedby="NewPassword-error password-rules">
+                        <button type="button" class="eye-btn" data-target="NewPassword" aria-label="แสดงรหัสผ่าน">
+                            <i class="fa-regular fa-eye-slash"></i>
+                        </button>
+                    </div>
+                    <div class="field-error" id="NewPassword-error" aria-live="polite"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="ConfirmPassword">ยืนยันรหัสผ่านใหม่</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="ConfirmPassword" name="ConfirmPassword" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" autocomplete="new-password" aria-describedby="ConfirmPassword-error">
+                        <button type="button" class="eye-btn" data-target="ConfirmPassword" aria-label="แสดงรหัสผ่าน">
+                            <i class="fa-regular fa-eye-slash"></i>
+                        </button>
+                    </div>
+                    <div class="field-error" id="ConfirmPassword-error" aria-live="polite"></div>
+                </div>
+
+                <div class="rule-container" id="password-rules">
+                    <div class="rules-title">หมายเหตุ : เงื่อนไขความปลอดภัย</div>
+                    <ul class="rule-list">
+                        <li class="rule-item" data-rule="length"><i class="fa-regular fa-circle"></i>ความยาว 8-16 ตัวอักษร</li>
+                        <li class="rule-item" data-rule="upper"><i class="fa-regular fa-circle"></i>มีตัวอักษรพิมพ์ใหญ่อย่างน้อย 1 ตัว (A-Z)</li>
+                        <li class="rule-item" data-rule="lower"><i class="fa-regular fa-circle"></i>มีตัวอักษรพิมพ์เล็กอย่างน้อย 1 ตัว (a-z)</li>
+                        <li class="rule-item" data-rule="digit"><i class="fa-regular fa-circle"></i>มีตัวเลขอย่างน้อย 1 ตัว (0-9)</li>
+                        <li class="rule-item" data-rule="special"><i class="fa-regular fa-circle"></i>มีอักขระพิเศษอย่างน้อย 1 ตัว (เช่น ! @ # $ %)</li>
+                    </ul>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submit-btn">ยืนยันเปลี่ยนรหัสผ่าน</button>
+
+                <div class="back-link">
+                    <a href="login.html">กลับไปหน้าเข้าสู่ระบบ</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="success-overlay" id="success-overlay" aria-live="polite">
+            <i class="fa-solid fa-circle-check"></i>
+            <h2>เปลี่ยนรหัสผ่านสำเร็จ</h2>
+            <p>กำลังพาไปหน้าเข้าสู่ระบบ...</p>
+        </div>
+    </div>
+
+    <script>
+        // ที่อยู่ของ Backend (ตรงกับ PORT ในไฟล์ Backend/.env)
+        const API_BASE_URL = 'http://localhost:5001';
+        // key ใน sessionStorage ที่ใช้ส่งข้อมูลระหว่างหน้า resetpass → Verify → newpass
+        const RESET_FLOW_KEY = 'resetPasswordFlow';
+        const SUBMIT_LABEL = 'ยืนยันเปลี่ยนรหัสผ่าน';
+
+        // ---------- เงื่อนไขรหัสผ่าน (ต้องตรงกับ Backend/utils/validators.js และหน้า register.html) ----------
+        const PASSWORD_ALLOWED_PATTERN = /^[\x21-\x7E]*$/;
+        const PASSWORD_RULES = {
+            length:  (p) => p.length >= 8 && p.length <= 16,
+            upper:   (p) => /[A-Z]/.test(p),
+            lower:   (p) => /[a-z]/.test(p),
+            digit:   (p) => /[0-9]/.test(p),
+            special: (p) => /[!-\/:-@\[-`{-~]/.test(p),
+        };
+
+        function readFlow() {
+            try { return JSON.parse(sessionStorage.getItem(RESET_FLOW_KEY)) || null; } catch { return null; }
+        }
+        function clearFlow() {
+            try { sessionStorage.removeItem(RESET_FLOW_KEY); } catch { /* ไม่เป็นไร */ }
+        }
+
+        // ต้องยืนยัน OTP ในหน้า Verify ก่อนถึงจะเข้าหน้านี้ได้
+        const flow = readFlow();
+        if (!flow || !flow.verified || !flow.verifiedOtp) {
+            window.location.replace(flow && flow.Student_ID ? 'Verify.html' : 'resetpass.html');
+        }
+
+        const form = document.getElementById('newpass-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const formAlert = document.getElementById('form-alert');
+        const formAlertText = document.getElementById('form-alert-text');
+        const fields = {
+            NewPassword: document.getElementById('NewPassword'),
+            ConfirmPassword: document.getElementById('ConfirmPassword'),
+        };
+        const ruleItems = document.querySelectorAll('.rule-item');
+        let submitAttempted = false;
+        const touched = new Set();
+
+        function validate() {
+            const p = fields.NewPassword.value;
+            const c = fields.ConfirmPassword.value;
+            const errors = { NewPassword: '', ConfirmPassword: '' };
+
+            if (!p) errors.NewPassword = 'กรุณากรอกรหัสผ่านใหม่';
+            else if (!PASSWORD_ALLOWED_PATTERN.test(p)) errors.NewPassword = 'ใช้ได้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข และอักขระพิเศษ (ห้ามมีช่องว่างหรือภาษาไทย)';
+            else if (!Object.values(PASSWORD_RULES).every((test) => test(p))) errors.NewPassword = 'รหัสผ่านยังไม่ผ่านเงื่อนไขความปลอดภัยด้านล่าง';
+
+            if (!c) errors.ConfirmPassword = 'กรุณายืนยันรหัสผ่านใหม่';
+            else if (c !== p) errors.ConfirmPassword = 'รหัสผ่านทั้งสองช่องไม่ตรงกัน';
+
+            return errors;
+        }
+
+        function setFieldError(name, message) {
+            document.getElementById(`${name}-error`).textContent = message || '';
+            fields[name].classList.toggle('is-invalid', Boolean(message));
+            fields[name].setAttribute('aria-invalid', message ? 'true' : 'false');
+        }
+
+        function renderErrors() {
+            const errors = validate();
+            for (const name of Object.keys(fields)) {
+                setFieldError(name, submitAttempted || touched.has(name) ? errors[name] : '');
+            }
+            return errors;
+        }
+
+        function renderPasswordRules() {
+            const password = fields.NewPassword.value;
+            ruleItems.forEach((item) => {
+                const met = password.length > 0 && PASSWORD_RULES[item.dataset.rule](password);
+                item.classList.toggle('is-met', met);
+                item.classList.toggle('is-unmet', !met && submitAttempted);
+                item.querySelector('i').className = met ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle';
+            });
+        }
+
+        // ข้อความแจ้งเตือน (ถ้ามี linkHref จะต่อท้ายด้วยลิงก์)
+        function showFormAlert(message, linkText, linkHref) {
+            formAlertText.textContent = message || '';
+            if (linkText && linkHref) {
+                const link = document.createElement('a');
+                link.href = linkHref;
+                link.textContent = linkText;
+                formAlertText.append(' ', link);
+            }
+            formAlert.classList.toggle('is-visible', Boolean(message));
+        }
+
+        function showOtpExpired(message) {
+            showFormAlert(message || 'รหัส OTP หมดอายุแล้ว', 'ขอรหัส OTP ใหม่', `resetpass.html?sid=${encodeURIComponent(flow.Student_ID)}`);
+        }
+
+        for (const [name, input] of Object.entries(fields)) {
+            input.addEventListener('blur', () => {
+                if (input.value !== '') touched.add(name);
+                renderErrors();
+            });
+            input.addEventListener('input', () => {
+                renderErrors();
+                if (name === 'NewPassword') renderPasswordRules();
+            });
+        }
+
+        // ปุ่มรูปตา แสดง/ซ่อนรหัสผ่าน
+        document.querySelectorAll('.eye-btn').forEach((button) => {
+            button.addEventListener('click', () => {
+                const input = document.getElementById(button.dataset.target);
+                const isHidden = input.type === 'password';
+                input.type = isHidden ? 'text' : 'password';
+                button.querySelector('i').className = isHidden ? 'fa-regular fa-eye' : 'fa-regular fa-eye-slash';
+                button.setAttribute('aria-label', isHidden ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน');
+            });
+        });
+
+        function setLoading(isLoading) {
+            submitBtn.disabled = isLoading;
+            submitBtn.innerHTML = isLoading
+                ? '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...'
+                : SUBMIT_LABEL;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            submitAttempted = true;
+
+            const errors = renderErrors();
+            renderPasswordRules();
+            const firstInvalid = Object.keys(fields).find((name) => errors[name]);
+            if (firstInvalid) {
+                fields[firstInvalid].focus();
+                return;
+            }
+
+            if (Date.now() >= flow.expiresAt) {
+                showOtpExpired('หมดเวลาตั้งรหัสผ่านใหม่แล้ว (รหัส OTP หมดอายุ)');
+                return;
+            }
+
+            showFormAlert('');
+            setLoading(true);
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        Student_ID: flow.Student_ID,
+                        OTP: flow.verifiedOtp,
+                        NewPassword: fields.NewPassword.value,
+                    }),
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok && data.success) {
+                    clearFlow();
+                    document.getElementById('success-overlay').classList.add('is-visible');
+                    const loginUrl = `login.html?reset=1&sid=${encodeURIComponent(flow.Student_ID)}`;
+                    setTimeout(() => { window.location.href = loginUrl; }, 1500);
+                    return;
+                }
+
+                setLoading(false);
+                if (data.code && data.code.startsWith('OTP_')) {
+                    showOtpExpired(data.message);
+                } else if (data.errors && data.errors.NewPassword) {
+                    setFieldError('NewPassword', data.errors.NewPassword);
+                    fields.NewPassword.focus();
+                } else {
+                    showFormAlert(data.message || 'เกิดข้อผิดพลาดในการบันทึกรหัสผ่านใหม่ กรุณาลองใหม่อีกครั้ง');
+                }
+            } catch (error) {
+                setLoading(false);
+                showFormAlert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว และลองใหม่อีกครั้ง');
+            }
+        });
+
+        if (flow && flow.Student_ID) {
+            document.getElementById('display-student-id').textContent = flow.Student_ID;
+            fields.NewPassword.focus();
+        }
+    </script>
+</body>
+</html>
