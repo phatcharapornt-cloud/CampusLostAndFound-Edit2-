@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>แจ้งสิ่งของที่หาย | Campus Lost & Found</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="userapp.css">
+
+    <style>
+        /* หน้านี้ไม่มีแถบเมนูด้านล่าง ใช้แถบปุ่ม "แจ้งสิ่งของที่หาย" แทน */
+        :root { --submit-bar-height: 86px; }
+        .phone-scroll { padding-bottom: calc(var(--submit-bar-height) + 18px); }
+        [hidden] { display: none !important; }
+
+        /* ---------- ส่วนหัว ---------- */
+        .page-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            color: var(--text);
+            font-size: 15px;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .back-btn:focus-visible { outline: 2px solid var(--primary); }
+        .page-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.3;
+            color: var(--text);
+        }
+        .page-header p {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-top: 2px;
+        }
+
+        /* ---------- การ์ดแต่ละกลุ่มของฟอร์ม ---------- */
+        .card {
+            background-color: var(--surface);
+            border-radius: 18px;
+            padding: 16px;
+            box-shadow: 0 2px 10px rgba(15, 42, 74, 0.05);
+            margin-bottom: 14px;
+        }
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14.5px;
+            font-weight: 600;
+            color: var(--navy);
+            margin-bottom: 12px;
+        }
+        .card-title i {
+            width: 28px;
+            height: 28px;
+            border-radius: 9px;
+            background-color: var(--primary-soft);
+            color: var(--primary);
+            font-size: 12.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ---------- ช่องกรอกข้อมูล ---------- */
+        .field { margin-bottom: 14px; }
+        .field:last-child { margin-bottom: 0; }
+        .field-label {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 12.5px;
+            font-weight: 500;
+            color: #444444;
+            margin-bottom: 6px;
+        }
+        .field-label .req { color: var(--error); margin-left: 2px; }
+        .field-label .optional { font-weight: 400; color: var(--text-muted); }
+        .counter {
+            font-size: 11px;
+            font-weight: 400;
+            color: #9ca3af;
+            flex-shrink: 0;
+        }
+        .counter.is-full { color: var(--primary); }
+        .control { position: relative; }
+        .control > i {
+            position: absolute;
+            left: 13px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 13px;
+            pointer-events: none;
+        }
+        .control.is-select::after {
+            content: '';
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            width: 7px;
+            height: 7px;
+            border-right: 1.6px solid #9ca3af;
+            border-bottom: 1.6px solid #9ca3af;
+            transform: translateY(-70%) rotate(45deg);
+            pointer-events: none;
+        }
+        input[type="text"], input[type="date"], input[type="time"], select, textarea {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 11px 14px;
+            font-size: 14px;
+            color: #333333;
+            background-color: #ffffff;
+            outline: none;
+            min-height: 44px;
+        }
+        .control > i ~ input, .control > i ~ select { padding-left: 36px; }
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            padding-right: 34px;
+            text-overflow: ellipsis;
+        }
+        select:invalid, select.is-placeholder { color: #a8adb5; }
+        select option { color: #333333; }
+        textarea {
+            resize: none;
+            line-height: 1.55;
+            min-height: 104px;
+        }
+        input::placeholder, textarea::placeholder { color: #a8adb5; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+        .is-invalid input, .is-invalid select, .is-invalid textarea, .is-invalid .photo-drop {
+            border-color: var(--error);
+            background-color: #fffafa;
+        }
+        .hint {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-top: 6px;
+        }
+        .field-error {
+            font-size: 12px;
+            color: var(--error);
+            margin-top: 6px;
+            line-height: 1.45;
+        }
+        .field-error:empty { display: none; }
+        .datetime-row {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 10px;
+        }
+        .datetime-row .field { margin-bottom: 0; }
+        .quick-dates {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .chip-btn {
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            color: #444444;
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .chip-btn.is-active {
+            border-color: var(--primary);
+            background-color: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        /* ---------- รูปภาพ ---------- */
+        .photo-input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .photo-drop {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            width: 100%;
+            min-height: 120px;
+            border: 1.5px dashed #d1d5db;
+            border-radius: 14px;
+            background-color: #fafbfc;
+            color: var(--text-muted);
+            font-size: 12.5px;
+            cursor: pointer;
+            text-align: center;
+            padding: 14px;
+        }
+        .photo-drop:hover { border-color: var(--primary); }
+        .photo-input:focus-visible + .photo-drop { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .photo-drop .icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background-color: var(--primary-soft);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            margin-bottom: 4px;
+        }
+        .photo-drop strong { color: var(--text); font-weight: 500; font-size: 13px; }
+        .photo-preview {
+            position: relative;
+            border-radius: 14px;
+            overflow: hidden;
+            background-color: #eef2f7;
+        }
+        .photo-preview img {
+            display: block;
+            width: 100%;
+            height: 190px;
+            object-fit: cover;
+        }
+        .photo-actions {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            display: flex;
+            gap: 6px;
+        }
+        .photo-actions button {
+            border: none;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            background-color: rgba(17, 24, 39, 0.72);
+            color: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .photo-busy {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 120px;
+            border-radius: 14px;
+            background-color: #fafbfc;
+            border: 1.5px dashed #d1d5db;
+            font-size: 12.5px;
+            color: var(--text-muted);
+        }
+
+        .form-error {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            background-color: var(--error-soft);
+            color: var(--error);
+            font-size: 12.5px;
+            line-height: 1.5;
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+        }
+        .form-error i { margin-top: 3px; }
+
+        /* ---------- แถบปุ่มด้านล่าง ---------- */
+        .submit-bar {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            min-height: var(--submit-bar-height);
+            padding: 12px 18px 26px;   /* เว้นด้านล่างให้พ้นขอบโค้งของกรอบ */
+            background-color: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border);
+            z-index: 5;
+        }
+        .primary-btn, .secondary-btn {
+            width: 100%;
+            height: 48px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .primary-btn {
+            border: none;
+            background-color: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 6px 16px rgba(242, 101, 34, 0.28);
+        }
+        .primary-btn:hover { background-color: var(--primary-hover); }
+        .primary-btn:disabled { opacity: 0.7; cursor: wait; }
+        .secondary-btn {
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            color: var(--text);
+        }
+
+        /* ---------- หน้าจอเมื่อแจ้งสำเร็จ ---------- */
+        .success-view {
+            text-align: center;
+            padding-top: 170px;   /* เว้นที่ให้การแจ้งเตือนที่เด้งลงมาด้านบน ไม่บังเนื้อหา */
+        }
+        .success-icon {
+            width: 76px;
+            height: 76px;
+            margin: 6px auto 14px;
+            border-radius: 50%;
+            background-color: var(--success-soft);
+            color: var(--success);
+            font-size: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+        }
+        @keyframes pop { from { transform: scale(0.4); opacity: 0; } }
+        .success-view h2 {
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.4;
+            color: var(--text);
+        }
+        .success-view > p {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin: 6px 8px 18px;
+        }
+        .summary {
+            text-align: left;
+            display: flex;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .summary .thumb {
+            width: 72px;
+            height: 72px;
+            border-radius: 12px;
+            background-color: #eef2f7;
+            color: var(--navy-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .summary .thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .summary .info { flex: 1; min-width: 0; }
+        .summary .name {
+            font-size: 14.5px;
+            font-weight: 600;
+            color: var(--text);
+            word-break: break-word;
+            margin-bottom: 3px;
+        }
+        .summary .meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            gap: 6px;
+            line-height: 1.6;
+        }
+        .summary .meta i { width: 12px; text-align: center; font-size: 11px; margin-top: 4px; flex-shrink: 0; }
+        .summary .status {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 2px 9px;
+            border-radius: 999px;
+            background-color: #fff7e6;
+            color: #b45309;
+        }
+        .success-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* ---------- การแจ้งเตือน (เด้งลงมาจากด้านบน แบบ Notification บนมือถือ) ---------- */
+        .push-noti {
+            position: absolute;
+            top: 64px;
+            left: 12px;
+            right: 12px;
+            z-index: 8;
+            display: flex;
+            gap: 10px;
+            padding: 12px 14px;
+            border-radius: 22px;
+            border: none;
+            text-align: left;
+            background-color: rgba(250, 250, 252, 0.95);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+            cursor: pointer;
+            transform: translateY(-140%);
+            opacity: 0;
+            visibility: hidden;
+            transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.15), opacity 0.3s, visibility 0s linear 0.45s;
+        }
+        .push-noti.is-visible {
+            transform: translateY(0);
+            opacity: 1;
+            visibility: visible;
+            transition-delay: 0s;
+        }
+        .push-noti .app-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 9px;
+            background-color: var(--navy);
+            object-fit: contain;
+            padding: 2px;
+            flex-shrink: 0;
+        }
+        .push-noti .noti-body { flex: 1; min-width: 0; }
+        .push-noti .noti-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #8a8a8e;
+            letter-spacing: 0.02em;
+        }
+        .push-noti .noti-title {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.35;
+        }
+        .push-noti .noti-text {
+            font-size: 12.5px;
+            color: #333333;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        /* ---------- กล่องยืนยันเมื่อกดย้อนกลับระหว่างกรอก ---------- */
+        .sheet-backdrop {
+            position: absolute;
+            inset: 0;
+            z-index: 9;
+            background-color: rgba(15, 23, 42, 0.42);
+            display: flex;
+            align-items: flex-end;
+        }
+        .sheet {
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: 24px 24px 0 0;
+            padding: 22px 20px 34px;
+            text-align: center;
+            animation: slideUp 0.25s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } }
+        .sheet h2 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+        .sheet p { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; line-height: 1.5; }
+        .sheet .actions { display: flex; flex-direction: column; gap: 10px; }
+        .danger-btn {
+            width: 100%;
+            height: 46px;
+            border-radius: 14px;
+            border: none;
+            background-color: var(--error-soft);
+            color: var(--error);
+            font-size: 14.5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* ---------- เปิดบนมือถือจริง ---------- */
+        @media (max-width: 430px) {
+            /* ตัวอักษรในช่องกรอก 16px: กัน iPhone ซูมหน้าจอเองตอนแตะช่องกรอก */
+            input[type="text"], input[type="date"], input[type="time"], select, textarea { font-size: 16px; }
+            .submit-bar { padding-bottom: calc(12px + env(safe-area-inset-bottom)); min-height: 0; }
+            .phone-scroll { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+            .push-noti { top: calc(10px + env(safe-area-inset-top)); }
+            .success-view { padding-top: 120px; }
+            .sheet { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+        }
+        @media (max-width: 350px) {
+            .datetime-row { grid-template-columns: 1fr; gap: 14px; }
+        }
+    </style>
+</head>
+
+<body class="is-checking">
+    <div class="phone">
+        <div class="dynamic-island"></div>
+
+        <div class="phone-scroll" id="scroll">
+            <!-- ===== ฟอร์มแจ้งสิ่งของที่หาย ===== -->
+            <div id="form-view">
+                <header class="page-header">
+                    <button type="button" class="back-btn" id="back-btn" aria-label="ย้อนกลับ"><i class="fa-solid fa-chevron-left"></i></button>
+                    <div>
+                        <h1>แจ้งสิ่งของที่หาย</h1>
+                        <p>กรอกรายละเอียดให้มากที่สุด ระบบจะช่วยจับคู่กับสิ่งของที่มีคนพบ</p>
+                    </div>
+                </header>
+
+                <form id="lost-form" novalidate>
+                    <div class="form-error" id="form-error" role="alert" hidden><i class="fa-solid fa-circle-exclamation"></i><span></span></div>
+
+                    <section class="card" aria-labelledby="sec-item">
+                        <h2 class="card-title" id="sec-item"><i class="fa-solid fa-box"></i>ข้อมูลสิ่งของ</h2>
+
+                        <div class="field" data-field="LostItem_name">
+                            <label class="field-label" for="LostItem_name">
+                                <span>ชื่อสิ่งของ<span class="req">*</span></span>
+                                <span class="counter" id="name-counter">0/100</span>
+                            </label>
+                            <div class="control">
+                                <i class="fa-solid fa-pen"></i>
+                                <input type="text" id="LostItem_name" name="LostItem_name" maxlength="100" autocomplete="off"
+                                       placeholder="เช่น กระเป๋าสตางค์, หูฟัง AirPods, ร่ม">
+                            </div>
+                            <div class="field-error" id="LostItem_name-error"></div>
+                        </div>
+
+                        <div class="field" data-field="Category_ID">
+                            <label class="field-label" for="Category_ID"><span>หมวดหมู่ของสิ่งของ<span class="req">*</span></span></label>
+                            <div class="control is-select">
+                                <i class="fa-solid fa-tag"></i>
+                                <select id="Category_ID" name="Category_ID" class="is-placeholder">
+                                    <option value="">เลือกหมวดหมู่</option>
+                                </select>
+                            </div>
+                            <div class="field-error" id="Category_ID-error"></div>
+                        </div>
+                    </section>
+
+                    <section class="card" aria-labelledby="sec-where">
+                        <h2 class="card-title" id="sec-where"><i class="fa-solid fa-location-dot"></i>หายที่ไหน เมื่อไหร่</h2>
+
+                        <div class="field" data-field="Location_ID">
+                            <label class="field-label" for="Location_ID"><span>สถานที่ที่คาดว่าทำของหาย<span class="req">*</span></span></label>
+                            <div class="control is-select">
+                                <i class="fa-solid fa-building"></i>
+                                <select id="Location_ID" name="Location_ID" class="is-placeholder">
+                                    <option value="">เลือกสถานที่ในคณะวิทยาศาสตร์</option>
+                                </select>
+                            </div>
+                            <p class="hint">สถานที่ภายในคณะวิทยาศาสตร์ ถ้าไม่แน่ใจให้เลือก "อื่นๆ" แล้วระบุเพิ่มในรายละเอียด</p>
+                            <div class="field-error" id="Location_ID-error"></div>
+                        </div>
+
+                        <div class="datetime-row">
+                            <div class="field" data-field="Lost_date">
+                                <label class="field-label" for="Lost_date"><span>วันที่<span class="req">*</span></span></label>
+                                <input type="date" id="Lost_date" name="Lost_date" min="2000-01-01">
+                                <div class="field-error" id="Lost_date-error"></div>
+                            </div>
+                            <div class="field" data-field="Lost_time">
+                                <label class="field-label" for="Lost_time"><span>เวลา<span class="req">*</span></span></label>
+                                <input type="time" id="Lost_time" name="Lost_time">
+                                <div class="field-error" id="Lost_time-error"></div>
+                            </div>
+                        </div>
+                        <div class="quick-dates" role="group" aria-label="เลือกวันที่แบบเร็ว">
+                            <button type="button" class="chip-btn" data-days-ago="0">วันนี้</button>
+                            <button type="button" class="chip-btn" data-days-ago="1">เมื่อวาน</button>
+                        </div>
+                        <p class="hint">ถ้าจำเวลาไม่ได้แน่ชัด ใส่เวลาโดยประมาณได้</p>
+                    </section>
+
+                    <section class="card" aria-labelledby="sec-detail">
+                        <h2 class="card-title" id="sec-detail"><i class="fa-solid fa-camera"></i>รูปภาพและรายละเอียด</h2>
+
+                        <div class="field" data-field="Lost_photo">
+                            <div class="field-label"><span>รูปภาพของสิ่งของ <span class="optional">(ไม่บังคับ)</span></span></div>
+                            <input type="file" id="photo-input" class="photo-input" accept="image/*">
+                            <label class="photo-drop" for="photo-input" id="photo-drop">
+                                <span class="icon"><i class="fa-solid fa-camera"></i></span>
+                                <strong>แตะเพื่อถ่ายรูปหรือเลือกรูป</strong>
+                                <span>เช่น รูปสิ่งของที่เคยถ่ายไว้ หรือรูปสินค้ารุ่นเดียวกัน</span>
+                            </label>
+                            <div class="photo-busy" id="photo-busy" hidden><i class="fa-solid fa-spinner fa-spin"></i>กำลังเตรียมรูปภาพ...</div>
+                            <div class="photo-preview" id="photo-preview" hidden>
+                                <img id="photo-img" alt="รูปสิ่งของที่หาย">
+                                <div class="photo-actions">
+                                    <button type="button" id="photo-change"><i class="fa-solid fa-rotate"></i>เปลี่ยนรูป</button>
+                                    <button type="button" id="photo-remove"><i class="fa-solid fa-trash-can"></i>ลบรูป</button>
+                                </div>
+                            </div>
+                            <div class="field-error" id="Lost_photo-error"></div>
+                        </div>
+
+                        <div class="field" data-field="Lost_description">
+                            <label class="field-label" for="Lost_description">
+                                <span>รายละเอียดเพิ่มเติม<span class="req">*</span></span>
+                                <span class="counter" id="desc-counter">0/200</span>
+                            </label>
+                            <textarea id="Lost_description" name="Lost_description" maxlength="200" rows="4"
+                                      placeholder="เช่น ตำหนิ/รอยขีดข่วน ยี่ห้อหรือแบรนด์ สี สติกเกอร์ หรือรายละเอียดสถานที่ เช่น ชั้น 2 ใกล้ลิฟต์"></textarea>
+                            <div class="field-error" id="Lost_description-error"></div>
+                        </div>
+                    </section>
+                </form>
+            </div>
+
+            <!-- ===== แจ้งสำเร็จ ===== -->
+            <section class="success-view" id="success-view" hidden aria-live="polite">
+                <div class="success-icon"><i class="fa-solid fa-check"></i></div>
+                <h2 id="success-title" tabindex="-1">ท่านได้ทำการแจ้งสิ่งของที่หายสำเร็จ</h2>
+                <p>ระบบบันทึกรายการแล้ว และจะแจ้งเตือนเมื่อพบสิ่งของที่ตรงกัน</p>
+                <div class="card summary">
+                    <div class="thumb" id="sum-thumb"><i class="fa-solid fa-box"></i></div>
+                    <div class="info">
+                        <div class="name" id="sum-name"></div>
+                        <div class="meta"><i class="fa-solid fa-tag"></i><span id="sum-category"></span></div>
+                        <div class="meta"><i class="fa-solid fa-location-dot"></i><span id="sum-location"></span></div>
+                        <div class="meta"><i class="fa-regular fa-clock"></i><span id="sum-when"></span></div>
+                        <span class="status">สถานะ: ไม่พบ · รอการจับคู่</span>
+                    </div>
+                </div>
+                <div class="success-actions">
+                    <a class="primary-btn" href="home.html" style="text-decoration:none"><i class="fa-solid fa-house"></i>กลับหน้าแรก</a>
+                    <button type="button" class="secondary-btn" id="report-again"><i class="fa-solid fa-plus"></i>แจ้งสิ่งของที่หายเพิ่ม</button>
+                </div>
+            </section>
+        </div>
+
+        <div class="submit-bar" id="submit-bar">
+            <button type="submit" form="lost-form" class="primary-btn" id="submit-btn"><i class="fa-solid fa-paper-plane"></i>แจ้งสิ่งของที่หาย</button>
+        </div>
+
+        <!-- การแจ้งเตือน (แสดงข้อความเดียวกับที่บันทึกลงตาราง Notification) -->
+        <button type="button" class="push-noti" id="push-noti" aria-label="ปิดการแจ้งเตือน">
+            <img class="app-icon" src="logo.png" alt="">
+            <div class="noti-body">
+                <div class="noti-meta"><span>CAMPUS LOST &amp; FOUND</span><span>ตอนนี้</span></div>
+                <div class="noti-title">แจ้งสิ่งของที่หายสำเร็จ</div>
+                <div class="noti-text" id="noti-text">ท่านได้ทำการแจ้งสิ่งของที่หายสำเร็จ</div>
+            </div>
+        </button>
+
+        <!-- ยืนยันการออกจากหน้าระหว่างกรอกข้อมูล -->
+        <div class="sheet-backdrop" id="leave-sheet" hidden>
+            <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="leave-title">
+                <h2 id="leave-title">ยกเลิกการแจ้งสิ่งของที่หาย?</h2>
+                <p>ข้อมูลที่กรอกไว้จะไม่ถูกบันทึก</p>
+                <div class="actions">
+                    <button type="button" class="primary-btn" id="stay-btn">กรอกต่อ</button>
+                    <button type="button" class="danger-btn" id="leave-btn">ออกจากหน้านี้</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <script src="userapp.js"></script>
+    <script>
+        // เงื่อนไขชุดเดียวกับ Backend/utils/validators.js (validateLostItemReport) ถ้าแก้ที่หนึ่งต้องแก้อีกที่ให้ตรงกัน
+        const NAME_MAX = 100;
+        const DESC_MAX = 200;
+        const PHOTO_MAX_SOURCE_BYTES = 15 * 1024 * 1024;  // ไฟล์รูปต้นฉบับที่เลือกได้
+        const PHOTO_MAX_SIDE = 1280;                       // ย่อรูปให้ด้านยาวไม่เกินนี้ก่อนส่ง (ไฟล์เล็กลง ส่งเร็วขึ้น)
+        const PHOTO_QUALITY = 0.82;
+        const NOTIFICATION_SHOW_MS = 6000;
+
+        const user = UserApp.init('reportLost');
+        const $ = (id) => document.getElementById(id);
+        const form = $('lost-form');
+        const fields = {
+            LostItem_name: $('LostItem_name'),
+            Category_ID: $('Category_ID'),
+            Location_ID: $('Location_ID'),
+            Lost_date: $('Lost_date'),
+            Lost_time: $('Lost_time'),
+            Lost_description: $('Lost_description'),
+        };
+        let photoDataUrl = '';     // รูปที่ย่อแล้ว (data:image/jpeg;base64,...)
+        let submitted = false;     // กดส่งแล้วอย่างน้อย 1 ครั้ง → ตรวจข้อมูลทันทีเมื่อแก้ไข
+        let saving = false;
+
+        // ---------- วันเวลา ----------
+        const pad = (n) => String(n).padStart(2, '0');
+        const dateText = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        function daysAgoText(days) {
+            const d = new Date();
+            d.setDate(d.getDate() - days);
+            return dateText(d);
+        }
+        function refreshDateLimits() {
+            fields.Lost_date.max = dateText(new Date());
+            document.querySelectorAll('[data-days-ago]').forEach((chip) => {
+                chip.classList.toggle('is-active', fields.Lost_date.value === daysAgoText(Number(chip.dataset.daysAgo)));
+            });
+        }
+
+        // ---------- ตรวจข้อมูล ----------
+        function validate() {
+            const now = new Date();
+            const today = dateText(now);
+            const name = fields.LostItem_name.value.trim();
+            const desc = fields.Lost_description.value.trim();
+            const date = fields.Lost_date.value;
+            const time = fields.Lost_time.value;
+            const errors = {};
+
+            if (!name) errors.LostItem_name = 'กรุณากรอกชื่อสิ่งของ';
+            else if (name.length > NAME_MAX) errors.LostItem_name = `ชื่อสิ่งของต้องไม่เกิน ${NAME_MAX} ตัวอักษร`;
+            if (!fields.Category_ID.value) errors.Category_ID = 'กรุณาเลือกหมวดหมู่ของสิ่งของ';
+            if (!fields.Location_ID.value) errors.Location_ID = 'กรุณาเลือกสถานที่ที่คาดว่าทำของหาย';
+
+            if (!date) errors.Lost_date = 'กรุณาเลือกวันที่';
+            else if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < '2000-01-01') errors.Lost_date = 'รูปแบบวันที่ไม่ถูกต้อง';
+            else if (date > today) errors.Lost_date = 'วันที่ต้องไม่เกินวันนี้';
+
+            if (!time) errors.Lost_time = 'กรุณาเลือกเวลา';
+            else if (date === today && time > `${pad(now.getHours())}:${pad(now.getMinutes())}`) errors.Lost_time = 'เวลาต้องไม่เกินเวลาปัจจุบัน';
+
+            if (!desc) errors.Lost_description = 'กรุณากรอกรายละเอียดเพิ่มเติม';
+            else if (desc.length > DESC_MAX) errors.Lost_description = `รายละเอียดเพิ่มเติมต้องไม่เกิน ${DESC_MAX} ตัวอักษร`;
+            return errors;
+        }
+
+        function showErrors(errors) {
+            document.querySelectorAll('[data-field]').forEach((wrap) => {
+                const key = wrap.dataset.field;
+                const message = errors[key] || '';
+                wrap.classList.toggle('is-invalid', Boolean(message));
+                $(`${key}-error`).textContent = message;
+                const input = fields[key];
+                if (input) {
+                    if (message) {
+                        input.setAttribute('aria-invalid', 'true');
+                        input.setAttribute('aria-describedby', `${key}-error`);
+                    } else {
+                        input.removeAttribute('aria-invalid');
+                    }
+                }
+            });
+        }
+
+        function setFormError(message) {
+            const box = $('form-error');
+            box.querySelector('span').textContent = message || '';
+            box.hidden = !message;
+            if (message) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function focusFirstError(errors) {
+            const order = ['LostItem_name', 'Category_ID', 'Location_ID', 'Lost_date', 'Lost_time', 'Lost_photo', 'Lost_description'];
+            const key = order.find((k) => errors[k]);
+            if (!key) return;
+            const target = fields[key] || $('photo-drop');
+            target.closest('.field').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (fields[key]) setTimeout(() => fields[key].focus({ preventScroll: true }), 250);
+        }
+
+        // ---------- ตัวนับตัวอักษร / placeholder ของ select ----------
+        function updateCounter(input, counterId, max) {
+            const counter = $(counterId);
+            counter.textContent = `${input.value.length}/${max}`;
+            counter.classList.toggle('is-full', input.value.length >= max);
+        }
+        function updateSelectLook(select) {
+            select.classList.toggle('is-placeholder', !select.value);
+        }
+
+        form.addEventListener('input', (event) => {
+            if (event.target === fields.LostItem_name) updateCounter(fields.LostItem_name, 'name-counter', NAME_MAX);
+            if (event.target === fields.Lost_description) updateCounter(fields.Lost_description, 'desc-counter', DESC_MAX);
+            if (submitted) showErrors({ ...validate(), Lost_photo: $('Lost_photo-error').textContent });
+        });
+        form.addEventListener('change', (event) => {
+            if (event.target.tagName === 'SELECT') updateSelectLook(event.target);
+            refreshDateLimits();
+            if (submitted) showErrors({ ...validate(), Lost_photo: $('Lost_photo-error').textContent });
+        });
+        document.querySelectorAll('[data-days-ago]').forEach((chip) => {
+            chip.addEventListener('click', () => {
+                fields.Lost_date.value = daysAgoText(Number(chip.dataset.daysAgo));
+                fields.Lost_date.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        });
+
+        // ---------- รูปภาพ: ย่อขนาดในเครื่องก่อนส่ง ----------
+        const photoInput = $('photo-input');
+        function setPhotoState(state) {   // 'empty' | 'busy' | 'preview'
+            $('photo-drop').hidden = state !== 'empty';
+            $('photo-busy').hidden = state !== 'busy';
+            $('photo-preview').hidden = state !== 'preview';
+        }
+        function setPhotoError(message) {
+            $('Lost_photo-error').textContent = message || '';
+            $('photo-drop').closest('.field').classList.toggle('is-invalid', Boolean(message));
+        }
+        function loadImage(file) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode')); };
+                img.src = url;
+            });
+        }
+        async function shrinkImage(file) {
+            const img = await loadImage(file);
+            const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';   // รูปพื้นโปร่งใส (PNG) จะได้พื้นขาว ไม่กลายเป็นสีดำ
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg', PHOTO_QUALITY);
+        }
+        photoInput.addEventListener('change', async () => {
+            const file = photoInput.files[0];
+            photoInput.value = '';   // เลือกไฟล์เดิมซ้ำได้
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                setPhotoError('กรุณาเลือกไฟล์รูปภาพ');
+                return;
+            }
+            if (file.size > PHOTO_MAX_SOURCE_BYTES) {
+                setPhotoError('ไฟล์รูปภาพต้องมีขนาดไม่เกิน 15 MB');
+                return;
+            }
+            const previous = photoDataUrl;
+            setPhotoError('');
+            setPhotoState('busy');
+            try {
+                photoDataUrl = await shrinkImage(file);
+                $('photo-img').src = photoDataUrl;
+                setPhotoState('preview');
+            } catch {
+                photoDataUrl = previous;
+                setPhotoState(previous ? 'preview' : 'empty');
+                setPhotoError('เปิดไฟล์รูปนี้ไม่ได้ กรุณาเลือกรูปแบบ JPG หรือ PNG');
+            }
+        });
+        $('photo-change').addEventListener('click', () => photoInput.click());
+        $('photo-remove').addEventListener('click', () => {
+            photoDataUrl = '';
+            $('photo-img').removeAttribute('src');
+            setPhotoError('');
+            setPhotoState('empty');
+        });
+
+        // ---------- โหลดหมวดหมู่ / สถานที่ ----------
+        async function loadOptions() {
+            const fill = (select, rows, idKey, nameKey) => {
+                select.insertAdjacentHTML('beforeend', rows
+                    .map((row) => `<option value="${row[idKey]}">${UserApp.escapeHtml(row[nameKey])}</option>`).join(''));
+            };
+            try {
+                const [cats, locs] = await Promise.all([
+                    UserApp.apiGet('/api/items/categories'),
+                    UserApp.apiGet('/api/items/locations'),
+                ]);
+                if (cats.ok) fill(fields.Category_ID, cats.data.categories, 'Category_ID', 'Category_name');
+                if (locs.ok) fill(fields.Location_ID, locs.data.locations, 'Location_ID', 'Location_name');
+                if (!cats.ok || !locs.ok) throw new Error('options');
+            } catch {
+                setFormError('โหลดรายการหมวดหมู่/สถานที่ไม่สำเร็จ กรุณาตรวจสอบว่าเปิด Backend แล้ว และรีเฟรชหน้า');
+            }
+        }
+
+        // ---------- ส่งข้อมูล ----------
+        const submitBtn = $('submit-btn');
+        const SUBMIT_LABEL = submitBtn.innerHTML;
+        function setSaving(on) {
+            saving = on;
+            submitBtn.disabled = on;
+            submitBtn.innerHTML = on ? '<i class="fa-solid fa-spinner fa-spin"></i>กำลังบันทึก...' : SUBMIT_LABEL;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (saving) return;
+            submitted = true;
+            setFormError('');
+            refreshDateLimits();
+
+            const errors = validate();
+            if ($('photo-busy').hidden === false) errors.Lost_photo = 'กรุณารอให้เตรียมรูปภาพเสร็จก่อน';
+            showErrors(errors);
+            setPhotoError(errors.Lost_photo || '');
+            if (Object.keys(errors).length > 0) {
+                focusFirstError(errors);
+                return;
+            }
+
+            const body = {
+                User_ID: user.User_ID,
+                LostItem_name: fields.LostItem_name.value.trim(),
+                Category_ID: fields.Category_ID.value,
+                Location_ID: fields.Location_ID.value,
+                Lost_date: fields.Lost_date.value,
+                Lost_time: fields.Lost_time.value,
+                Lost_description: fields.Lost_description.value.trim(),
+            };
+            if (photoDataUrl) body.Lost_photo = photoDataUrl;
+
+            setSaving(true);
+            try {
+                const { ok, status, data } = await UserApp.apiPost('/api/items/lostitem', body);
+                if (ok) {
+                    showSuccess(body, data);
+                    return;
+                }
+                if (status === 404 && data.code === 'USER_NOT_FOUND') {
+                    setFormError(data.message);
+                    setTimeout(UserApp.logout, 2500);
+                    return;
+                }
+                if (status === 413) {
+                    setPhotoError(data.message || 'ไฟล์รูปภาพมีขนาดใหญ่เกินไป');
+                    focusFirstError({ Lost_photo: true });
+                    return;
+                }
+                if (data.errors) {
+                    showErrors(data.errors);
+                    if (data.errors.Lost_photo) setPhotoError(data.errors.Lost_photo);
+                    focusFirstError(data.errors);
+                    if (data.errors.User_ID) setFormError(data.errors.User_ID);
+                    return;
+                }
+                setFormError(data.message || 'แจ้งสิ่งของที่หายไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+            } catch {
+                setFormError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว');
+            } finally {
+                setSaving(false);
+            }
+        });
+
+        // ---------- แจ้งสำเร็จ ----------
+        let notiTimer = null;
+        function showNotification(message) {
+            const noti = $('push-noti');
+            $('noti-text').textContent = message;
+            noti.classList.remove('is-visible');
+            clearTimeout(notiTimer);
+            setTimeout(() => noti.classList.add('is-visible'), 350);
+            notiTimer = setTimeout(() => noti.classList.remove('is-visible'), 350 + NOTIFICATION_SHOW_MS);
+        }
+        $('push-noti').addEventListener('click', () => $('push-noti').classList.remove('is-visible'));
+
+        function showSuccess(body, data) {
+            const selectedText = (select) => select.selectedOptions[0] ? select.selectedOptions[0].text : '-';
+            $('sum-name').textContent = body.LostItem_name;
+            $('sum-category').textContent = selectedText(fields.Category_ID);
+            $('sum-location').textContent = selectedText(fields.Location_ID);
+            $('sum-when').textContent = `หายเมื่อ ${UserApp.formatFoundDate(body.Lost_date, body.Lost_time)}`;
+            const thumb = $('sum-thumb');
+            thumb.innerHTML = '<i class="fa-solid fa-box"></i>';
+            if (photoDataUrl) {
+                const img = document.createElement('img');
+                img.src = photoDataUrl;
+                img.alt = '';
+                thumb.replaceChildren(img);
+            }
+
+            $('form-view').hidden = true;
+            $('submit-bar').hidden = true;
+            $('success-view').hidden = false;
+            $('scroll').scrollTo({ top: 0 });
+            $('success-title').focus({ preventScroll: true });
+            showNotification((data.notification && data.notification.Message) || data.message || 'ท่านได้ทำการแจ้งสิ่งของที่หายสำเร็จ');
+        }
+
+        function resetForm() {
+            form.reset();
+            photoDataUrl = '';
+            submitted = false;
+            setPhotoState('empty');
+            setPhotoError('');
+            showErrors({});
+            setFormError('');
+            Object.values(fields).forEach((el) => { if (el.tagName === 'SELECT') updateSelectLook(el); });
+            updateCounter(fields.LostItem_name, 'name-counter', NAME_MAX);
+            updateCounter(fields.Lost_description, 'desc-counter', DESC_MAX);
+            refreshDateLimits();
+        }
+        $('report-again').addEventListener('click', () => {
+            resetForm();
+            $('push-noti').classList.remove('is-visible');
+            $('success-view').hidden = true;
+            $('form-view').hidden = false;
+            $('submit-bar').hidden = false;
+            $('scroll').scrollTo({ top: 0 });
+        });
+
+        // ---------- ย้อนกลับ: ถ้ากรอกข้อมูลไว้แล้ว ให้ยืนยันก่อนออก ----------
+        function isDirty() {
+            return Object.values(fields).some((el) => el.value.trim() !== '') || Boolean(photoDataUrl);
+        }
+        const leaveSheet = $('leave-sheet');
+        function goHome() { window.location.href = 'home.html'; }
+        $('back-btn').addEventListener('click', () => {
+            if (!isDirty()) return goHome();
+            leaveSheet.hidden = false;
+            $('stay-btn').focus();
+        });
+        $('stay-btn').addEventListener('click', () => { leaveSheet.hidden = true; $('back-btn').focus(); });
+        $('leave-btn').addEventListener('click', goHome);
+        leaveSheet.addEventListener('click', (event) => { if (event.target === leaveSheet) leaveSheet.hidden = true; });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !leaveSheet.hidden) leaveSheet.hidden = true;
+        });
+
+        // ---------- เริ่มต้นหน้า ----------
+        if (user) {
+            refreshDateLimits();
+            loadOptions();
+        }
+    </script>
+</body>
+</html>

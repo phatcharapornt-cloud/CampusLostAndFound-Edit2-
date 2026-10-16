@@ -27,7 +27,7 @@ const UserApp = (() => {
         myitems:     { label: 'รายการของฉัน',     icon: 'fa-solid fa-list-ul',          href: 'myitems.html',     ready: false },
         profile:     { label: 'โปรไฟล์',          icon: 'fa-regular fa-user',           href: 'profile.html',     ready: false },
         reportFound: { label: 'แจ้งสิ่งของที่พบ',   icon: 'fa-solid fa-hand-holding-heart', href: 'reportfound.html', ready: false },
-        reportLost:  { label: 'แจ้งสิ่งของที่หาย',  icon: 'fa-solid fa-magnifying-glass',  href: 'reportlost.html',  ready: false },
+        reportLost:  { label: 'แจ้งสิ่งของที่หาย',  icon: 'fa-solid fa-magnifying-glass',  href: 'reportlost.html',  ready: true },
     };
     const BOTTOM_NAV = ['home', 'myitems', 'profile'];
 
@@ -105,6 +105,17 @@ const UserApp = (() => {
         return { ok: response.ok, status: response.status, data };
     }
 
+    // ส่งข้อมูลแบบ JSON (ถ้าเชื่อมต่อเซิร์ฟเวอร์ไม่ได้ จะ throw error ให้หน้าที่เรียกจัดการเอง)
+    async function apiPost(path, body) {
+        const response = await fetch(`${API_BASE_URL}${path}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const data = await response.json().catch(() => ({}));
+        return { ok: response.ok, status: response.status, data };
+    }
+
     // รูปที่เก็บใน Backend (เช่น /uploads/found_123.png) → URL เต็ม
     function photoUrl(path) {
         if (!path) return '';
@@ -126,5 +137,5 @@ const UserApp = (() => {
         return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: '2-digit' }) }) + time;
     }
 
-    return { API_BASE_URL, PAGES, init, getUser, logout, goTo, toast, apiGet, photoUrl, formatFoundDate, escapeHtml };
+    return { API_BASE_URL, PAGES, init, getUser, logout, goTo, toast, apiGet, apiPost, photoUrl, formatFoundDate, escapeHtml };
 })();
