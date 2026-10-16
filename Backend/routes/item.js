@@ -6,6 +6,8 @@ const path = require('path');
 
 // นำเข้าฟังก์ชันประมวลผลจับคู่จากไฟล์ matchitem.js
 const { processMatchingByLostItem, processMatchingByFoundItem } = require('../service/matchingService');
+const { validateLostItemReport } = require('../utils/validators');
+const { parseImageDataUrl, saveImage, removeUpload } = require('../utils/imageupload');
 
 // ฟังก์ชันแปลง Base64 แล้วบันทึกเป็นไฟล์รูปภาพลงโฟลเดอร์ uploads
 function saveBase64Image(base64Data, prefix) {
@@ -27,73 +29,113 @@ function saveBase64Image(base64Data, prefix) {
     return `/uploads/${fileName}`;
 }
 
-// 1. API แจ้งสิ่งของที่หาย (POST /api/items/lostitem)
+// 1. API แจ้งสิ่งของที่หาย (POST /api/items/lostitem) ใช้กับหน้า App-user/reportlost.html
+// body (JSON): { User_ID, LostItem_name, Category_ID, Location_ID, Lost_date: 'YYYY-MM-DD', Lost_time: 'HH:MM',
+//                Lost_description, Lost_photo?: 'data:image/jpeg;base64,...' (ไม่บังคับ) }
+// 201 = บันทึกลงตาราง LostItem (สถานะ 'ไม่พบ') + บันทึกการแจ้งเตือนลงตาราง Notification แล้ว
+// 400 = ข้อมูลไม่ถูกต้อง { message, errors: { ชื่อฟิลด์: ข้อความ } }, 404 = ไม่พบบัญชีผู้ใช้
 router.post('/lostitem', async (req, res) => {
-    const{
-        User_ID,
-        Category_ID,
-        Location_ID,
-        LostItem_name,
-        Lost_date,
-        Lost_time,
-        Lost_description,
-        Lost_photo,
-    } = req.body;
+    const { values, errors } = validateLostItemReport(req.body || {});
 
-    // ตรวจสอบว่ากรอกข้อมูลครบถ้วนหรือไม่
-    if (!User_ID || !Category_ID || !Location_ID || !LostItem_name || !Lost_date || !Lost_description ) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'กรุณากรอกข้อมูลให้ครบถ้วน' 
+    // รูปภาพไม่บังคับ แต่ถ้าแนบมาต้องเป็นไฟล์รูปที่ถูกต้อง
+    let image = null;
+    if (values.Lost_photo) {
+        image = parseImageDataUrl(values.Lost_photo);
+        if (image.error) errors.Lost_photo = image.error;
+    }
+
+    if (Object.keys(errors).length > 0) {
+        return res.status(400).json({
+            success: false,
+            message: Object.values(errors)[0],
+            errors
         });
     }
 
+    let connection;
+    let photoPath = null;
+    let inTransaction = false;
     try {
-        const status = 'ไม่พบ'; // กำหนดสถานะเริ่มต้นเป็น 'ไม่พบ'
-        const time = Lost_time || null ; // กำหนดค่า default เป็น null หากผู้ใช้งานจำช่วงเวลาของสิ่งของที่หายไม่ได้
-        const photoPath = saveBase64Image(Lost_photo, 'lost'); // บันทึกรูปภาพลงดิสก์ แล้วดึง Path สั้นๆ มาใช้งาน
+        connection = await db.getConnection();
 
-        // 1. บันทึกข้อมูลสิ่งของที่หายลงในตาราง LostItem
-        const insertLostItemQuery = `
-            INSERT INTO LostItem (User_ID, Category_ID, Location_ID, LostItem_name, Lost_date, Lost_time, Lost_description, Lost_photo, Lost_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
-       
-        const [result] = await db.query(insertLostItemQuery, [
-            User_ID, 
-            Category_ID, 
-            Location_ID, 
-            LostItem_name, 
-            Lost_date, 
-            time, 
-            Lost_description, 
-            photoPath, 
-            status
-        ]);
+        // ตรวจว่าผู้ใช้ หมวดหมู่ และสถานที่ มีอยู่จริงในระบบ
+        const [[exists]] = await connection.query(
+            `SELECT
+                EXISTS(SELECT 1 FROM User WHERE User_ID = ?) AS user,
+                EXISTS(SELECT 1 FROM Category WHERE Category_ID = ?) AS category,
+                EXISTS(SELECT 1 FROM Location WHERE Location_ID = ?) AS location`,
+            [values.User_ID, values.Category_ID, values.Location_ID]
+        );
+        if (!exists.user) {
+            return res.status(404).json({
+                success: false,
+                code: 'USER_NOT_FOUND',
+                message: 'ไม่พบบัญชีผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่อีกครั้ง'
+            });
+        }
+        const refErrors = {};
+        if (!exists.category) refErrors.Category_ID = 'ไม่พบหมวดหมู่ที่เลือก กรุณาเลือกใหม่';
+        if (!exists.location) refErrors.Location_ID = 'ไม่พบสถานที่ที่เลือก กรุณาเลือกใหม่';
+        if (Object.keys(refErrors).length > 0) {
+            return res.status(400).json({ success: false, message: Object.values(refErrors)[0], errors: refErrors });
+        }
 
-        const newLostId = result.insertId; //ดึง Lost_ID ที่ถูกบันทึกล่าสุด
+        if (image) photoPath = saveImage(image, 'lost'); // บันทึกรูปลง Backend/uploads แล้วเก็บแค่ path ในฐานข้อมูล
 
-        // บันทึกการแจ้งเตือน กรณีเมื่อผู้ใช้งานแจ้งของหายสำเร็จ
-        const notiMessage = `แจ้งรายการสิ่งของที่หาย "${LostItem_name}" สำเร็จแล้ว ระบบกำลังเริ่มประมวลผลค้นหาและจับคู่สิ่งของให้คุณ`;
-        await db.query(
-            `INSERT INTO Notification (User_ID, Lost_ID, Message) VALUES (?, ?, ?)`,
-            [User_ID, newLostId, notiMessage]
+        // บันทึกสิ่งของที่หาย + การแจ้งเตือน พร้อมกัน (ถ้าอย่างใดอย่างหนึ่งไม่สำเร็จ จะยกเลิกทั้งคู่)
+        await connection.beginTransaction();
+        inTransaction = true;
+
+        const [result] = await connection.query(
+            `INSERT INTO LostItem (User_ID, Category_ID, Location_ID, LostItem_name, Lost_date, Lost_time, Lost_description, Lost_photo, Lost_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ไม่พบ')`,
+            [
+                values.User_ID,
+                values.Category_ID,
+                values.Location_ID,
+                values.LostItem_name,
+                values.Lost_date,
+                values.Lost_time,
+                values.Lost_description,
+                photoPath
+            ]
+        );
+        const newLostId = result.insertId;
+
+        // ข้อความแจ้งเตือนเก็บในตาราง Notification (Message VARCHAR(200): ชื่อสิ่งของยาวสุด 100 ตัวอักษร จึงไม่เกิน)
+        const notiMessage = `ท่านได้ทำการแจ้งสิ่งของที่หายสำเร็จ "${values.LostItem_name}" ระบบจะแจ้งเตือนเมื่อพบสิ่งของที่ตรงกัน`;
+        const [notiResult] = await connection.query(
+            'INSERT INTO Notification (User_ID, Lost_ID, Message) VALUES (?, ?, ?)',
+            [values.User_ID, newLostId, notiMessage]
         );
 
-        // เรียกฟังก์ชันประมวลผลการจับคู่สิ่งของให้อัตโนมัติ
+        await connection.commit();
+        inTransaction = false;
+
+        // เริ่มจับคู่กับสิ่งของที่พบในระบบอัตโนมัติ (ทำเบื้องหลัง ไม่ต้องรอ)
         processMatchingByLostItem(newLostId);
 
         res.status(201).json({
             success: true,
-            message: 'แจ้งสิ่งของที่หายสำเร็จ',
-            LostItem_ID: newLostId // ส่งกลับ LostItem_ID ของสิ่งของที่หายที่ถูกบันทึก
+            message: 'ท่านได้ทำการแจ้งสิ่งของที่หายสำเร็จ',
+            Lost_ID: newLostId,
+            LostItem_ID: newLostId, // ชื่อเดิม (เผื่อโค้ดเก่าที่ยังใช้อยู่)
+            Lost_photo: photoPath,
+            notification: {
+                Notification_ID: notiResult.insertId,
+                Message: notiMessage
+            }
         });
     } catch (error) {
+        if (inTransaction) await connection.rollback().catch(() => {});
+        removeUpload(photoPath);
         console.error('Error reporting lost item:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'เกิดข้อผิดพลาดในการแจ้งสิ่งของที่หาย' 
-        });             
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการแจ้งสิ่งของที่หาย กรุณาลองใหม่อีกครั้ง'
+        });
+    } finally {
+        if (connection) connection.release();
     }
 });
 
