@@ -289,9 +289,9 @@ button.nav-item:hover { background-color: rgba(255, 255, 255, 0.07); }
         z-index: 20;
         transform: translateX(-100%);
         transition: transform 0.25s ease;
-        box-shadow: 8px 0 30px rgba(0, 0, 0, 0.25);
     }
-    body.nav-open .admin-sidebar { transform: translateX(0); }
+    /* เงาใส่เฉพาะตอนเปิดเมนู (ตอนซ่อน เงาจะล้นออกมาเป็นแถบมืดที่ขอบซ้ายของจอ) */
+    body.nav-open .admin-sidebar { transform: translateX(0); box-shadow: 8px 0 30px rgba(0, 0, 0, 0.25); }
     body.nav-open .admin-backdrop { display: block; }
     .menu-btn { display: inline-flex; align-items: center; justify-content: center; }
     .admin-topbar { padding: 0 16px; }

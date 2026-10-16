@@ -203,7 +203,96 @@ function validateAdminLogin(body) {
     };
 }
 
+// ---------- แจ้งสิ่งของที่หาย (Lost Item) ----------
+// หมายเหตุ: หน้า App-user/reportlost.html ตรวจเงื่อนไขชุดเดียวกันนี้ด้วย ถ้าแก้ที่นี่ต้องแก้ที่นั่นให้ตรงกัน
+
+// ความยาวตามคอลัมน์ในตาราง LostItem (LostItem_name VARCHAR(100), Lost_description VARCHAR(200))
+const ITEM_NAME_MAX_LENGTH = 100;
+const ITEM_DESCRIPTION_MAX_LENGTH = 200;
+const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/;
+// เผื่อนาฬิกาของเครื่องผู้ใช้กับเซิร์ฟเวอร์ต่างกันเล็กน้อย
+const CLOCK_SKEW_MINUTES = 5;
+
+// เลขจำนวนเต็มบวก (รับได้ทั้งตัวเลขและข้อความตัวเลข) ไม่ใช่ → null
+function toPositiveInt(value) {
+    const text = toText(value).trim();
+    if (!/^\d+$/.test(text)) return null;
+    const number = Number(text);
+    return Number.isSafeInteger(number) && number > 0 ? number : null;
+}
+
+// วันที่ปัจจุบันตามเวลาเครื่องเซิร์ฟเวอร์ ในรูปแบบ YYYY-MM-DD
+function localDateText(date) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function validateItemDate(dateText, now) {
+    if (!dateText) return 'กรุณาเลือกวันที่';
+    const match = DATE_PATTERN.exec(dateText);
+    if (!match) return 'รูปแบบวันที่ไม่ถูกต้อง';
+    const [, y, m, d] = match.map(Number);
+    const date = new Date(y, m - 1, d);
+    if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d || y < 2000) {
+        return 'รูปแบบวันที่ไม่ถูกต้อง';
+    }
+    if (dateText > localDateText(now)) return 'วันที่ต้องไม่เกินวันนี้';
+    return null;
+}
+
+function validateItemTime(timeText, dateText, now) {
+    if (!timeText) return 'กรุณาเลือกเวลา';
+    const match = TIME_PATTERN.exec(timeText);
+    if (!match) return 'รูปแบบเวลาไม่ถูกต้อง';
+    // ถ้าเป็นวันนี้ เวลาต้องไม่เกินเวลาปัจจุบัน
+    if (dateText === localDateText(now)) {
+        const minutes = Number(match[1]) * 60 + Number(match[2]);
+        if (minutes > now.getHours() * 60 + now.getMinutes() + CLOCK_SKEW_MINUTES) return 'เวลาต้องไม่เกินเวลาปัจจุบัน';
+    }
+    return null;
+}
+
+function validateRequiredText(text, label, maxLength) {
+    if (!text) return `กรุณากรอก${label}`;
+    if (text.length > maxLength) return `${label}ต้องไม่เกิน ${maxLength} ตัวอักษร`;
+    return null;
+}
+
+// ตรวจข้อมูลการแจ้งสิ่งของที่หาย (รูปภาพไม่บังคับ ตรวจไฟล์รูปแยกใน utils/imageupload.js)
+// คืนค่า { values, errors } เหมือนฟังก์ชันอื่นในไฟล์นี้
+function validateLostItemReport(body, now = new Date()) {
+    const values = {
+        User_ID: toPositiveInt(body.User_ID),
+        LostItem_name: toText(body.LostItem_name).trim(),
+        Category_ID: toPositiveInt(body.Category_ID),
+        Location_ID: toPositiveInt(body.Location_ID),
+        Lost_date: toText(body.Lost_date).trim(),
+        Lost_time: toText(body.Lost_time).trim(),
+        Lost_description: toText(body.Lost_description).trim(),
+        Lost_photo: typeof body.Lost_photo === 'string' ? body.Lost_photo : '',
+    };
+    const dateError = validateItemDate(values.Lost_date, now);
+
+    return {
+        values,
+        errors: collectErrors({
+            User_ID: values.User_ID ? null : 'ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่',
+            LostItem_name: validateRequiredText(values.LostItem_name, 'ชื่อสิ่งของ', ITEM_NAME_MAX_LENGTH),
+            Category_ID: values.Category_ID ? null : 'กรุณาเลือกหมวดหมู่ของสิ่งของ',
+            Location_ID: values.Location_ID ? null : 'กรุณาเลือกสถานที่ที่คาดว่าทำของหาย',
+            Lost_date: dateError,
+            // ถ้าวันที่ผิด ตรวจแค่รูปแบบเวลา ไม่เทียบกับเวลาปัจจุบัน
+            Lost_time: validateItemTime(values.Lost_time, dateError ? null : values.Lost_date, now),
+            Lost_description: validateRequiredText(values.Lost_description, 'รายละเอียดเพิ่มเติม', ITEM_DESCRIPTION_MAX_LENGTH),
+        }),
+    };
+}
+
 module.exports = {
+    ITEM_NAME_MAX_LENGTH,
+    ITEM_DESCRIPTION_MAX_LENGTH,
+    validateLostItemReport,
     STUDENT_ID_PATTERN,
     UNIVERSITY_EMAIL_DOMAIN,
     PASSWORD_RULES,
