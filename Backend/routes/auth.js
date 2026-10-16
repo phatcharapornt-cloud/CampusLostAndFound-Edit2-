@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const db = require('../config/db');
-const { validateRegistration, validateLogin } = require('../utils/validators');
+const {
+    validateRegistration,
+    validateLogin,
+    validateResetRequest,
+    validateOtpVerification,
+    validatePasswordReset,
+} = require('../utils/validators');
 
 //1. API สมัครสมาชิก (POST /api/auth/register(signup))
 // Body (JSON): { FName, LName, Student_ID, Email, Password }
@@ -209,49 +216,130 @@ async function loginWithStudentId(body, res) {
     }
 }
 
-// 3. API เปลี่ยนรหัสผ่าน (POST /api/auth/Resetpassword)
-router.post('/request-reset', async (req, res) => {
-    const {Student_ID} = req.body;
+// ---------- 3. เปลี่ยนรหัสผ่าน (ลืมรหัสผ่าน) ----------
+// ขั้นตอน: (3.1) request-reset ขอรหัส OTP → (3.2) verify-otp ยืนยัน OTP → (3.3) reset-password ตั้งรหัสผ่านใหม่
+// ทุกขั้นตอบกลับเป็น JSON { success, message, code?, errors? }
+//   code: OTP_EXPIRED = OTP หมดอายุ/ถูกใช้แล้ว | OTP_INVALID = OTP ผิด | OTP_LOCKED = กรอกผิดเกินกำหนด | OTP_COOLDOWN = ขอ OTP ถี่เกินไป
 
-    if (!Student_ID) {
-        return res.status(400).json({
-            success: false,
-            message: 'กรุณากรอกรหัสนักศึกษา'
-        });
+const OTP_EXPIRE_SECONDS = 10 * 60;  // OTP ใช้ได้ 10 นาที
+const OTP_RESEND_SECONDS = 60;       // ขอ OTP ใหม่ได้ทุก 60 วินาที
+const OTP_MAX_ATTEMPTS = 5;          // กรอก OTP ผิดได้ไม่เกิน 5 ครั้งต่อ 1 รหัส
+
+// โหมดสาธิต: ส่ง OTP กลับไปให้แอปแสดงเป็น Notification (เพราะยังไม่มีระบบส่งอีเมลจริง)
+// เมื่อเชื่อมระบบส่งอีเมลแล้ว ให้เพิ่ม SHOW_OTP_ON_SCREEN=false ในไฟล์ .env เพื่อไม่ส่ง OTP กลับไปกับ API
+const SHOW_OTP_ON_SCREEN = process.env.SHOW_OTP_ON_SCREEN !== 'false';
+
+// นับจำนวนครั้งที่กรอก OTP ผิด แยกตาม ResetPassword_ID (เก็บในหน่วยความจำ รีเซ็ตเมื่อรีสตาร์ทเซิร์ฟเวอร์)
+const failedOtpAttempts = new Map();
+
+function otpError(code, message, extra = {}) {
+    return { success: false, code, message, errors: { OTP: message }, ...extra };
+}
+
+async function findUserByStudentId(studentId) {
+    const [users] = await db.query('SELECT User_ID, Email, Password FROM User WHERE Student_ID = ?', [studentId]);
+    return users[0] || null;
+}
+
+// หา OTP ล่าสุดของผู้ใช้ที่ยังใช้ได้ (ยังไม่ถูกใช้ และยังไม่หมดอายุ)
+// ใช้เวลาของ MySQL (NOW()) ทั้งตอนบันทึกและตอนตรวจ เพื่อไม่ให้เวลาเพี้ยนระหว่าง Node กับฐานข้อมูล
+async function findActiveOtp(userId) {
+    const [rows] = await db.query(
+        `SELECT ResetPassword_ID, Request_code, TIMESTAMPDIFF(SECOND, NOW(), Datetime_at) AS secondsLeft
+         FROM ResetPassword
+         WHERE User_ID = ? AND Is_used = FALSE AND Datetime_at > NOW()
+         ORDER BY Datetime_at DESC
+         LIMIT 1`,
+        [userId]
+    );
+    return rows[0] || null;
+}
+
+// ตรวจรหัส OTP คืนค่า { ok: true, reset } หรือ { ok: false, status, body }
+async function checkOtp(userId, otp) {
+    const reset = await findActiveOtp(userId);
+    if (!reset) {
+        return { ok: false, status: 400, body: otpError('OTP_EXPIRED', 'รหัส OTP หมดอายุหรือถูกใช้งานไปแล้ว กรุณาขอรหัสใหม่') };
     }
 
-    try {
-        // ตรวจสอบว่ามี Student_ID ในฐานข้อมูล(User) หรือไม่
-        const getUserQuery = 'SELECT * FROM User WHERE Student_ID = ?';
-        const [users] = await db.query(getUserQuery, [Student_ID]);
+    if (reset.Request_code !== otp) {
+        const attempts = (failedOtpAttempts.get(reset.ResetPassword_ID) || 0) + 1;
 
-        if (users.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'ไม่พบรหัสนักศึกษานี้ในระบบ'
-            });
+        // กรอกผิดครบกำหนด: ยกเลิก OTP นี้ทันที ต้องขอรหัสใหม่
+        if (attempts >= OTP_MAX_ATTEMPTS) {
+            failedOtpAttempts.delete(reset.ResetPassword_ID);
+            await db.query('UPDATE ResetPassword SET Is_used = TRUE WHERE ResetPassword_ID = ?', [reset.ResetPassword_ID]);
+            return { ok: false, status: 400, body: otpError('OTP_LOCKED', `กรอกรหัส OTP ผิดเกิน ${OTP_MAX_ATTEMPTS} ครั้ง รหัสนี้ถูกยกเลิกแล้ว กรุณาขอรหัสใหม่`) };
         }
-        
-        const user = users[0];
-       // 1. สร้าง Primary Key (Resetpassword_ID) ไม่เกิน 20 ตัวอักษร
-        const resetpasswordId = `RP${Date.now()}`; // ตัวอย่าง: RP1728463688000 (15 ตัวอักษร)
 
-        // 2. สร้าง Request_code แบบสั้น (OTP 6 หลัก) เพื่อไม่ให้เกิน VARCHAR(20)
-        const requestCode = Math.floor(100000 + Math.random() * 900000).toString(); 
+        failedOtpAttempts.set(reset.ResetPassword_ID, attempts);
+        const attemptsLeft = OTP_MAX_ATTEMPTS - attempts;
+        return { ok: false, status: 400, body: otpError('OTP_INVALID', `รหัส OTP ไม่ถูกต้อง (กรอกได้อีก ${attemptsLeft} ครั้ง)`, { attemptsLeft }) };
+    }
 
-        // 3. กำหนดวันเวลาหมดอายุ (Datetime_at) เช่น 10 นาทีถัดไป
-        const datetimeAt = new Date(Date.now() + 10 * 60 * 1000); 
+    return { ok: true, reset };
+}
 
-        // 4. บันทึกข้อมูลลงตาราง ResetPassword ตามโครงสร้าง Data Dictionary
-        const insertResetPasswordQuery = 'INSERT INTO ResetPassword (Resetpassword_ID, User_ID, Request_code, Datetime_at, Is_used) VALUES (?, ?, ?, ?, FALSE)';
-        const [result] = await db.query(insertResetPasswordQuery, [resetpasswordId, user.User_ID, requestCode, datetimeAt]);
-        
-        res.status(200).json({
+function badRequest(res, errors) {
+    return res.status(400).json({ success: false, message: Object.values(errors)[0], errors });
+}
+
+function studentNotFound(res) {
+    const message = 'ไม่พบรหัสนักศึกษานี้ในระบบ';
+    return res.status(404).json({ success: false, message, errors: { Student_ID: message } });
+}
+
+// 3.1 ขอรหัส OTP (POST /api/auth/request-reset)
+// Body: { Student_ID }
+// 200 = { email, expiresInSeconds, resendAfterSeconds, otp (โหมดสาธิต) } | 400 รูปแบบผิด | 404 ไม่พบรหัสนักศึกษา | 429 ขอถี่เกินไป
+router.post('/request-reset', async (req, res) => {
+    const { values, errors } = validateResetRequest(req.body ?? {});
+    if (Object.keys(errors).length > 0) return badRequest(res, errors);
+
+    try {
+        // 1. ตรวจสอบว่ามีรหัสนักศึกษานี้ในตาราง User หรือไม่
+        const user = await findUserByStudentId(values.Student_ID);
+        if (!user) return studentNotFound(res);
+
+        // 2. กันการขอ OTP ถี่เกินไป (ต้องรอ 60 วินาทีนับจากครั้งล่าสุด)
+        const active = await findActiveOtp(user.User_ID);
+        if (active) {
+            const secondsSinceIssued = OTP_EXPIRE_SECONDS - active.secondsLeft;
+            const waitSeconds = OTP_RESEND_SECONDS - secondsSinceIssued;
+            if (waitSeconds > 0) {
+                return res.status(429).json({
+                    success: false,
+                    code: 'OTP_COOLDOWN',
+                    message: `กรุณารอ ${waitSeconds} วินาที ก่อนขอรหัส OTP ใหม่`,
+                    retryAfterSeconds: waitSeconds
+                });
+            }
+        }
+
+        // 3. ยกเลิก OTP เดิมที่ยังไม่ได้ใช้ ให้เหลือรหัสที่ใช้ได้แค่รหัสล่าสุด
+        await db.query('UPDATE ResetPassword SET Is_used = TRUE WHERE User_ID = ? AND Is_used = FALSE', [user.User_ID]);
+
+        // 4. สร้าง OTP 6 หลักแบบสุ่ม (crypto) และ ResetPassword_ID ไม่เกิน 20 ตัวอักษร เช่น RP1792141234567123
+        const otp = String(crypto.randomInt(100000, 1000000));
+        const resetPasswordId = `RP${Date.now()}${crypto.randomInt(100, 1000)}`;
+
+        // 5. บันทึกลงตาราง ResetPassword (Datetime_at = เวลาหมดอายุ = ตอนนี้ + 10 นาที)
+        await db.query(
+            `INSERT INTO ResetPassword (ResetPassword_ID, User_ID, Request_code, Datetime_at, Is_used)
+             VALUES (?, ?, ?, NOW() + INTERVAL ? SECOND, FALSE)`,
+            [resetPasswordId, user.User_ID, otp, OTP_EXPIRE_SECONDS]
+        );
+
+        const response = {
             success: true,
-            message: 'พบข้อมูลผู้ใช้งาน',
-            email: user.Email, // ส่ง Email กลับไปยังหน้า Mockup UI
-            resetToken: requestCode, // ส่ง Request_code กลับไปใช้ยืนยันในหน้า Mockup UI
-        });
+            message: 'ส่งรหัส OTP เรียบร้อยแล้ว',
+            email: user.Email,
+            expiresInSeconds: OTP_EXPIRE_SECONDS,
+            resendAfterSeconds: OTP_RESEND_SECONDS
+        };
+        if (SHOW_OTP_ON_SCREEN) response.otp = otp; // ให้หน้า Verify แสดงเป็น Notification
+
+        res.status(200).json(response);
     } catch (error) {
         console.error('Request Reset Error:', error);
         res.status(500).json({
@@ -261,62 +349,94 @@ router.post('/request-reset', async (req, res) => {
     }
 });
 
-// 4. ตรจสอบ Token จากตาราง ResetPassword --> อัตเดตรหัสผ่านใหม่ลงตาราง User
-router.post('/reset-password', async (req, res) => {
-    const {Student_ID, resetToken, NewPassword} = req.body;
-
-    if (!Student_ID || !resetToken || !NewPassword) {
-        return res.status(400).json({
-            success: false,
-            message: 'กรุณากรอกข้อมูลให้ครบถ้วน'
-        });
-    }
+// 3.2 ยืนยันรหัส OTP (POST /api/auth/verify-otp)
+// Body: { Student_ID, OTP }
+// 200 = OTP ถูกต้อง (ยังไม่ถูกใช้ จะใช้จริงตอนตั้งรหัสผ่านใหม่) | 400 OTP ผิด/หมดอายุ | 404 ไม่พบรหัสนักศึกษา
+router.post('/verify-otp', async (req, res) => {
+    const { values, errors } = validateOtpVerification(req.body ?? {});
+    if (Object.keys(errors).length > 0) return badRequest(res, errors);
 
     try {
-        // 1. ดึงข้อมูล User_ID
-        const [users] = await db.query('SELECT * FROM User WHERE Student_ID = ?', [Student_ID]);
-        if (users.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'ไม่พบรหัสนักศึกษานี้ในระบบ'
-            });
+        const user = await findUserByStudentId(values.Student_ID);
+        if (!user) return studentNotFound(res);
+
+        const result = await checkOtp(user.User_ID, values.OTP);
+        if (!result.ok) return res.status(result.status).json(result.body);
+
+        res.status(200).json({
+            success: true,
+            message: 'ยืนยันรหัส OTP สำเร็จ',
+            expiresInSeconds: result.reset.secondsLeft // เวลาที่เหลือสำหรับตั้งรหัสผ่านใหม่
+        });
+    } catch (error) {
+        console.error('Verify OTP Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการยืนยันรหัส OTP'
+        });
+    }
+});
+
+// 3.3 ตั้งรหัสผ่านใหม่ (POST /api/auth/reset-password)
+// Body: { Student_ID, OTP, NewPassword }
+// 200 = บันทึกรหัสผ่านใหม่ลงตาราง User แล้ว | 400 OTP ผิด/หมดอายุ หรือรหัสผ่านไม่ผ่านเงื่อนไข/ซ้ำรหัสเดิม | 404 ไม่พบรหัสนักศึกษา
+router.post('/reset-password', async (req, res) => {
+    const { values, errors } = validatePasswordReset(req.body ?? {});
+    if (Object.keys(errors).length > 0) return badRequest(res, errors);
+
+    let connection;
+    try {
+        // 1. ค้นหาผู้ใช้จากรหัสนักศึกษา
+        const user = await findUserByStudentId(values.Student_ID);
+        if (!user) return studentNotFound(res);
+
+        // 2. ตรวจรหัส OTP อีกครั้ง (กันการเรียก API นี้ตรง ๆ โดยไม่ผ่านหน้า Verify)
+        const result = await checkOtp(user.User_ID, values.OTP);
+        if (!result.ok) return res.status(result.status).json(result.body);
+
+        // 3. รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม
+        if (await bcrypt.compare(values.NewPassword, user.Password)) {
+            return badRequest(res, { NewPassword: 'รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม' });
         }
-        const userID = users[0].User_ID;
 
-        // 2. ตรวจสอบ Request_code จากตาราง ResetPassword 
-        const checkTokenQuery = `SELECT * FROM ResetPassword WHERE User_ID = ? AND Request_code = ? AND Is_used = FALSE AND Datetime_at > NOW()`;
-        const [tokens] = await db.query(checkTokenQuery, [userID, resetToken]);
+        // 4. เข้ารหัสรหัสผ่านใหม่ด้วย bcrypt
+        const hashedPassword = await bcrypt.hash(values.NewPassword, 10);
 
-        if (tokens.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'รหัสยืนยันไม่ถูกต้อง หมดอายุ หรือถูกใช้งานไปแล้ว'
-            });
+        // 5. บันทึกด้วย Transaction: ทำเครื่องหมายว่าใช้ OTP แล้ว + อัปเดตรหัสผ่านในตาราง User (สำเร็จพร้อมกันหรือไม่ทำเลย)
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        const [marked] = await connection.query(
+            'UPDATE ResetPassword SET Is_used = TRUE WHERE ResetPassword_ID = ? AND Is_used = FALSE',
+            [result.reset.ResetPassword_ID]
+        );
+        if (marked.affectedRows === 0) {
+            // OTP ถูกใช้ไปแล้วระหว่างนี้ (เช่น กดยืนยันซ้ำสองครั้งพร้อมกัน)
+            await connection.rollback();
+            return res.status(400).json(otpError('OTP_EXPIRED', 'รหัส OTP หมดอายุหรือถูกใช้งานไปแล้ว กรุณาขอรหัสใหม่'));
         }
-        
-        // 3. เข้ารหัส Passwordใหม่ด้วย bcrypt
-        const hashedPassword = await bcrypt.hash(NewPassword, 10);
 
-        // 4. อัปเดตรหัสผ่านใหม่ลงในตาราง User
-        await db.query('UPDATE User SET Password = ? WHERE User_ID = ?', [hashedPassword, userID]);
+        await connection.query('UPDATE User SET Password = ? WHERE User_ID = ?', [hashedPassword, user.User_ID]);
+        await connection.commit();
+        failedOtpAttempts.delete(result.reset.ResetPassword_ID);
 
-        // 5. ทำเครื่องหมายในตาราง ResetPassword ว่า Token นี้ใช้งานแล้ว (Is_Used = TRUE)
-        await db.query('UPDATE ResetPassword SET Is_Used = TRUE WHERE Resetpassword_ID = ? ', [tokens[0].ResetPassword_ID]);
-
-        res.json({
+        res.status(200).json({
             success: true,
             message: 'เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่'
         });
     } catch (error) {
+        if (connection) await connection.rollback().catch(() => {});
         console.error('Reset Password Error:', error);
         res.status(500).json({
             success: false,
             message: 'เกิดข้อผิดพลาดในการบันทึกรหัสผ่านใหม่'
         });
+    } finally {
+        if (connection) connection.release();
     }
 });
 
-// 5. API เข้าสู่ระบบของผู้ดูแลระบบ (POST /api/auth/admin-login)
+// 4. API เข้าสู่ระบบของผู้ดูแลระบบ (POST /api/auth/admin-login)
 router.post('/admin-login', async (req, res) => {
     const { Admin_email, Admin_password } = req.body;
 
