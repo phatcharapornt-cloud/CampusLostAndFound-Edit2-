@@ -209,58 +209,5 @@ async function loginWithStudentId(body, res) {
     }
 }
 
-// 3. API เข้าสู่ระบบของผู้ดูแลระบบ (POST /api/auth/admin-login)
-// (API เปลี่ยนรหัสผ่าน / ลืมรหัสผ่าน ย้ายไปอยู่ที่ routes/resetPassword.js)
-router.post('/admin-login', async (req, res) => {
-    const { Admin_email, Admin_password } = req.body;
-
-    if (!Admin_email || !Admin_password) {
-        return res.status(400).json({
-            success: false,
-            message: 'กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน'
-        });
-    }
-
-    try {
-        // 1. ตรวจสอบว่ามี Admin_email ในฐานข้อมูล(Admin) หรือไม่
-        const getAdminQuery = 'SELECT * FROM Admin WHERE Admin_email = ?';
-        const [admins] = await db.query(getAdminQuery, [Admin_email]);
-        
-        if (admins.length === 0) {
-            return res.status(401).json({
-                success: false,
-                message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
-            });
-        }
-
-        const admin = admins[0];
-
-        // 2. ตรวจสอบรหัสผ่านของผู้ดูแลระบบ (Admin) โดยเปรียบเทียบรหัสผ่านที่ได้รับจากผู้ดูแลระบบกับรหัสผ่านที่เก็บในฐานข้อมูล
-        const isPasswordValid = await bcrypt.compare(Admin_password, admin.Admin_password);
-
-        if (!isPasswordValid) {
-            return res.status(401).json({
-                success: false,
-                message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
-            });
-        }
-        
-        // 3. ลบ Admin_password ออกจากข้อมูลผู้ดูแลระบบก่อนส่งกลับ
-        const { Admin_password: _, ...adminWithoutPassword } = admin;
-
-        res.json({
-            success: true,
-            message: 'เข้าสู่ระบบสำเร็จ',
-            role: 'admin',
-            admin: adminWithoutPassword
-        });
-    } catch (error) {
-        console.error('Admin Login Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบของผู้ดูแลระบบ'
-        });
-    }
-});
 
 module.exports = router;
