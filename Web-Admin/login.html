@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เข้าสู่ระบบผู้ดูแลระบบ | Campus Lost & Found</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        :root {
+            --primary: #f26522;
+            --primary-hover: #e05413;
+            --navy: #0f2a4a;
+            --navy-light: #1d4370;
+            --text: #111827;
+            --text-label: #374151;
+            --text-muted: #6b7280;
+            --border: #e0e0e0;
+            --bg: #f4f5f8;
+            --success: #1f9d55;
+            --success-bg: #e8f6ee;
+            --error: #d93025;
+            --error-bg: #fdecea;
+        }
+        body {
+            min-height: 100vh;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+        }
+
+        /* ---------- ฝั่งซ้าย: แบรนด์ ---------- */
+        .brand-panel {
+            flex: 0 0 44%;
+            background: linear-gradient(160deg, var(--navy) 0%, var(--navy-light) 100%);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 64px 56px;
+            position: relative;
+            overflow: hidden;
+        }
+        .brand-panel::after {
+            /* วงกลมสีส้มจาง ๆ ตกแต่งมุมล่าง */
+            content: '';
+            position: absolute;
+            width: 420px;
+            height: 420px;
+            border-radius: 50%;
+            right: -160px;
+            bottom: -180px;
+            background: radial-gradient(circle, rgba(242, 101, 34, 0.35) 0%, rgba(242, 101, 34, 0) 70%);
+        }
+        .brand-logo {
+            /* วางโลโก้บนพื้นขาว ให้โลโก้สีกรมท่าไม่กลืนกับพื้นหลัง */
+            width: 120px;
+            height: auto;
+            background-color: #ffffff;
+            border-radius: 28px;
+            padding: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            margin-bottom: 28px;
+        }
+        .brand-panel h2 {
+            font-size: 30px;
+            font-weight: 650;
+            line-height: 1.3;
+            margin-bottom: 10px;
+        }
+        .brand-panel .tagline {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.75);
+            margin-bottom: 36px;
+            max-width: 380px;
+            line-height: 1.6;
+        }
+        .feature-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            position: relative;
+            z-index: 1;
+        }
+        .feature-list li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .feature-list i {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #ffb187;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        /* ---------- ฝั่งขวา: ฟอร์มเข้าสู่ระบบ ---------- */
+        .form-panel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 24px;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 420px;
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(15, 42, 74, 0.08);
+            padding: 40px 36px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            background-color: #fff1ea;
+            border-radius: 999px;
+            padding: 4px 12px;
+            margin-bottom: 16px;
+        }
+        .login-card h1 {
+            font-size: 26px;
+            font-weight: 650;
+            margin-bottom: 6px;
+        }
+        .login-card .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 28px;
+        }
+
+        .form-alert {
+            display: none;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 13px;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+        .form-alert.is-visible { display: flex; }
+        .form-alert i { margin-top: 3px; }
+        .form-alert.is-error { background-color: var(--error-bg); color: var(--error); }
+        .form-alert.is-success { background-color: var(--success-bg); color: var(--success); }
+
+        .form-group { margin-bottom: 18px; }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-label);
+            margin-bottom: 7px;
+        }
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            height: 48px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0 14px;
+            background-color: #ffffff;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .input-wrapper:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(242, 101, 34, 0.12);
+        }
+        .input-wrapper.is-invalid { border-color: var(--error); }
+        .input-wrapper > i {
+            color: #9ca3af;
+            font-size: 15px;
+            margin-right: 10px;
+            width: 16px;
+            text-align: center;
+        }
+        .input-wrapper input {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            color: #333333;
+            background: transparent;
+        }
+        .input-wrapper input::placeholder { color: #a3a3a3; }
+        .toggle-password {
+            border: none;
+            background: none;
+            color: #9ca3af;
+            font-size: 15px;
+            cursor: pointer;
+            padding: 6px;
+            margin-right: -6px;
+            border-radius: 8px;
+        }
+        .toggle-password:hover { color: var(--text-muted); }
+        .toggle-password:focus-visible { outline: 2px solid var(--primary); }
+        .field-error {
+            font-size: 12px;
+            color: var(--error);
+            margin-top: 6px;
+        }
+        .field-error:empty { display: none; }
+
+        .button-submit {
+            width: 100%;
+            height: 50px;
+            margin-top: 8px;
+            background-color: var(--primary);
+            color: #ffffff;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(242, 101, 34, 0.28);
+            transition: background-color 0.15s;
+        }
+        .button-submit:hover { background-color: var(--primary-hover); }
+        .button-submit:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
+        .help-text {
+            margin-top: 22px;
+            font-size: 12.5px;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* ---------- จอแคบ (แท็บเล็ต/มือถือ): ซ้อนเป็นแถบบน + ฟอร์ม ---------- */
+        @media (max-width: 900px) {
+            body { flex-direction: column; }
+            .brand-panel {
+                flex: none;
+                flex-direction: row;
+                align-items: center;
+                gap: 16px;
+                padding: 20px 24px;
+            }
+            .brand-logo {
+                width: 52px;
+                border-radius: 14px;
+                padding: 5px;
+                margin-bottom: 0;
+            }
+            .brand-panel h2 {
+                font-size: 18px;
+                margin-bottom: 0;
+            }
+            .brand-panel .tagline,
+            .feature-list,
+            .brand-panel::after { display: none; }
+            .form-panel { padding: 32px 16px; align-items: flex-start; }
+            .login-card { padding: 32px 22px; }
+        }
+    </style>
+</head>
+
+<body>
+    <aside class="brand-panel">
+        <img src="logo.png" class="brand-logo" alt="Campus Finder Lost & Found">
+        <div>
+            <h2>Campus Lost &amp; Found<br>ระบบผู้ดูแล</h2>
+            <p class="tagline">สำหรับเจ้าหน้าที่ศูนย์รับแจ้งของหาย ใช้ตรวจสอบและจัดการรายการสิ่งของภายในมหาวิทยาลัย</p>
+        </div>
+        <ul class="feature-list">
+            <li><i class="fa-solid fa-box-open"></i>อนุมัติรายการสิ่งของที่พบ</li>
+            <li><i class="fa-solid fa-link"></i>ตรวจสอบการจับคู่สิ่งของที่หายกับที่พบ</li>
+            <li><i class="fa-solid fa-hand-holding"></i>อนุมัติคำขอรับสิ่งของคืน</li>
+        </ul>
+    </aside>
+
+    <main class="form-panel">
+        <div class="login-card">
+            <span class="badge"><i class="fa-solid fa-shield-halved"></i>สำหรับเจ้าหน้าที่</span>
+            <h1>เข้าสู่ระบบผู้ดูแลระบบ</h1>
+            <p class="subtitle">กรอกอีเมลและรหัสผ่านของผู้ดูแลระบบ</p>
+
+            <form id="login-form" novalidate>
+                <div class="form-alert" id="form-alert" role="alert">
+                    <i class="fa-solid fa-circle-exclamation" id="form-alert-icon"></i>
+                    <span id="form-alert-text"></span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="Admin_email">อีเมล</label>
+                    <div class="input-wrapper" id="Admin_email-wrapper">
+                        <i class="fa-regular fa-envelope"></i>
+                        <input type="email" id="Admin_email" name="Admin_email" placeholder="admin@kmitl.ac.th" autocomplete="username" maxlength="50" aria-describedby="Admin_email-error">
+                    </div>
+                    <div class="field-error" id="Admin_email-error" aria-live="polite"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="Admin_password">รหัสผ่าน</label>
+                    <div class="input-wrapper" id="Admin_password-wrapper">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="Admin_password" name="Admin_password" placeholder="••••••••" autocomplete="current-password" aria-describedby="Admin_password-error">
+                        <button type="button" class="toggle-password" id="toggle-password" aria-label="แสดงรหัสผ่าน">
+                            <i class="fa-regular fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="field-error" id="Admin_password-error" aria-live="polite"></div>
+                </div>
+
+                <button type="submit" class="button-submit" id="submit-btn">เข้าสู่ระบบ</button>
+            </form>
+
+            <p class="help-text">ลืมรหัสผ่านหรือต้องการบัญชีผู้ดูแลระบบ<br>กรุณาติดต่อผู้ดูแลระบบหลักของโครงการ</p>
+        </div>
+    </main>
+
+    <script src="admin-session.js"></script>
+    <script>
+        const DASHBOARD_PAGE = 'dashboard.html';
+        const SUBMIT_LABEL = 'เข้าสู่ระบบ';
+        const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        // เข้าสู่ระบบค้างไว้อยู่แล้ว → ไปหน้าหลักเลย
+        if (AdminSession.get()) {
+            window.location.replace(DASHBOARD_PAGE);
+        }
+
+        const form = document.getElementById('login-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const formAlert = document.getElementById('form-alert');
+        const formAlertIcon = document.getElementById('form-alert-icon');
+        const formAlertText = document.getElementById('form-alert-text');
+        const fields = {
+            Admin_email: document.getElementById('Admin_email'),
+            Admin_password: document.getElementById('Admin_password'),
+        };
+        let submitAttempted = false;
+        const touched = new Set();
+
+        function getValues() {
+            return {
+                Admin_email: fields.Admin_email.value.trim().toLowerCase(),
+                Admin_password: fields.Admin_password.value,
+            };
+        }
+
+        function validate(values) {
+            const errors = { Admin_email: '', Admin_password: '' };
+            if (!values.Admin_email) errors.Admin_email = 'กรุณากรอกอีเมล';
+            else if (!EMAIL_PATTERN.test(values.Admin_email)) errors.Admin_email = 'รูปแบบอีเมลไม่ถูกต้อง';
+            if (!values.Admin_password) errors.Admin_password = 'กรุณากรอกรหัสผ่าน';
+            return errors;
+        }
+
+        function setFieldError(name, message) {
+            document.getElementById(`${name}-error`).textContent = message || '';
+            document.getElementById(`${name}-wrapper`).classList.toggle('is-invalid', Boolean(message));
+            fields[name].setAttribute('aria-invalid', message ? 'true' : 'false');
+        }
+
+        function renderErrors() {
+            const errors = validate(getValues());
+            for (const name of Object.keys(fields)) {
+                setFieldError(name, submitAttempted || touched.has(name) ? errors[name] : '');
+            }
+            return errors;
+        }
+
+        function showFormAlert(message, type = 'error') {
+            formAlertText.textContent = message || '';
+            formAlert.classList.toggle('is-visible', Boolean(message));
+            formAlert.classList.toggle('is-error', type === 'error');
+            formAlert.classList.toggle('is-success', type === 'success');
+            formAlertIcon.className = type === 'success' ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-exclamation';
+        }
+
+        function setLoading(isLoading) {
+            submitBtn.disabled = isLoading;
+            submitBtn.innerHTML = isLoading
+                ? '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเข้าสู่ระบบ...'
+                : SUBMIT_LABEL;
+        }
+
+        for (const [name, input] of Object.entries(fields)) {
+            input.addEventListener('blur', () => {
+                if (input.value.trim() !== '') touched.add(name);
+                renderErrors();
+            });
+            input.addEventListener('input', () => {
+                if (formAlert.classList.contains('is-error')) showFormAlert('');
+                renderErrors();
+            });
+        }
+
+        document.getElementById('toggle-password').addEventListener('click', (event) => {
+            const button = event.currentTarget;
+            const isHidden = fields.Admin_password.type === 'password';
+            fields.Admin_password.type = isHidden ? 'text' : 'password';
+            button.querySelector('i').className = isHidden ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+            button.setAttribute('aria-label', isHidden ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน');
+        });
+
+        // ข้อความเมื่อถูกส่งกลับมาหน้านี้ (?expired=1 หมดเวลา, ?logout=1 ออกจากระบบ)
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('expired') === '1') {
+            showFormAlert('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
+        } else if (params.get('logout') === '1') {
+            showFormAlert('ออกจากระบบเรียบร้อยแล้ว', 'success');
+        }
+        if (params.toString()) history.replaceState(null, '', window.location.pathname);
+        fields.Admin_email.focus();
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            submitAttempted = true;
+            showFormAlert('');
+
+            const errors = renderErrors();
+            const firstInvalid = Object.keys(fields).find((name) => errors[name]);
+            if (firstInvalid) {
+                fields[firstInvalid].focus();
+                return;
+            }
+
+            setLoading(true);
+            try {
+                const response = await fetch(`${AdminSession.API_BASE_URL}/api/auth/admin-login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(getValues()),
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok && data.success && data.token) {
+                    AdminSession.save({ token: data.token, expiresAt: data.expiresAt, admin: data.admin });
+                    window.location.href = DASHBOARD_PAGE;
+                    return;
+                }
+
+                setLoading(false);
+                const serverErrors = data.errors || {};
+                for (const [name, message] of Object.entries(serverErrors)) {
+                    if (fields[name]) setFieldError(name, message);
+                }
+                if (!Object.keys(serverErrors).some((name) => fields[name])) {
+                    let message = data.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง';
+                    if (response.status === 401 && data.attemptsLeft > 0 && data.attemptsLeft <= 2) {
+                        message += ` (กรอกผิดได้อีก ${data.attemptsLeft} ครั้ง ก่อนถูกล็อกชั่วคราว)`;
+                    }
+                    showFormAlert(message);
+                }
+                if (response.status === 401) {
+                    fields.Admin_password.focus();
+                    fields.Admin_password.select();
+                }
+            } catch (error) {
+                setLoading(false);
+                showFormAlert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว และลองใหม่อีกครั้ง');
+            }
+        });
+    </script>
+</body>
+</html>
