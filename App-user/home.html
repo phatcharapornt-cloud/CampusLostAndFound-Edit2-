@@ -166,6 +166,45 @@
             text-overflow: ellipsis;
         }
         select:focus { border-color: var(--primary); }
+        .input-wrap { position: relative; }
+        .input-wrap i {
+            position: absolute;
+            left: 13px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 13px;
+            pointer-events: none;
+        }
+        .input-wrap input {
+            width: 100%;
+            appearance: none;
+            -webkit-appearance: none;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 14px 10px 36px;
+            font-size: 13.5px;
+            color: #333333;
+            background-color: #ffffff;
+            outline: none;
+        }
+        .input-wrap input::placeholder { color: #a8adb5; }
+        .input-wrap input:focus { border-color: var(--primary); }
+        .field-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 11.5px;
+            color: #9ca3af;
+            margin: 2px 0 10px;
+        }
+        .field-divider::before,
+        .field-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background-color: var(--border);
+        }
         .form-error {
             font-size: 12px;
             color: var(--error);
@@ -395,6 +434,15 @@
                 </div>
                 <form id="search-form" novalidate>
                     <div class="field">
+                        <label for="keyword">ชื่อสิ่งของ</label>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="keyword" name="keyword" maxlength="100" autocomplete="off" enterkeyhint="search"
+                                   placeholder="เช่น กระเป๋าสตางค์, หูฟัง, ร่ม">
+                        </div>
+                    </div>
+                    <div class="field-divider">และ/หรือ เลือกเพิ่ม</div>
+                    <div class="field">
                         <label for="Category_ID">หมวดหมู่</label>
                         <div class="select-wrap">
                             <i class="fa-solid fa-tag"></i>
@@ -459,6 +507,11 @@
             if (withMatch) {
                 const full = item.matchScore === 100;
                 const chips = [];
+                if (item.searched.keyword) {
+                    if (item.matched.name) chips.push('<span class="pill hit">✓ ชื่อสิ่งของ</span>');
+                    else if (item.matched.description) chips.push('<span class="pill hit">✓ รายละเอียด</span>');
+                    else chips.push('<span class="pill miss">ชื่อสิ่งของ</span>');
+                }
                 if (item.searched.category) chips.push(`<span class="pill ${item.matched.category ? 'hit' : 'miss'}">${item.matched.category ? '✓ ' : ''}หมวดหมู่</span>`);
                 if (item.searched.location) chips.push(`<span class="pill ${item.matched.location ? 'hit' : 'miss'}">${item.matched.location ? '✓ ' : ''}สถานที่</span>`);
                 matchRow = `<div class="match-row"><span class="pill score${full ? '' : ' partial'}">ตรงกัน ${item.matchScore}%</span>${chips.join('')}</div>`;
@@ -553,22 +606,28 @@
         }
 
         searchForm.addEventListener('change', () => { searchError.textContent = ''; });
+        searchForm.addEventListener('input', () => { searchError.textContent = ''; });
 
         searchForm.addEventListener('submit', async (event) => {
             event.preventDefault();
+            const keywordInput = document.getElementById('keyword');
             const categorySelect = document.getElementById('Category_ID');
             const locationSelect = document.getElementById('Location_ID');
+            const keyword = keywordInput.value.trim();
             const categoryId = categorySelect.value;
             const locationId = locationSelect.value;
 
-            if (!categoryId && !locationId) {
-                searchError.textContent = 'กรุณาเลือกหมวดหมู่หรือสถานที่อย่างน้อย 1 อย่าง';
+            if (!keyword && !categoryId && !locationId) {
+                searchError.textContent = 'กรุณากรอกชื่อสิ่งของ หรือเลือกหมวดหมู่/สถานที่อย่างน้อย 1 อย่าง';
+                keywordInput.focus();
                 return;
             }
             searchError.textContent = '';
+            keywordInput.blur();   // มือถือ: ซ่อนคีย์บอร์ดให้เห็นผลการค้นหา
             setSearching(true);
 
             const query = new URLSearchParams();
+            if (keyword) query.set('keyword', keyword);
             if (categoryId) query.set('Category_ID', categoryId);
             if (locationId) query.set('Location_ID', locationId);
 
@@ -579,8 +638,9 @@
                     return;
                 }
 
-                const searched = { category: Boolean(categoryId), location: Boolean(locationId) };
+                const searched = { keyword: Boolean(keyword), category: Boolean(categoryId), location: Boolean(locationId) };
                 const conditions = [
+                    keyword && `ชื่อ "${keyword}"`,
                     categoryId && `หมวดหมู่ "${categorySelect.selectedOptions[0].text}"`,
                     locationId && `สถานที่ "${locationSelect.selectedOptions[0].text}"`,
                 ].filter(Boolean).join(' และ ');
