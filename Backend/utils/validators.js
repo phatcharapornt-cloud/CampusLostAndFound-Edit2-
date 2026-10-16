@@ -176,11 +176,41 @@ function validatePasswordReset(body) {
     };
 }
 
+// ---------- เข้าสู่ระบบผู้ดูแลระบบ (Admin) ----------
+
+// รูปแบบอีเมลทั่วไป (Admin ไม่จำเป็นต้องเป็นอีเมลนักศึกษา) ยาวไม่เกิน VARCHAR(50)
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ADMIN_EMAIL_MAX_LENGTH = 50;
+
+function validateAdminEmail(email) {
+    if (!email) return 'กรุณากรอกอีเมล';
+    if (email.length > ADMIN_EMAIL_MAX_LENGTH || !EMAIL_PATTERN.test(email)) return 'รูปแบบอีเมลไม่ถูกต้อง';
+    return null;
+}
+
+// ตรวจแค่ว่ากรอกครบและอีเมลถูกรูปแบบ (ความถูกต้องของรหัสผ่านตรวจใน routes/adminauth.js)
+function validateAdminLogin(body) {
+    const values = {
+        Admin_email: toText(body.Admin_email).trim().toLowerCase(),
+        Admin_password: toText(body.Admin_password),
+    };
+    return {
+        values,
+        errors: collectErrors({
+            Admin_email: validateAdminEmail(values.Admin_email),
+            Admin_password: values.Admin_password ? null : 'กรุณากรอกรหัสผ่าน',
+        }),
+    };
+}
+
 module.exports = {
     STUDENT_ID_PATTERN,
     UNIVERSITY_EMAIL_DOMAIN,
     PASSWORD_RULES,
     getFailedPasswordRules,
+    validatePassword,
+    validateAdminEmail,
+    validateAdminLogin,
     validateRegistration,
     validateLogin,
     validateResetRequest,
