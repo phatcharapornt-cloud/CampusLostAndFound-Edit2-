@@ -118,6 +118,64 @@ function validateLogin(body) {
     return { values, errors };
 }
 
+// ---------- เปลี่ยนรหัสผ่าน (Reset Password) ----------
+
+// รหัส OTP เป็นตัวเลข 6 หลัก
+const OTP_PATTERN = /^\d{6}$/;
+
+function validateOtp(otp) {
+    if (!otp) return 'กรุณากรอกรหัส OTP';
+    if (!OTP_PATTERN.test(otp)) return 'รหัส OTP ต้องเป็นตัวเลข 6 หลัก';
+    return null;
+}
+
+// รวมผลตรวจของแต่ละฟิลด์ให้เป็น { ชื่อฟิลด์: ข้อความ } (เก็บเฉพาะฟิลด์ที่ไม่ผ่าน)
+function collectErrors(checks) {
+    const errors = {};
+    for (const [field, message] of Object.entries(checks)) {
+        if (message) errors[field] = message;
+    }
+    return errors;
+}
+
+// ขั้นที่ 1: ขอรหัส OTP ด้วยรหัสนักศึกษา
+function validateResetRequest(body) {
+    const values = { Student_ID: toText(body.Student_ID).trim() };
+    return { values, errors: collectErrors({ Student_ID: validateStudentId(values.Student_ID) }) };
+}
+
+// ขั้นที่ 2: ยืนยันรหัส OTP
+function validateOtpVerification(body) {
+    const values = {
+        Student_ID: toText(body.Student_ID).trim(),
+        OTP: toText(body.OTP).trim(),
+    };
+    return {
+        values,
+        errors: collectErrors({
+            Student_ID: validateStudentId(values.Student_ID),
+            OTP: validateOtp(values.OTP),
+        }),
+    };
+}
+
+// ขั้นที่ 3: ตั้งรหัสผ่านใหม่ (ใช้เงื่อนไขความปลอดภัยชุดเดียวกับตอนสมัครสมาชิก)
+function validatePasswordReset(body) {
+    const values = {
+        Student_ID: toText(body.Student_ID).trim(),
+        OTP: toText(body.OTP ?? body.resetToken).trim(), // รองรับชื่อเดิม resetToken ด้วย
+        NewPassword: toText(body.NewPassword),
+    };
+    return {
+        values,
+        errors: collectErrors({
+            Student_ID: validateStudentId(values.Student_ID),
+            OTP: validateOtp(values.OTP),
+            NewPassword: validatePassword(values.NewPassword),
+        }),
+    };
+}
+
 module.exports = {
     STUDENT_ID_PATTERN,
     UNIVERSITY_EMAIL_DOMAIN,
@@ -125,4 +183,7 @@ module.exports = {
     getFailedPasswordRules,
     validateRegistration,
     validateLogin,
+    validateResetRequest,
+    validateOtpVerification,
+    validatePasswordReset,
 };
