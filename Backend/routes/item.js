@@ -1,34 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
-const fs = require('fs');
-const path = require('path');
 
-// นำเข้าฟังก์ชันประมวลผลจับคู่จากไฟล์ matchitem.js
+// ฟังก์ชันประมวลผลจับคู่สิ่งของ (service/matchingService.js)
 const { processMatchingByLostItem, processMatchingByFoundItem } = require('../service/matchingService');
-const { validateLostItemReport, validateFoundItemReport } = require('../utils/validators');
+const { validateLostItemReport, validateFoundItemReport, validateAdminFoundItemRecord, validateStudentId } = require('../utils/validators');
+const { requireAdmin } = require('../utils/admintoken');
 const { FOUND_EXPIRE_MINUTES, MESSAGES: FOUND_MESSAGES } = require('../service/foundstatus');
 const { parseImageDataUrl, saveImage, removeUpload } = require('../utils/imageupload');
-
-// ฟังก์ชันแปลง Base64 แล้วบันทึกเป็นไฟล์รูปภาพลงโฟลเดอร์ uploads
-function saveBase64Image(base64Data, prefix) {
-    if (!base64Data) return null;
-    
-    // ตรวจจับ Data URI (jpeg, png, jpg, gif)
-    const matches = base64Data.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
-    if (!matches) return null;
-
-    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
-    const data = matches[2];
-    const fileName = `${prefix}_${Date.now()}.${ext}`;
-    const filePath = path.join(__dirname, '../uploads', fileName);
-
-    // บันทึกไฟล์รูปจริงลงในโฟลเดอร์ Backend/uploads
-    fs.writeFileSync(filePath, Buffer.from(data, 'base64'));
-
-    // คืนค่าเฉพาะ Path สั้นๆ สำหรับเซฟลง Database
-    return `/uploads/${fileName}`;
-}
 
 // 1. API แจ้งสิ่งของที่หาย (POST /api/items/lostitem) ใช้กับหน้า App-user/reportlost.html
 // body (JSON): { User_ID, LostItem_name, Category_ID, Location_ID, Lost_date: 'YYYY-MM-DD', Lost_time: 'HH:MM',
@@ -261,83 +240,134 @@ router.post('/founditem/user', async (req, res) => {
     }
 });
 
-// 3. API แจ้งสิ่งของที่พบโดยผู้ดูแล (admin) (POST /api/items/founditem/admin)
-router.post('/founditem/admin', async (req, res) => {
-    const {
-        Admin_ID,     // Admin ที่เข้าสู่ระบบ
-        Student_ID,   // รหัสนักศึกษาของผู้นำของมาคืน (Admin กรอก)
-        Category_ID,
-        Location_ID,
-        FoundItem_name,
-        Found_date,
-        Found_time,
-        Found_description,
-        Found_photo,
-    } = req.body;   
+// 3. Admin บันทึกสิ่งของที่พบแทนนักศึกษาที่นำของมาส่งที่ส่วนกลาง (POST /api/items/founditem/admin)
+//    ใช้กับหน้า Web-Admin/recordfound.html ต้องเข้าสู่ระบบ Admin: header Authorization: Bearer <token> (Admin_ID มาจาก token)
+// body (JSON): { Student_ID, FoundItem_name, Category_ID, Location_ID, Found_date: 'YYYY-MM-DD', Found_time: 'HH:MM',
+//                Found_description, Found_photo: 'data:image/jpeg;base64,...' (บังคับ) }   ← เหมือนผู้ใช้แจ้งเอง + รหัสนักศึกษา
+// 201 = บันทึกลง FoundItem สถานะ 'อนุมัติแล้ว' ทันที (Admin_ID = ผู้บันทึก) + แจ้งเตือนนักศึกษาผู้นำของมาส่ง
+//       แล้วเริ่มจับคู่กับสิ่งของที่หายทันที (ถ้า Match Score >= 80 จะแจ้งเตือน Admin "พบรายการจับคู่สิ่งของรายการใหม่")
+// 400 = ข้อมูลไม่ถูกต้อง { message, errors: { ชื่อฟิลด์: ข้อความ } }, 404 (code STUDENT_NOT_FOUND) = ไม่พบรหัสนักศึกษาในระบบ
+router.post('/founditem/admin', requireAdmin, async (req, res) => {
+    const { values, errors } = validateAdminFoundItemRecord(req.body || {});
 
-    if (!Admin_ID || !Student_ID || !Category_ID || !Location_ID || !FoundItem_name || !Found_date || !Found_time || !Found_photo || !Found_description) {
-        return res.status(400).json({
-            success: false,
-            message: 'กรุณากรอกข้อมูลให้ครบถ้วน'
-        });
+    let image = null;
+    if (values.Found_photo) {
+        image = parseImageDataUrl(values.Found_photo);
+        if (image.error) errors.Found_photo = image.error;
+    }
+    if (Object.keys(errors).length > 0) {
+        return res.status(400).json({ success: false, message: Object.values(errors)[0], errors });
     }
 
+    let connection;
+    let photoPath = null;
+    let inTransaction = false;
+    let newFoundId;
+    let student;
+    let notiMessage;
     try {
-        // ค้นหา User_ID จาก Student_ID ที่ Admin กรอกเข้ามา
-        const [users] = await db.query('SELECT User_ID FROM User WHERE Student_ID = ?', [Student_ID]);
+        connection = await db.getConnection();
 
-        if (users.length === 0) {
-            return res.status(404).json({
+        const [[admin]] = await connection.query('SELECT Admin_ID FROM Admin WHERE Admin_ID = ?', [req.admin.Admin_ID]);
+        if (!admin) {
+            return res.status(401).json({ success: false, code: 'ADMIN_UNAUTHORIZED', message: 'ไม่พบบัญชีผู้ดูแลระบบ กรุณาเข้าสู่ระบบใหม่อีกครั้ง' });
+        }
+
+        // นักศึกษาผู้นำของมาส่ง ต้องมีบัญชีในระบบ (FoundItem.User_ID ต้องอ้างถึงผู้ใช้จริง)
+        [[student]] = await connection.query(
+            'SELECT User_ID, Student_ID, FName, LName FROM User WHERE Student_ID = ?',
+            [values.Student_ID]
+        );
+        const refErrors = {};
+        if (!student) refErrors.Student_ID = 'ไม่พบรหัสนักศึกษานี้ในระบบ กรุณาให้นักศึกษาสมัครใช้งานแอปพลิเคชันก่อน หรือตรวจสอบรหัสอีกครั้ง';
+        const [[exists]] = await connection.query(
+            `SELECT EXISTS(SELECT 1 FROM Category WHERE Category_ID = ?) AS category,
+                    EXISTS(SELECT 1 FROM Location WHERE Location_ID = ?) AS location`,
+            [values.Category_ID, values.Location_ID]
+        );
+        if (!exists.category) refErrors.Category_ID = 'ไม่พบหมวดหมู่ที่เลือก กรุณาเลือกใหม่';
+        if (!exists.location) refErrors.Location_ID = 'ไม่พบสถานที่ที่เลือก กรุณาเลือกใหม่';
+        if (Object.keys(refErrors).length > 0) {
+            return res.status(student ? 400 : 404).json({
                 success: false,
-                message: 'ไม่พบข้อมูลนักศึกษานี้ในระบบ กรุณาให้นักศึกษาสมัครใช้งานในแอปพลิเคชันและตรวจสอบความถูกต้องอีกครั้ง'
+                ...(student ? {} : { code: 'STUDENT_NOT_FOUND' }),
+                message: Object.values(refErrors)[0],
+                errors: refErrors
             });
         }
 
-        const userID = users[0].User_ID;
-        const status = 'อนุมัติแล้ว'; // Admin บันทึกเอง ถือว่าอนุมัติทันที
-        const photoPath = saveBase64Image(Found_photo, 'found');
+        photoPath = saveImage(image, 'found'); // บันทึกรูปลง Backend/uploads แล้วเก็บแค่ path ในฐานข้อมูล
 
-        const insertFoundItemQuery = `
-            INSERT INTO FoundItem (User_ID, Admin_ID, Category_ID, Location_ID, FoundItem_name, Found_date, Found_time, Found_description, Found_photo, Found_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-
-        const [result] = await db.query(insertFoundItemQuery, [
-            userID,       // User_ID ของนักศึกษาคนที่นำของมาคืน
-            Admin_ID,     // Admin_ID ของ Admin ผู้คีย์ข้อมูล
-            Category_ID,
-            Location_ID,
-            FoundItem_name,
-            Found_date,
-            Found_time,
-            Found_description,
-            photoPath,
-            status
-        ]);
-
-        const newFoundId = result.insertId;
-
-        // บันทึกการแจ้งเตือน เมื่อAdminทำการแจ้งสิ่งของที่พบสำเร็จ
-        const adminNotiMessage = `บันทึกรายการสิ่งของที่พบ "${FoundItem_name}" สำเร็จแล้ว`;
-        await db.query(
-            `INSERT INTO Notification (Admin_ID, Found_ID, Message) VALUES (?, ?, ?)`,
-            [Admin_ID, newFoundId, adminNotiMessage]
+        // บันทึกสิ่งของที่พบ (อนุมัติแล้ว) + แจ้งเตือนนักศึกษา พร้อมกัน
+        await connection.beginTransaction();
+        inTransaction = true;
+        const [result] = await connection.query(
+            `INSERT INTO FoundItem (User_ID, Admin_ID, Category_ID, Location_ID, FoundItem_name, Found_date, Found_time, Found_description, Found_photo, Found_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'อนุมัติแล้ว')`,
+            [
+                student.User_ID,
+                admin.Admin_ID,
+                values.Category_ID,
+                values.Location_ID,
+                values.FoundItem_name,
+                values.Found_date,
+                values.Found_time,
+                values.Found_description,
+                photoPath
+            ]
         );
-
-        // ประมวลผลจับคู่อัตโนมัติทันที
-        processMatchingByFoundItem(newFoundId);
-
-        res.status(201).json({
-            success: true,
-            message: 'บันทึกสิ่งของที่พบและประมวลผลจับคู่เรียบร้อยแล้ว',
-            FoundItem_ID: newFoundId
-        });
+        newFoundId = result.insertId;
+        notiMessage = FOUND_MESSAGES.recordedByAdmin(values.FoundItem_name);
+        await connection.query(
+            'INSERT INTO Notification (User_ID, Found_ID, Message) VALUES (?, ?, ?)',
+            [student.User_ID, newFoundId, notiMessage]
+        );
+        await connection.commit();
+        inTransaction = false;
     } catch (error) {
-        console.error('Error reporting found item by admin:', error);
-        res.status(500).json({
-            success: false,
-            message: 'เกิดข้อผิดพลาดในการบันทึกสิ่งของที่พบ'
-        });
+        if (inTransaction) await connection.rollback().catch(() => {});
+        removeUpload(photoPath);
+        console.error('Error recording found item by admin:', error);
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึกสิ่งของที่พบ กรุณาลองใหม่อีกครั้ง' });
+    } finally {
+        if (connection) connection.release();
+    }
+
+    // เริ่มจับคู่กับสิ่งของที่หายทันที (ถ้าจับคู่ไม่สำเร็จ การบันทึกยังมีผลตามปกติ)
+    let matchIds = [];
+    try {
+        matchIds = (await processMatchingByFoundItem(newFoundId)) || [];
+    } catch (error) {
+        console.error('Error matching recorded found item:', error);
+    }
+
+    res.status(201).json({
+        success: true,
+        message: 'บันทึกรายการสิ่งของที่พบสำเร็จ',
+        Found_ID: newFoundId,
+        Found_status: 'อนุมัติแล้ว',
+        Found_photo: photoPath,
+        student: { Student_ID: student.Student_ID, FName: student.FName, LName: student.LName },
+        notification: { Message: notiMessage },
+        matches: { count: matchIds.length, Match_IDs: matchIds }
+    });
+});
+
+// 3.1 ตรวจรหัสนักศึกษาก่อนบันทึก (GET /api/items/founditem/admin/student/:studentId) ให้ Admin เห็นชื่อผู้นำของมาส่ง
+// 200 = { student: { Student_ID, FName, LName } }, 404 (code STUDENT_NOT_FOUND)
+router.get('/founditem/admin/student/:studentId', requireAdmin, async (req, res) => {
+    const studentId = String(req.params.studentId || '').trim();
+    const error = validateStudentId(studentId);
+    if (error) return res.status(400).json({ success: false, message: error });
+    try {
+        const [[student]] = await db.query('SELECT Student_ID, FName, LName FROM User WHERE Student_ID = ?', [studentId]);
+        if (!student) {
+            return res.status(404).json({ success: false, code: 'STUDENT_NOT_FOUND', message: 'ไม่พบรหัสนักศึกษานี้ในระบบ' });
+        }
+        res.json({ success: true, student });
+    } catch (err) {
+        console.error('Error looking up student:', err);
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบรหัสนักศึกษา' });
     }
 });
 

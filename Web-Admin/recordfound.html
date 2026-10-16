@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บันทึกรายการสิ่งของที่พบ | Campus Lost & Found Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin-layout.css">
+
+    <!--
+        Admin บันทึกสิ่งของที่นักศึกษานำมาส่งที่ส่วนกลางโดยตรง
+        กรอกข้อมูลเหมือนผู้ใช้แจ้งสิ่งของที่พบ (App-user/reportfound.html) + รหัสนักศึกษาของผู้นำของมาส่ง
+        บันทึกแล้วสถานะเป็น "อนุมัติแล้ว" ทันที (ไม่ต้องรออนุมัติ) และระบบเริ่มจับคู่กับสิ่งของที่หาย
+        Backend: POST /api/items/founditem/admin, GET /api/items/founditem/admin/student/:studentId
+    -->
+    <style>
+        [hidden] { display: none !important; }
+
+        .page-head .crumb { font-size: 12.5px; color: var(--text-muted); margin-bottom: 2px; }
+        .page-head .crumb a { color: var(--text-muted); text-decoration: none; }
+        .page-head .crumb a:hover { color: var(--primary); }
+        .page-head p { font-size: 13.5px; color: var(--text-muted); }
+
+        .record-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            gap: 20px;
+            align-items: start;
+        }
+        .form-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        .card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px 20px 20px;
+        }
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 14px;
+        }
+        .card-title .step {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--primary-soft);
+            color: var(--primary);
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+        .field + .field, .grid-2 + .field, .field + .grid-2 { margin-top: 14px; }
+        .grid-2 > .field + .field { margin-top: 0; }
+        .label-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+        label, .label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+        }
+        .req { color: var(--error); margin-left: 2px; }
+        .counter { font-size: 11.5px; color: #9ca3af; font-variant-numeric: tabular-nums; }
+        .counter.is-full { color: var(--error); }
+        .hint { font-size: 12px; color: var(--text-muted); }
+        input[type="text"], input[type="date"], input[type="time"], select, textarea {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text);
+            background-color: #ffffff;
+            outline: none;
+        }
+        textarea { resize: vertical; min-height: 96px; line-height: 1.5; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(242, 101, 34, 0.12); }
+        select.is-placeholder { color: #9ca3af; }
+        select option { color: var(--text); }
+        .field.is-invalid input, .field.is-invalid select, .field.is-invalid textarea { border-color: var(--error); }
+        .field-error { font-size: 12px; color: var(--error); min-height: 0; }
+        .field-error:empty { display: none; }
+
+        /* รหัสนักศึกษา + ผลการตรวจ */
+        .student-row { display: flex; gap: 10px; align-items: stretch; }
+        .student-row input { max-width: 220px; font-variant-numeric: tabular-nums; letter-spacing: 0.5px; }
+        .student-check {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            padding: 0 12px;
+            border-radius: 10px;
+            background-color: var(--bg);
+            color: var(--text-muted);
+            min-height: 42px;
+        }
+        .student-check.is-ok { background-color: var(--success-soft); color: var(--success); font-weight: 500; }
+        .student-check.is-bad { background-color: var(--error-soft); color: var(--error); }
+
+        .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .chip-btn {
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            color: #374151;
+            font-family: inherit;
+            font-size: 12.5px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .chip-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .chip-btn.is-active { border-color: var(--primary); background-color: var(--primary-soft); color: var(--primary); }
+
+        /* รูปภาพ */
+        .photo-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+        .photo-drop {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 170px;
+            border: 1.5px dashed #d1d5db;
+            border-radius: 14px;
+            background-color: #fafbfc;
+            color: var(--text-muted);
+            font-size: 13px;
+            text-align: center;
+            cursor: pointer;
+            padding: 16px;
+        }
+        .photo-drop i { font-size: 26px; color: #9ca3af; }
+        .photo-drop strong { color: var(--text); font-weight: 500; }
+        .photo-drop:hover, .photo-drop.is-dragover { border-color: var(--primary); background-color: var(--primary-soft); }
+        .photo-input:focus-visible + .photo-drop { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .field.is-invalid .photo-drop { border-color: var(--error); }
+        .photo-busy {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 170px;
+            border-radius: 14px;
+            background-color: #fafbfc;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+        .photo-preview { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+        .photo-preview img {
+            width: 220px;
+            max-width: 100%;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .photo-actions { display: flex; gap: 8px; }
+        .photo-actions button {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 7px 12px;
+            font-family: inherit;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .photo-actions button:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* สรุปด้านขวา */
+        .summary { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 14px; }
+        .summary .card { padding: 16px; }
+        .sum-thumb {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            border-radius: 12px;
+            background-color: #eef2f7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 28px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .sum-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .sum-name { font-size: 15px; font-weight: 600; color: var(--text); word-break: break-word; margin-bottom: 8px; }
+        .sum-name.is-empty { color: #9ca3af; font-weight: 400; }
+        .sum-rows { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; font-size: 12.5px; }
+        .sum-rows dt { color: var(--text-muted); white-space: nowrap; }
+        .sum-rows dd { color: var(--text); word-break: break-word; }
+        .after-save { font-size: 12.5px; color: #374151; line-height: 1.6; }
+        .after-save h3 { font-size: 13px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 7px; }
+        .after-save ul { padding-left: 18px; }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background-color: var(--success-soft);
+            color: var(--success);
+        }
+        .primary-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 16px;
+            background-color: var(--primary);
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 14.5px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .primary-btn:hover { background-color: var(--primary-hover); }
+        .primary-btn:disabled { opacity: 0.65; cursor: wait; }
+        .primary-btn:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+        .secondary-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 11px 16px;
+            background-color: #ffffff;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .secondary-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .form-error {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            background-color: var(--error-soft);
+            color: var(--error);
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 13px;
+        }
+        .form-error i { margin-top: 2px; }
+
+        /* บันทึกสำเร็จ */
+        .success-card { max-width: 720px; text-align: center; padding: 32px 28px; }
+        .success-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background-color: var(--success-soft);
+            color: var(--success);
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+        }
+        .success-card h2 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+        .success-card > p { font-size: 13.5px; color: var(--text-muted); }
+        .success-item {
+            display: flex;
+            gap: 14px;
+            text-align: left;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px;
+            margin: 18px 0 14px;
+        }
+        .success-item img { width: 96px; height: 96px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background-color: #eef2f7; }
+        .success-item .info { min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151; }
+        .success-item .info strong { font-size: 15px; color: var(--text); word-break: break-word; }
+        .success-item .found-id { font-weight: 600; color: var(--navy); }
+        .match-note {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 13.5px;
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 18px;
+            background-color: var(--bg);
+            color: #374151;
+        }
+        .match-note.has-match { background-color: var(--primary-soft); color: #9a3412; }
+        .match-note a { color: var(--primary); font-weight: 600; }
+        .success-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .success-actions .primary-btn { width: auto; }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 28px;
+            transform: translate(-50%, 16px);
+            max-width: calc(100% - 32px);
+            background-color: rgba(17, 24, 39, 0.92);
+            color: #ffffff;
+            font-size: 13.5px;
+            padding: 11px 18px;
+            border-radius: 12px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+        .toast.is-error i { color: #fca5a5; }
+
+        @media (max-width: 1100px) {
+            .record-layout { grid-template-columns: 1fr; }
+            .summary { position: static; }
+            .sum-preview { display: none; }
+        }
+        @media (max-width: 640px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .card { padding: 16px; }
+            .student-row { flex-direction: column; }
+            .student-row input { max-width: none; }
+            .success-card { padding: 24px 16px; }
+        }
+    </style>
+</head>
+
+<body class="is-checking">
+    <div class="admin-app">
+        <aside class="admin-sidebar" id="admin-sidebar"></aside>
+        <div class="admin-main">
+            <header class="admin-topbar" id="admin-topbar"></header>
+            <main class="admin-content">
+                <div class="page-head">
+                    <div class="crumb"><a href="dashboard.html">หน้าหลัก</a> / บันทึกรายการสิ่งของที่พบ</div>
+                    <p>บันทึกสิ่งของที่นักศึกษานำมาส่งที่ส่วนกลางโดยตรง · บันทึกแล้วสถานะเป็น <b>"อนุมัติแล้ว"</b> ทันที และระบบจะเริ่มจับคู่กับรายการสิ่งของที่หาย</p>
+                </div>
+
+                <!-- ฟอร์มบันทึก -->
+                <div class="record-layout" id="form-view">
+                    <form class="form-col" id="record-form" novalidate>
+                        <div class="form-error" id="form-error" role="alert" hidden><i class="fa-solid fa-circle-exclamation"></i><span></span></div>
+
+                        <section class="card" aria-labelledby="sec-student">
+                            <h2 class="card-title" id="sec-student"><span class="step">1</span>ผู้นำสิ่งของมาส่ง</h2>
+                            <div class="field" data-field="Student_ID">
+                                <label for="Student_ID">รหัสนักศึกษา<span class="req">*</span></label>
+                                <div class="student-row">
+                                    <input type="text" id="Student_ID" name="Student_ID" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="เช่น 66030301">
+                                    <span class="student-check" id="student-check" aria-live="polite"><i class="fa-regular fa-id-card"></i>กรอกรหัส 8 หลัก ระบบจะแสดงชื่อนักศึกษา</span>
+                                </div>
+                                <div class="field-error" id="Student_ID-error"></div>
+                                <div class="hint">นักศึกษาต้องมีบัญชีในแอปพลิเคชัน และจะได้รับการแจ้งเตือนเมื่อบันทึกสำเร็จ</div>
+                            </div>
+                        </section>
+
+                        <section class="card" aria-labelledby="sec-item">
+                            <h2 class="card-title" id="sec-item"><span class="step">2</span>ข้อมูลสิ่งของ</h2>
+                            <div class="grid-2">
+                                <div class="field" data-field="FoundItem_name">
+                                    <div class="label-row">
+                                        <label for="FoundItem_name">ชื่อสิ่งของ<span class="req">*</span></label>
+                                        <span class="counter" id="name-counter">0/100</span>
+                                    </div>
+                                    <input type="text" id="FoundItem_name" name="FoundItem_name" maxlength="100" autocomplete="off" placeholder="เช่น กระเป๋าสตางค์สีน้ำตาล">
+                                    <div class="field-error" id="FoundItem_name-error"></div>
+                                </div>
+                                <div class="field" data-field="Category_ID">
+                                    <label for="Category_ID">หมวดหมู่<span class="req">*</span></label>
+                                    <select id="Category_ID" name="Category_ID" class="is-placeholder">
+                                        <option value="">เลือกหมวดหมู่</option>
+                                    </select>
+                                    <div class="field-error" id="Category_ID-error"></div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="card" aria-labelledby="sec-where">
+                            <h2 class="card-title" id="sec-where"><span class="step">3</span>พบที่ไหน เมื่อไหร่</h2>
+                            <div class="field" data-field="Location_ID">
+                                <label for="Location_ID">สถานที่ที่พบ (ในคณะวิทยาศาสตร์)<span class="req">*</span></label>
+                                <select id="Location_ID" name="Location_ID" class="is-placeholder">
+                                    <option value="">เลือกสถานที่</option>
+                                </select>
+                                <div class="field-error" id="Location_ID-error"></div>
+                            </div>
+                            <div class="grid-2">
+                                <div class="field" data-field="Found_date">
+                                    <label for="Found_date">วันที่พบ<span class="req">*</span></label>
+                                    <input type="date" id="Found_date" name="Found_date" min="2000-01-01">
+                                    <div class="field-error" id="Found_date-error"></div>
+                                </div>
+                                <div class="field" data-field="Found_time">
+                                    <label for="Found_time">เวลาที่พบ<span class="req">*</span></label>
+                                    <input type="time" id="Found_time" name="Found_time">
+                                    <div class="field-error" id="Found_time-error"></div>
+                                </div>
+                            </div>
+                            <div class="chips">
+                                <button type="button" class="chip-btn" id="just-now">เมื่อสักครู่</button>
+                                <button type="button" class="chip-btn" data-days-ago="0">วันนี้</button>
+                                <button type="button" class="chip-btn" data-days-ago="1">เมื่อวาน</button>
+                            </div>
+                        </section>
+
+                        <section class="card" aria-labelledby="sec-detail">
+                            <h2 class="card-title" id="sec-detail"><span class="step">4</span>รูปภาพและรายละเอียด</h2>
+                            <div class="field" data-field="Found_photo">
+                                <span class="label">รูปภาพของสิ่งของ<span class="req">*</span></span>
+                                <input type="file" id="photo-input" class="photo-input" accept="image/*" aria-label="รูปภาพของสิ่งของที่พบ">
+                                <label class="photo-drop" for="photo-input" id="photo-drop">
+                                    <i class="fa-solid fa-camera"></i>
+                                    <strong>คลิกเพื่อเลือกรูป หรือลากไฟล์มาวางที่นี่</strong>
+                                    <span>JPG / PNG ไม่เกิน 15 MB (ระบบย่อขนาดให้อัตโนมัติ)</span>
+                                </label>
+                                <div class="photo-busy" id="photo-busy" hidden><i class="fa-solid fa-spinner fa-spin"></i>กำลังเตรียมรูปภาพ...</div>
+                                <div class="photo-preview" id="photo-preview" hidden>
+                                    <img id="photo-img" alt="รูปสิ่งของที่พบ">
+                                    <div class="photo-actions">
+                                        <button type="button" id="photo-change"><i class="fa-solid fa-rotate"></i>เปลี่ยนรูป</button>
+                                        <button type="button" id="photo-remove"><i class="fa-solid fa-trash-can"></i>ลบรูป</button>
+                                    </div>
+                                </div>
+                                <div class="field-error" id="Found_photo-error"></div>
+                            </div>
+                            <div class="field" data-field="Found_description">
+                                <div class="label-row">
+                                    <label for="Found_description">รายละเอียดเพิ่มเติม<span class="req">*</span></label>
+                                    <span class="counter" id="desc-counter">0/200</span>
+                                </div>
+                                <textarea id="Found_description" name="Found_description" maxlength="200" rows="4"
+                                          placeholder="เช่น ยี่ห้อ สี ตำหนิ หรือสิ่งที่อยู่ข้างใน"></textarea>
+                                <div class="field-error" id="Found_description-error"></div>
+                            </div>
+                        </section>
+                    </form>
+
+                    <aside class="summary" aria-label="สรุปรายการ">
+                        <div class="card sum-preview">
+                            <div class="sum-thumb" id="sum-thumb"><i class="fa-solid fa-box"></i></div>
+                            <div class="sum-name is-empty" id="sum-name">ยังไม่ได้กรอกชื่อสิ่งของ</div>
+                            <dl class="sum-rows">
+                                <dt>ผู้นำมาส่ง</dt><dd id="sum-student">-</dd>
+                                <dt>หมวดหมู่</dt><dd id="sum-category">-</dd>
+                                <dt>สถานที่</dt><dd id="sum-location">-</dd>
+                                <dt>วันเวลาที่พบ</dt><dd id="sum-when">-</dd>
+                            </dl>
+                        </div>
+                        <div class="card after-save">
+                            <h3><i class="fa-solid fa-circle-info" style="color: var(--navy-light)"></i>เมื่อกดบันทึก</h3>
+                            <ul>
+                                <li>สถานะเป็น <span class="status-pill"><i class="fa-solid fa-check"></i>อนุมัติแล้ว</span> ทันที ไม่ต้องรออนุมัติ</li>
+                                <li>แจ้งเตือนนักศึกษาผู้นำของมาส่ง</li>
+                                <li>ระบบเริ่มจับคู่กับรายการสิ่งของที่หาย</li>
+                            </ul>
+                        </div>
+                        <button type="submit" form="record-form" class="primary-btn" id="submit-btn"><i class="fa-solid fa-floppy-disk"></i>บันทึกรายการสิ่งของที่พบ</button>
+                    </aside>
+                </div>
+
+                <!-- บันทึกสำเร็จ -->
+                <section class="card success-card" id="success-view" hidden aria-live="polite">
+                    <div class="success-icon"><i class="fa-solid fa-check"></i></div>
+                    <h2 id="success-title" tabindex="-1">บันทึกรายการสิ่งของที่พบสำเร็จ</h2>
+                    <p>สถานะ <span class="status-pill"><i class="fa-solid fa-check"></i>อนุมัติแล้ว</span> · แจ้งเตือนนักศึกษาแล้ว</p>
+                    <div class="success-item">
+                        <img id="ok-img" alt="">
+                        <div class="info">
+                            <span>รหัสสิ่งของ <span class="found-id" id="ok-id"></span></span>
+                            <strong id="ok-name"></strong>
+                            <span id="ok-meta"></span>
+                            <span id="ok-student"></span>
+                        </div>
+                    </div>
+                    <div class="match-note" id="ok-match"></div>
+                    <div class="success-actions">
+                        <button type="button" class="primary-btn" id="new-btn"><i class="fa-solid fa-plus"></i>บันทึกรายการใหม่</button>
+                        <a class="secondary-btn" id="history-link" href="historyfound.html"><i class="fa-solid fa-clock-rotate-left"></i>ดูใน History</a>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+    <div class="admin-backdrop" id="admin-backdrop"></div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"><i></i><span></span></div>
+
+    <script src="admin-session.js"></script>
+    <script src="admin-layout.js"></script>
+    <script>
+        const session = AdminLayout.init('record-found');
+        const esc = AdminLayout.escapeHtml;
+        const $ = (id) => document.getElementById(id);
+
+        // เงื่อนไขชุดเดียวกับ Backend/utils/validators.js (validateAdminFoundItemRecord) ถ้าแก้ที่หนึ่งต้องแก้อีกที่ให้ตรงกัน
+        const NAME_MAX = 100;
+        const DESC_MAX = 200;
+        const STUDENT_ID_PATTERN = /^\d{8}$/;
+        const PHOTO_MAX_SOURCE_BYTES = 15 * 1024 * 1024;
+        const PHOTO_MAX_SIDE = 1280;
+        const PHOTO_QUALITY = 0.82;
+
+        const form = $('record-form');
+        const fields = {
+            Student_ID: $('Student_ID'),
+            FoundItem_name: $('FoundItem_name'),
+            Category_ID: $('Category_ID'),
+            Location_ID: $('Location_ID'),
+            Found_date: $('Found_date'),
+            Found_time: $('Found_time'),
+            Found_description: $('Found_description'),
+        };
+        const ORDER = ['Student_ID', 'FoundItem_name', 'Category_ID', 'Location_ID', 'Found_date', 'Found_time', 'Found_photo', 'Found_description'];
+        let photoDataUrl = '';
+        let photoFileError = '';
+        let submitted = false;
+        let saving = false;
+        // ผลการตรวจรหัสนักศึกษา: { id, state: 'checking' | 'ok' | 'missing' | 'error', student }
+        let studentLookup = { id: '', state: '' };
+
+        // ---------- toast ----------
+        let toastTimer = null;
+        function toast(message, type) {
+            const el = $('toast');
+            el.className = `toast is-visible${type ? ` is-${type}` : ''}`;
+            el.querySelector('i').className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
+            el.querySelector('span').textContent = message;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.remove('is-visible'), 3200);
+        }
+
+        // ---------- วันเวลา ----------
+        const pad = (n) => String(n).padStart(2, '0');
+        const dateText = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const timeText = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        function daysAgoText(days) {
+            const d = new Date();
+            d.setDate(d.getDate() - days);
+            return dateText(d);
+        }
+        function refreshDateLimits() {
+            fields.Found_date.max = dateText(new Date());
+            document.querySelectorAll('[data-days-ago]').forEach((chip) => {
+                chip.classList.toggle('is-active', fields.Found_date.value === daysAgoText(Number(chip.dataset.daysAgo)));
+            });
+        }
+        function whenText() {
+            const date = fields.Found_date.value;
+            if (!date) return '-';
+            const [y, m, d] = date.split('-').map(Number);
+            const text = new Date(y, m - 1, d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+            return fields.Found_time.value ? `${text} ${fields.Found_time.value} น.` : text;
+        }
+
+        // ---------- ตรวจข้อมูล ----------
+        function validate() {
+            const now = new Date();
+            const today = dateText(now);
+            const studentId = fields.Student_ID.value.trim();
+            const name = fields.FoundItem_name.value.trim();
+            const desc = fields.Found_description.value.trim();
+            const date = fields.Found_date.value;
+            const time = fields.Found_time.value;
+            const errors = {};
+
+            if (!studentId) errors.Student_ID = 'กรุณากรอกรหัสนักศึกษา';
+            else if (!STUDENT_ID_PATTERN.test(studentId)) errors.Student_ID = 'รหัสนักศึกษาต้องเป็นตัวเลข 8 หลัก';
+            else if (studentLookup.id === studentId && studentLookup.state === 'missing') errors.Student_ID = 'ไม่พบรหัสนักศึกษานี้ในระบบ กรุณาตรวจสอบอีกครั้ง';
+
+            if (!name) errors.FoundItem_name = 'กรุณากรอกชื่อสิ่งของ';
+            else if (name.length > NAME_MAX) errors.FoundItem_name = `ชื่อสิ่งของต้องไม่เกิน ${NAME_MAX} ตัวอักษร`;
+            if (!fields.Category_ID.value) errors.Category_ID = 'กรุณาเลือกหมวดหมู่ของสิ่งของ';
+            if (!fields.Location_ID.value) errors.Location_ID = 'กรุณาเลือกสถานที่ที่พบเจอสิ่งของ';
+
+            if (!date) errors.Found_date = 'กรุณาเลือกวันที่';
+            else if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < '2000-01-01') errors.Found_date = 'รูปแบบวันที่ไม่ถูกต้อง';
+            else if (date > today) errors.Found_date = 'วันที่ต้องไม่เกินวันนี้';
+
+            if (!time) errors.Found_time = 'กรุณาเลือกเวลา';
+            else if (date === today && time > timeText(now)) errors.Found_time = 'เวลาต้องไม่เกินเวลาปัจจุบัน';
+
+            if (photoFileError) errors.Found_photo = photoFileError;
+            else if (!$('photo-busy').hidden) errors.Found_photo = 'กรุณารอให้เตรียมรูปภาพเสร็จก่อน';
+            else if (!photoDataUrl) errors.Found_photo = 'กรุณาแนบรูปภาพของสิ่งของที่พบ';
+
+            if (!desc) errors.Found_description = 'กรุณากรอกรายละเอียดเพิ่มเติม';
+            else if (desc.length > DESC_MAX) errors.Found_description = `รายละเอียดเพิ่มเติมต้องไม่เกิน ${DESC_MAX} ตัวอักษร`;
+            return errors;
+        }
+
+        function showErrors(errors) {
+            document.querySelectorAll('[data-field]').forEach((wrap) => {
+                const key = wrap.dataset.field;
+                const message = errors[key] || '';
+                wrap.classList.toggle('is-invalid', Boolean(message));
+                $(`${key}-error`).textContent = message;
+                const input = fields[key] || (key === 'Found_photo' ? $('photo-input') : null);
+                if (!input) return;
+                if (message) {
+                    input.setAttribute('aria-invalid', 'true');
+                    input.setAttribute('aria-describedby', `${key}-error`);
+                } else {
+                    input.removeAttribute('aria-invalid');
+                }
+            });
+        }
+        function setFormError(message) {
+            const box = $('form-error');
+            box.querySelector('span').textContent = message || '';
+            box.hidden = !message;
+            if (message) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        function focusFirstError(errors) {
+            const key = ORDER.find((k) => errors[k]);
+            if (!key) return;
+            const target = fields[key] || $('photo-drop');
+            target.closest('.field').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (fields[key]) setTimeout(() => fields[key].focus({ preventScroll: true }), 250);
+        }
+        const recheck = () => { if (submitted) showErrors(validate()); };
+
+        // ---------- สรุปด้านขวา ----------
+        function selectedText(select) {
+            return select.value ? select.options[select.selectedIndex].textContent : '-';
+        }
+        function updateSummary() {
+            const name = fields.FoundItem_name.value.trim();
+            $('sum-name').textContent = name || 'ยังไม่ได้กรอกชื่อสิ่งของ';
+            $('sum-name').classList.toggle('is-empty', !name);
+            $('sum-category').textContent = selectedText(fields.Category_ID);
+            $('sum-location').textContent = selectedText(fields.Location_ID);
+            $('sum-when').textContent = whenText();
+            const s = studentLookup.state === 'ok' && studentLookup.id === fields.Student_ID.value.trim() ? studentLookup.student : null;
+            $('sum-student').textContent = s ? `${s.FName} ${s.LName} (${s.Student_ID})` : (fields.Student_ID.value.trim() || '-');
+            $('sum-thumb').innerHTML = photoDataUrl ? `<img src="${photoDataUrl}" alt="">` : '<i class="fa-solid fa-box"></i>';
+        }
+
+        // ---------- ตรวจรหัสนักศึกษา (แสดงชื่อให้ Admin ยืนยัน) ----------
+        let lookupTimer = null;
+        function setStudentCheck(state, text) {
+            const box = $('student-check');
+            box.className = `student-check${state === 'ok' ? ' is-ok' : state === 'missing' ? ' is-bad' : ''}`;
+            const icon = { ok: 'fa-solid fa-circle-check', missing: 'fa-solid fa-circle-xmark', checking: 'fa-solid fa-spinner fa-spin', error: 'fa-solid fa-triangle-exclamation' }[state] || 'fa-regular fa-id-card';
+            box.innerHTML = `<i class="${icon}"></i>${esc(text)}`;
+        }
+        async function lookupStudent(id) {
+            studentLookup = { id, state: 'checking' };
+            setStudentCheck('checking', 'กำลังตรวจสอบ...');
+            try {
+                const { ok, status, data } = await AdminSession.apiFetch(`/api/items/founditem/admin/student/${encodeURIComponent(id)}`);
+                if (fields.Student_ID.value.trim() !== id) return;   // พิมพ์รหัสใหม่ไปแล้ว
+                if (ok) {
+                    studentLookup = { id, state: 'ok', student: data.student };
+                    setStudentCheck('ok', `${data.student.FName} ${data.student.LName}`);
+                } else if (status === 404) {
+                    studentLookup = { id, state: 'missing' };
+                    setStudentCheck('missing', 'ไม่พบรหัสนักศึกษานี้ในระบบ');
+                } else {
+                    studentLookup = { id, state: 'error' };
+                    setStudentCheck('error', data.message || 'ตรวจสอบไม่สำเร็จ');
+                }
+            } catch (error) {
+                if (error.unauthorized) return;
+                studentLookup = { id, state: 'error' };
+                setStudentCheck('error', 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
+            }
+            updateSummary();
+            recheck();
+        }
+        fields.Student_ID.addEventListener('input', () => {
+            const digits = fields.Student_ID.value.replace(/\D/g, '').slice(0, 8);
+            if (digits !== fields.Student_ID.value) fields.Student_ID.value = digits;
+            clearTimeout(lookupTimer);
+            if (STUDENT_ID_PATTERN.test(digits)) {
+                lookupTimer = setTimeout(() => lookupStudent(digits), 250);
+            } else {
+                studentLookup = { id: '', state: '' };
+                setStudentCheck('', digits ? `กรอกอีก ${8 - digits.length} หลัก` : 'กรอกรหัส 8 หลัก ระบบจะแสดงชื่อนักศึกษา');
+            }
+        });
+
+        // ---------- ตัวนับตัวอักษร / select ----------
+        function updateCounter(input, counterId, max) {
+            const counter = $(counterId);
+            counter.textContent = `${input.value.length}/${max}`;
+            counter.classList.toggle('is-full', input.value.length >= max);
+        }
+        form.addEventListener('input', (event) => {
+            if (event.target === fields.FoundItem_name) updateCounter(fields.FoundItem_name, 'name-counter', NAME_MAX);
+            if (event.target === fields.Found_description) updateCounter(fields.Found_description, 'desc-counter', DESC_MAX);
+            updateSummary();
+            recheck();
+        });
+        form.addEventListener('change', (event) => {
+            if (event.target.tagName === 'SELECT') event.target.classList.toggle('is-placeholder', !event.target.value);
+            refreshDateLimits();
+            updateSummary();
+            recheck();
+        });
+        document.querySelectorAll('[data-days-ago]').forEach((chip) => {
+            chip.addEventListener('click', () => {
+                fields.Found_date.value = daysAgoText(Number(chip.dataset.daysAgo));
+                fields.Found_date.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        });
+        $('just-now').addEventListener('click', () => {
+            const now = new Date();
+            fields.Found_date.value = dateText(now);
+            fields.Found_time.value = timeText(now);
+            fields.Found_date.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        // ---------- รูปภาพ (บังคับ): ย่อขนาดในเครื่องก่อนส่ง ----------
+        const photoInput = $('photo-input');
+        function setPhotoState(state) {   // 'empty' | 'busy' | 'preview'
+            $('photo-drop').hidden = state !== 'empty';
+            $('photo-busy').hidden = state !== 'busy';
+            $('photo-preview').hidden = state !== 'preview';
+        }
+        function setPhotoError(message) {
+            photoFileError = message || '';
+            $('Found_photo-error').textContent = photoFileError;
+            $('photo-drop').closest('.field').classList.toggle('is-invalid', Boolean(photoFileError));
+        }
+        function loadImage(file) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode')); };
+                img.src = url;
+            });
+        }
+        async function shrinkImage(file) {
+            const img = await loadImage(file);
+            const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';   // รูปพื้นโปร่งใส (PNG) จะได้พื้นขาว
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg', PHOTO_QUALITY);
+        }
+        async function usePhoto(file) {
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { setPhotoError('กรุณาเลือกไฟล์รูปภาพ'); return; }
+            if (file.size > PHOTO_MAX_SOURCE_BYTES) { setPhotoError('ไฟล์รูปภาพต้องมีขนาดไม่เกิน 15 MB'); return; }
+            const previous = photoDataUrl;
+            setPhotoError('');
+            setPhotoState('busy');
+            try {
+                photoDataUrl = await shrinkImage(file);
+                $('photo-img').src = photoDataUrl;
+                setPhotoState('preview');
+            } catch {
+                photoDataUrl = previous;
+                setPhotoState(previous ? 'preview' : 'empty');
+                setPhotoError('เปิดไฟล์รูปนี้ไม่ได้ กรุณาเลือกรูปแบบ JPG หรือ PNG');
+            }
+            updateSummary();
+            recheck();
+        }
+        photoInput.addEventListener('change', () => {
+            const file = photoInput.files[0];
+            photoInput.value = '';   // เลือกไฟล์เดิมซ้ำได้
+            usePhoto(file);
+        });
+        const drop = $('photo-drop');
+        ['dragenter', 'dragover'].forEach((type) => drop.addEventListener(type, (e) => { e.preventDefault(); drop.classList.add('is-dragover'); }));
+        ['dragleave', 'drop'].forEach((type) => drop.addEventListener(type, () => drop.classList.remove('is-dragover')));
+        drop.addEventListener('drop', (e) => {
+            e.preventDefault();
+            usePhoto(e.dataTransfer.files[0]);
+        });
+        $('photo-change').addEventListener('click', () => photoInput.click());
+        $('photo-remove').addEventListener('click', () => {
+            photoDataUrl = '';
+            $('photo-img').removeAttribute('src');
+            setPhotoError('');
+            setPhotoState('empty');
+            updateSummary();
+            recheck();
+        });
+
+        // ---------- หมวดหมู่ / สถานที่ ----------
+        async function loadOptions() {
+            const fill = (select, rows, idKey, nameKey) => {
+                select.insertAdjacentHTML('beforeend', rows.map((row) => `<option value="${esc(row[idKey])}">${esc(row[nameKey])}</option>`).join(''));
+            };
+            try {
+                const [cats, locs] = await Promise.all([
+                    AdminSession.apiFetch('/api/items/categories'),
+                    AdminSession.apiFetch('/api/items/locations'),
+                ]);
+                if (cats.ok) fill(fields.Category_ID, cats.data.categories, 'Category_ID', 'Category_name');
+                if (locs.ok) fill(fields.Location_ID, locs.data.locations, 'Location_ID', 'Location_name');
+                if (!cats.ok || !locs.ok) throw new Error('options');
+            } catch (error) {
+                if (!error.unauthorized) setFormError('โหลดรายการหมวดหมู่/สถานที่ไม่สำเร็จ กรุณาตรวจสอบว่าเปิด Backend แล้ว และรีเฟรชหน้า');
+            }
+        }
+
+        // ---------- บันทึก ----------
+        const submitBtn = $('submit-btn');
+        const SUBMIT_LABEL = submitBtn.innerHTML;
+        function setSaving(on) {
+            saving = on;
+            submitBtn.disabled = on;
+            submitBtn.innerHTML = on ? '<i class="fa-solid fa-spinner fa-spin"></i>กำลังบันทึก...' : SUBMIT_LABEL;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (saving) return;
+            submitted = true;
+            setFormError('');
+            refreshDateLimits();
+
+            const errors = validate();
+            showErrors(errors);
+            if (Object.keys(errors).length > 0) {
+                focusFirstError(errors);
+                return;
+            }
+
+            const body = {
+                Student_ID: fields.Student_ID.value.trim(),
+                FoundItem_name: fields.FoundItem_name.value.trim(),
+                Category_ID: fields.Category_ID.value,
+                Location_ID: fields.Location_ID.value,
+                Found_date: fields.Found_date.value,
+                Found_time: fields.Found_time.value,
+                Found_description: fields.Found_description.value.trim(),
+                Found_photo: photoDataUrl,
+            };
+
+            setSaving(true);
+            try {
+                const { ok, status, data } = await AdminSession.apiFetch('/api/items/founditem/admin', { method: 'POST', body: JSON.stringify(body) });
+                if (ok) {
+                    showSuccess(body, data);
+                    return;
+                }
+                if (status === 413) {
+                    setPhotoError(data.message || 'ไฟล์รูปภาพมีขนาดใหญ่เกินไป');
+                    focusFirstError({ Found_photo: true });
+                    return;
+                }
+                if (data.errors) {
+                    if (data.errors.Student_ID && data.code === 'STUDENT_NOT_FOUND') {
+                        studentLookup = { id: body.Student_ID, state: 'missing' };
+                        setStudentCheck('missing', 'ไม่พบรหัสนักศึกษานี้ในระบบ');
+                    }
+                    if (data.errors.Found_photo) setPhotoError(data.errors.Found_photo);
+                    showErrors({ ...data.errors, ...(photoFileError ? { Found_photo: photoFileError } : {}) });
+                    focusFirstError(data.errors);
+                    return;
+                }
+                setFormError(data.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+            } catch (error) {
+                if (!error.unauthorized) setFormError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว');
+            } finally {
+                setSaving(false);
+            }
+        });
+
+        // ---------- บันทึกสำเร็จ ----------
+        function showSuccess(body, data) {
+            $('ok-img').src = photoDataUrl;
+            $('ok-id').textContent = `#${data.Found_ID}`;
+            $('ok-name').textContent = body.FoundItem_name;
+            $('ok-meta').textContent = `${selectedText(fields.Category_ID)} · ${selectedText(fields.Location_ID)} · ${whenText()}`;
+            const s = data.student || {};
+            $('ok-student').textContent = `ผู้นำมาส่ง: ${s.FName || ''} ${s.LName || ''} (${s.Student_ID || body.Student_ID})`;
+            const count = data.matches ? data.matches.count : 0;
+            const note = $('ok-match');
+            note.classList.toggle('has-match', count > 0);
+            note.innerHTML = count > 0
+                ? `<i class="fa-solid fa-link"></i>พบรายการจับคู่ที่ Match Score ตั้งแต่ 80% ขึ้นไป ${count} รายการ · <a href="matches.html">ไปที่รายการจับคู่สิ่งของ</a>`
+                : '<i class="fa-solid fa-magnifying-glass"></i>ยังไม่พบสิ่งของที่หายที่ตรงกัน ระบบจะจับคู่ให้อัตโนมัติเมื่อมีผู้แจ้งของหายเข้ามา';
+            $('history-link').href = `historyfound.html?q=${encodeURIComponent(data.Found_ID)}`;
+            $('form-view').hidden = true;
+            $('success-view').hidden = false;
+            window.scrollTo({ top: 0 });
+            $('success-title').focus({ preventScroll: true });
+            if (count > 0) AdminLayout.refreshNotifications();
+        }
+
+        function resetForm() {
+            form.reset();
+            submitted = false;
+            photoDataUrl = '';
+            $('photo-img').removeAttribute('src');
+            setPhotoError('');
+            setPhotoState('empty');
+            studentLookup = { id: '', state: '' };
+            setStudentCheck('', 'กรอกรหัส 8 หลัก ระบบจะแสดงชื่อนักศึกษา');
+            Object.values(fields).forEach((f) => { if (f.tagName === 'SELECT') f.classList.add('is-placeholder'); });
+            updateCounter(fields.FoundItem_name, 'name-counter', NAME_MAX);
+            updateCounter(fields.Found_description, 'desc-counter', DESC_MAX);
+            showErrors({});
+            setFormError('');
+            refreshDateLimits();
+            updateSummary();
+            $('success-view').hidden = true;
+            $('form-view').hidden = false;
+            window.scrollTo({ top: 0 });
+            fields.Student_ID.focus();
+        }
+        $('new-btn').addEventListener('click', resetForm);
+
+        // เตือนก่อนออกจากหน้า ถ้ากรอกข้อมูลไว้แล้วยังไม่บันทึก
+        function isDirty() {
+            if (!$('success-view').hidden) return false;
+            return Object.values(fields).some((f) => f.value.trim()) || Boolean(photoDataUrl);
+        }
+        window.addEventListener('beforeunload', (event) => {
+            if (isDirty() && !saving) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
+        });
+
+        if (session) {
+            refreshDateLimits();
+            updateSummary();
+            loadOptions();
+        }
+    </script>
+</body>
+</html>

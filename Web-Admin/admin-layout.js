@@ -25,7 +25,7 @@ const AdminLayout = (() => {
         { key: 'approve-found',   label: 'อนุมัติสิ่งของที่พบ',         icon: 'fa-solid fa-box-open',         href: 'approvefound.html',   ready: true },
         { key: 'matches',         label: 'รายการจับคู่สิ่งของ',         icon: 'fa-solid fa-link',             href: 'matches.html',        ready: true },
         { key: 'claims',          label: 'คำขอรับสิ่งของคืน',           icon: 'fa-solid fa-hand-holding',     href: 'claims.html',         ready: false },
-        { key: 'record-found',    label: 'บันทึกรายการสิ่งของที่พบ',     icon: 'fa-solid fa-plus',             href: 'recordfound.html',    ready: false },
+        { key: 'record-found',    label: 'บันทึกรายการสิ่งของที่พบ',     icon: 'fa-solid fa-plus',             href: 'recordfound.html',    ready: true  },
         // กลุ่ม History
         { key: 'history-lost',    label: 'รายการสิ่งของที่หาย',         icon: 'fa-solid fa-magnifying-glass', href: 'historylost.html',    ready: true,  group: 'history' },
         { key: 'history-found',   label: 'รายการสิ่งของที่พบ',          icon: 'fa-solid fa-box',              href: 'historyfound.html',   ready: true,  group: 'history' },

@@ -291,9 +291,9 @@ function validateLostItemReport(body, now = new Date()) {
 
 // ตรวจข้อมูลการแจ้งสิ่งของที่พบ (หน้า App-user/reportfound.html) ต่างจากของหายตรงที่ "รูปภาพบังคับ"
 // ตรวจแค่ว่าแนบรูปมาไหม ส่วนความถูกต้องของไฟล์รูปตรวจใน utils/imageupload.js
-function validateFoundItemReport(body, now = new Date()) {
+// ข้อมูลสิ่งของที่พบ (ใช้ร่วมกันระหว่างผู้ใช้แจ้งเอง และ Admin บันทึกแทน) คืนค่า values + ข้อความ error ของแต่ละช่อง
+function foundItemFieldChecks(body, now) {
     const values = {
-        User_ID: toPositiveInt(body.User_ID),
         FoundItem_name: toText(body.FoundItem_name).trim(),
         Category_ID: toPositiveInt(body.Category_ID),
         Location_ID: toPositiveInt(body.Location_ID),
@@ -303,11 +303,9 @@ function validateFoundItemReport(body, now = new Date()) {
         Found_photo: typeof body.Found_photo === 'string' ? body.Found_photo : '',
     };
     const dateError = validateItemDate(values.Found_date, now);
-
     return {
         values,
-        errors: collectErrors({
-            User_ID: values.User_ID ? null : 'ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่',
+        checks: {
             FoundItem_name: validateRequiredText(values.FoundItem_name, 'ชื่อสิ่งของ', ITEM_NAME_MAX_LENGTH),
             Category_ID: values.Category_ID ? null : 'กรุณาเลือกหมวดหมู่ของสิ่งของ',
             Location_ID: values.Location_ID ? null : 'กรุณาเลือกสถานที่ที่พบเจอสิ่งของ',
@@ -315,6 +313,33 @@ function validateFoundItemReport(body, now = new Date()) {
             Found_time: validateItemTime(values.Found_time, dateError ? null : values.Found_date, now),
             Found_photo: values.Found_photo ? null : 'กรุณาแนบรูปภาพของสิ่งของที่พบ',
             Found_description: validateRequiredText(values.Found_description, 'รายละเอียดเพิ่มเติม', ITEM_DESCRIPTION_MAX_LENGTH),
+        },
+    };
+}
+
+// ผู้ใช้งานแจ้งสิ่งของที่พบ (App-user/reportfound.html)
+function validateFoundItemReport(body, now = new Date()) {
+    const userId = toPositiveInt(body.User_ID);
+    const { values, checks } = foundItemFieldChecks(body, now);
+    return {
+        values: { User_ID: userId, ...values },
+        errors: collectErrors({
+            User_ID: userId ? null : 'ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่',
+            ...checks,
+        }),
+    };
+}
+
+// Admin บันทึกสิ่งของที่พบแทนนักศึกษาที่นำของมาส่ง (Web-Admin/recordfound.html)
+// ข้อมูลเหมือนผู้ใช้แจ้งเอง + รหัสนักศึกษาของผู้นำของมาส่ง
+function validateAdminFoundItemRecord(body, now = new Date()) {
+    const studentId = toText(body.Student_ID).trim();
+    const { values, checks } = foundItemFieldChecks(body, now);
+    return {
+        values: { Student_ID: studentId, ...values },
+        errors: collectErrors({
+            Student_ID: validateStudentId(studentId),
+            ...checks,
         }),
     };
 }
@@ -324,6 +349,8 @@ module.exports = {
     ITEM_DESCRIPTION_MAX_LENGTH,
     validateLostItemReport,
     validateFoundItemReport,
+    validateAdminFoundItemRecord,
+    validateStudentId,
     STUDENT_ID_PATTERN,
     UNIVERSITY_EMAIL_DOMAIN,
     PASSWORD_RULES,
