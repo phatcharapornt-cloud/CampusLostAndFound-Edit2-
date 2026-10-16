@@ -5,274 +5,624 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Campus Lost & Found</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" 
-            rel="stylesheet"> 
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-<style>
-    *{
-        margin: 0;                  /*ลบระยะห่างภายนอก*/
-        padding: 0;                  /* ลบกระยะห่างภายใน */
-        box-sizing: border-box;
-        font-family: 'Prompt', sans-serif;
-    }
-    body {
-        background-color: #f4f5f8;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-    }
-    .verify-container {
-        width: 100%;
-        max-width: 390px;            
-        height: 800px;
-        background-color: #ffffff;
-        border-radius: 61px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        border: 8px solid #2b2b2b;
-        position: relative;
-        padding: 24px 20px;
-    }
-     .verify-header {
-        padding: 12px 0;
-        display: flex;               /*ทำให้องค์ประกอบในกล่องอยู่ในแถวหรือคอลัมน์เดียวกัน*/   
-        justify-content: center;            /*เป็นการทำให้ header อยู่ตรงกลาง*/
-        align-items: center;        /*จัดของข้างในให้อยู่ตรงกลาง*/
-    }
-    .dynamic-island {
-        width: 110px;
-        height: 28px;
-        background-color: #000000 ;
-        border-radius: 20px;
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        :root {
+            --primary: #f26522;
+            --primary-hover: #e05413;
+            --text: #111111;
+            --text-muted: #4b5563;
+            --error: #d93025;
+            --error-bg: #fdecea;
+        }
+        body {
+            background-color: #f4f5f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        /* กรอบจำลองหน้าจอมือถือ */
+        .verify-container {
+            width: 100%;
+            max-width: 390px;
+            height: 800px;
+            background-color: #ffffff;
+            border-radius: 61px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
+            border: 8px solid #2b2b2b;
+            position: relative;
+        }
+        .dynamic-island {
+            width: 110px;
+            height: 28px;
+            background-color: #000000;
+            border-radius: 20px;
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 4;
+        }
+        /* กล่องหลักหน้าแอป */
+        .verify-content {
+            height: 100%;
+            overflow-y: auto;
+            scrollbar-width: none;
+            padding: 96px 20px 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .verify-content::-webkit-scrollbar { display: none; }
 
-        position: absolute; /*อิงตำแหน่งจากapp-container*/ 
-        top : 30px ;          /* ระยะห่างจากขอบจอ */
-        left: 50%;              /* ขยับมาเริ่มที่จุดกึ่งกลางของหน้าจอ */
-        transform: translateX(-50%);     /* ดึงตัวแถบกลับมาทางซ้าย 50% เพื่อให้อยู่ตรงกลาง */   
-    }
-    /* กล่องหลักหน้าแอพ */
-    .verify-content {
-        padding:80px 24px 30px ;
-        display: flex;
-        flex-direction: column;         /*จัดเรียงบนลงล่าง*/
-        align-items: center; 
-        flex: 1;
-    }
-    .icon-container {
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: center;
-        transform: translateY(-340px);
-    }
-    h1 {
-        font-size: 28px;
-        font-weight: 650;
-        color: #111111;
-        margin-bottom: 10px;
-        align-self: center;         /*ใช้กับตัวใดตัวนึง*/
-        position: absolute;
-        top: 150px;
-    }
-    .subtitle {
-        font-size: 15px;
-        color: #4b5563;
-        line-height: 1.5;
-        margin-bottom: 28px;
-        transform: translateY(-300px);
-    }
-    /* คอนเทนเนอร์กล่องใส่รหัส OTP 6 ช่อง */
-    .otp-container {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-bottom: 24px;
-        transform: translateY(-300px);
-    }
-    /* สไตล์ของช่องกรอกรหัสแต่ละช่อง */
-    .otp-input {
-        width: 48px;
-        height: 56px;
-        border: 1.5px solid #d1d5db;
-        border-radius: 12px;
-        text-align: center;
-        font-size: 20px;
-        font-weight: 600;
-        outline: none;
-        transition: all 0.2s;
-        background-color: #ffffff;
-    }
-    /* เปลี่ยนสีขอบเมื่อคลิกเลือกช่อง */
-    .otp-input:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-    }
-    /* ข้อความส่งรหัสอีกครั้ง */
-    .resend-text {
-        font-size: 15px;
-        color: #6b7280;
-        /* margin-bottom: 28px; */
-        /* transform: translateY(-200px); */
-    }
-    /* ปุ่มยืนยันรหัส */
-    .btn-verify {
-        width: 100%;
-        padding: 14px;
-        background-color: #f26522;
-        color: white;
-        border: none;
-        border-radius: 12px;
-        font-size: 16px;
-        font-weight: 600;
-        cursor: pointer;
-        /* margin-bottom: 24px; */
-        transform: translateY(-260px);
-    }
-    /* คอนเทนเนอร์จัดวางลิงก์ด้านล่าง */
-    .links {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-    /* ลิงก์สีส้ม กลับไปหน้าเข้าสู่ระบบ */
-    .link-primary {
-        color: #f97316;
-        text-decoration: none;
-        font-size: 16px;
-        font-weight: 700;
-        transform: translateY(-220px);
-        text-align: center;
-    }
-    /* สไตล์สำหรับข้อความนับถอยหลัง */
-    .resend-box {
-        font-size: 15px;
-        color: #6b7280;
-        /* margin-top: 15px; */
-        transform: translateY(-290px);
-        text-align: center;
-    }
+        .icon-container {
+            margin-bottom: 14px;
+        }
+        h1 {
+            font-size: 28px;
+            font-weight: 650;
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .subtitle .email {
+            display: block;
+            color: var(--text);
+            font-weight: 600;
+        }
 
-    /* สไตล์ปุ่มส่งรหัสอีกครั้ง (เมื่อนับเวลาหมด) */
-    .resend-link {
-        color: #f97316;
-        font-weight: 600;
-        text-decoration: none;
-        cursor: pointer;
-        /* transform: translateY(-200px); */
-    }
-    .resend-link:hover {
-        text-decoration: underline;
-    }
+        /* แจ้งเตือนข้อผิดพลาด */
+        .form-alert {
+            display: none;
+            width: 100%;
+            align-items: flex-start;
+            gap: 8px;
+            background-color: var(--error-bg);
+            color: var(--error);
+            font-size: 12.5px;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            line-height: 1.45;
+        }
+        .form-alert.is-visible { display: flex; }
+        .form-alert i { margin-top: 2px; }
 
-</style>
+        /* ช่องกรอกรหัส OTP 6 ช่อง */
+        .otp-container {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 22px;
+        }
+        .otp-input {
+            width: 46px;
+            height: 56px;
+            border: 1.5px solid #d1d5db;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            background-color: #ffffff;
+        }
+        .otp-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(242, 101, 34, 0.15);
+        }
+        .otp-container.is-invalid .otp-input {
+            border-color: var(--error);
+        }
+        .otp-container.shake {
+            animation: shake 0.35s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+
+        /* ข้อความส่งรหัสอีกครั้ง */
+        .resend-box {
+            font-size: 14px;
+            color: #6b7280;
+            text-align: center;
+            margin-bottom: 26px;
+            min-height: 22px;
+        }
+        .resend-link {
+            border: none;
+            background: none;
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0;
+        }
+        .resend-link:hover { text-decoration: underline; }
+        .resend-link:disabled {
+            color: #9ca3af;
+            cursor: wait;
+            text-decoration: none;
+        }
+
+        /* ปุ่มยืนยันรหัส */
+        .btn-verify {
+            width: 100%;
+            padding: 13px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 22px;
+        }
+        .btn-verify:hover:not(:disabled) { background-color: var(--primary-hover); }
+        .btn-verify:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-verify.is-loading {
+            opacity: 0.7;
+            cursor: wait;
+        }
+        .link-primary {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .link-primary:hover { text-decoration: underline; }
+
+        /* ---------- Notification แสดงรหัส OTP (จำลองการแจ้งเตือนบนมือถือ) ---------- */
+        .otp-notification {
+            position: absolute;
+            top: 64px;                /* ใต้ dynamic island */
+            left: 12px;
+            right: 12px;
+            z-index: 5;
+            display: flex;
+            gap: 10px;
+            padding: 12px 14px;
+            border-radius: 22px;
+            background-color: rgba(250, 250, 252, 0.94);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+            cursor: pointer;
+            text-align: left;
+            border: none;
+            width: auto;
+            transform: translateY(-140%);
+            opacity: 0;
+            visibility: hidden;
+            transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.15), opacity 0.3s, visibility 0s linear 0.45s;
+        }
+        .otp-notification[hidden] { display: none; }
+        .otp-notification.is-visible {
+            transform: translateY(0);
+            opacity: 1;
+            visibility: visible;
+            transition-delay: 0s;
+        }
+        .otp-notification .app-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 9px;
+            background-color: #0f2a4a;
+            flex-shrink: 0;
+            object-fit: contain;
+            padding: 2px;
+        }
+        .otp-notification .noti-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .otp-notification .noti-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #8a8a8e;
+            letter-spacing: 0.02em;
+            margin-bottom: 1px;
+        }
+        .otp-notification .noti-title {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.35;
+        }
+        .otp-notification .noti-text {
+            font-size: 12.5px;
+            color: #333333;
+            line-height: 1.45;
+        }
+        .otp-notification .noti-code {
+            font-weight: 700;
+            letter-spacing: 0.08em;
+        }
+        .otp-notification .noti-hint {
+            font-size: 11px;
+            color: var(--primary);
+            margin-top: 3px;
+        }
+        /* เปิดบนมือถือจริง: แสดงเต็มจอ ไม่ต้องมีกรอบ */
+        @media (max-width: 430px) {
+            .verify-container {
+                max-width: none;
+                height: 100vh;
+                height: 100dvh;
+                border: none;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            .dynamic-island { display: none; }
+            .verify-content { padding-top: 56px; }
+            .otp-input { width: 44px; }
+            .otp-notification { top: 10px; }
+        }
+    </style>
 </head>
-    
+
 <body>
     <div class="verify-container">
         <div class="dynamic-island"></div>
-        <div class="verify-content"></div>
-        <div class="icon-container">
-            <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <!-- กล่องรหัส PIN ด้านบนซองจดหมาย -->
-                <rect x="22" y="10" width="28" height="14" rx="4" stroke="#111827" stroke-width="2.5" fill="white"/>
-                <circle cx="26" cy="17" r="1.5" fill="#111827"/>
-                <circle cx="30" cy="17" r="1.5" fill="#111827"/>
-                <circle cx="34" cy="17" r="1.5" fill="#111827"/>
-                <circle cx="38" cy="17" r="1.5" fill="#111827"/>
-                <circle cx="42" cy="17" r="1.5" fill="#111827"/>
-                <!-- จุดแจ้งเตือนสีแดง -->
-                <circle cx="49" cy="12" r="5" fill="#ef4444"/>
-                <!-- ตัวซองจดหมาย -->
-                <rect x="12" y="20" width="48" height="36" rx="8" stroke="#111827" stroke-width="2.5" fill="white"/>
-                <path d="M14 24L36 39L58 24" stroke="#111827" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>    
+
+        <!-- Notification รหัส OTP (เด้งลงมาหลังเข้าหน้านี้ แตะเพื่อกรอกรหัสอัตโนมัติ) -->
+        <div class="otp-notification" id="otp-notification" role="status" aria-live="polite" tabindex="0" hidden>
+            <img src="logo.png" class="app-icon" alt="">
+            <div class="noti-body">
+                <div class="noti-meta"><span>CAMPUS LOST &amp; FOUND</span><span>ตอนนี้</span></div>
+                <div class="noti-title">รหัส OTP สำหรับเปลี่ยนรหัสผ่าน</div>
+                <div class="noti-text">
+                    รหัสยืนยันของคุณคือ <span class="noti-code" id="noti-code"></span>
+                    ใช้ได้ภายใน <span id="noti-minutes">10</span> นาที ห้ามบอกรหัสนี้กับผู้อื่น
+                </div>
+                <div class="noti-hint">แตะเพื่อกรอกรหัสอัตโนมัติ</div>
+            </div>
         </div>
 
-        <h1>รหัสยืนยัน</h1>
-        <p class="subtitle">เราได้ส่งรหัสยืนยัน 6 หลักไปยังอุปกรณ์ของคุณแล้ว
-            <span class="email"><span id="display-student-id">64031234</span>@kmitl.ac.th</span>
-        </p>
+        <div class="verify-content">
+            <div class="icon-container">
+                <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <!-- กล่องรหัส PIN ด้านบนซองจดหมาย -->
+                    <rect x="22" y="10" width="28" height="14" rx="4" stroke="#111827" stroke-width="2.5" fill="white"/>
+                    <circle cx="26" cy="17" r="1.5" fill="#111827"/>
+                    <circle cx="30" cy="17" r="1.5" fill="#111827"/>
+                    <circle cx="34" cy="17" r="1.5" fill="#111827"/>
+                    <circle cx="38" cy="17" r="1.5" fill="#111827"/>
+                    <circle cx="42" cy="17" r="1.5" fill="#111827"/>
+                    <!-- จุดแจ้งเตือนสีแดง -->
+                    <circle cx="49" cy="12" r="5" fill="#ef4444"/>
+                    <!-- ตัวซองจดหมาย -->
+                    <rect x="12" y="20" width="48" height="36" rx="8" stroke="#111827" stroke-width="2.5" fill="white"/>
+                    <path d="M14 24L36 39L58 24" stroke="#111827" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
 
-        <!-- ช่องใส่รหัส OTP 6 ช่อง -->
-        <div class="otp-container">
-            <input type="text" maxlength="1" class="otp-input" />
-            <input type="text" maxlength="1" class="otp-input" />
-            <input type="text" maxlength="1" class="otp-input" />
-            <input type="text" maxlength="1" class="otp-input" />
-            <input type="text" maxlength="1" class="otp-input" />
-            <input type="text" maxlength="1" class="otp-input" />
-        </div>
-        <div class="resend-box" id="resend-container">
-            ส่งรหัสอีกครั้งได้ใน <span id="timer">0:60</span>
-        </div>
-        <!-- ปุ่มยืนยัน -->
-        <button class="btn-verify" disabled>ยืนยันรหัส</button>
-        <div class="links">
+            <h1>รหัสยืนยัน</h1>
+            <p class="subtitle">
+                กรอกรหัสยืนยัน 6 หลักที่ส่งไปยัง
+                <span class="email" id="display-email"></span>
+            </p>
+
+            <div class="form-alert" id="form-alert" role="alert">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span id="form-alert-text"></span>
+            </div>
+
+            <!-- ช่องใส่รหัส OTP 6 ช่อง -->
+            <div class="otp-container" id="otp-container" role="group" aria-label="รหัส OTP 6 หลัก">
+                <input type="text" class="otp-input" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="หลักที่ 1">
+                <input type="text" class="otp-input" inputmode="numeric" maxlength="1" aria-label="หลักที่ 2">
+                <input type="text" class="otp-input" inputmode="numeric" maxlength="1" aria-label="หลักที่ 3">
+                <input type="text" class="otp-input" inputmode="numeric" maxlength="1" aria-label="หลักที่ 4">
+                <input type="text" class="otp-input" inputmode="numeric" maxlength="1" aria-label="หลักที่ 5">
+                <input type="text" class="otp-input" inputmode="numeric" maxlength="1" aria-label="หลักที่ 6">
+            </div>
+
+            <div class="resend-box" id="resend-box" aria-live="polite"></div>
+
+            <button type="button" class="btn-verify" id="btn-verify" disabled>ยืนยันรหัส</button>
+
             <a href="login.html" class="link-primary">กลับไปหน้าเข้าสู่ระบบ</a>
         </div>
     </div>
 
     <script>
-        // 1. ตั้งค่าเวลาเริ่มต้นนับถอยหลัง (หน่วยเป็นวินาที)
-        let timeLeft = 60; // 60 วินาที = 1 นาที
+        // ที่อยู่ของ Backend (ตรงกับ PORT ในไฟล์ Backend/.env)
+        const API_BASE_URL = 'http://localhost:5001';
+        // key ใน sessionStorage ที่ใช้ส่งข้อมูลระหว่างหน้า resetpass → Verify → newpass
+        const RESET_FLOW_KEY = 'resetPasswordFlow';
+        const VERIFY_LABEL = 'ยืนยันรหัส';
+        const NOTIFICATION_DELAY_MS = 700;   // เด้ง Notification หลังเข้าหน้านี้ 0.7 วินาที
 
-        const timerElement = document.getElementById('timer');
-        const resendContainer = document.getElementById('resend-container');
+        const otpContainer = document.getElementById('otp-container');
+        const otpInputs = Array.from(document.querySelectorAll('.otp-input'));
+        const verifyBtn = document.getElementById('btn-verify');
+        const resendBox = document.getElementById('resend-box');
+        const formAlert = document.getElementById('form-alert');
+        const formAlertText = document.getElementById('form-alert-text');
+        const notification = document.getElementById('otp-notification');
 
-        // ฟังก์ชันเริ่มนับถอยหลัง
-        function startTimer() {
-            // ใช้ setInterval ให้ทำงานทุกๆ 1,000 มิลลิวินาที (1 วินาที)
-            const countdown = setInterval(() => {
-                // คำนวณหา นาที และ วินาที
-                let minutes = Math.floor(timeLeft / 60);
-                let seconds = timeLeft % 60;
-
-                // ใส่เลข 0 ด้านหน้า วินาที ถ้าค่าน้อยกว่า 10 (เช่น 0:09)
-                seconds = seconds < 10 ? '0' + seconds : seconds;
-
-                // แสดงผลเวลาลงในหน้าเว็บ
-                timerElement.textContent = `${minutes}:${seconds}`;
-
-                // เช็คว่าหมดเวลาหรือยัง
-                if (timeLeft <= 0) {
-                    clearInterval(countdown); // หยุดการนับถอยหลัง
-
-                    // เปลี่ยนข้อความเมื่อหมดเวลา ให้สามารถกดส่งใหม่ได้
-                    resendContainer.innerHTML = `ไม่ได้รับรหัสผ่าน <a href="#" id="resend-btn" class="resend-link">ส่งรหัสผ่านใหม่</a>`;
-
-                    // เพิ่มเหตุการณ์เมื่อคลิกปุ่มส่งรหัสใหม่
-                    document.getElementById('resend-btn').addEventListener('click', (e) => {
-                        e.preventDefault();
-                        alert('ส่งรหัส OTP ใหม่เรียบร้อยแล้ว!');
-                        
-                        // รีเซ็ตเวลาและเริ่มนับใหม่
-                        timeLeft = 60;
-                        resendContainer.innerHTML = `ไม่ได้รับรหัสผ่าน ส่งรหัสผ่านใหม่ <span id="timer">1:00</span>`;
-                        // ดึง Element กลับมาใหม่และเริ่มจับเวลาอีกครั้ง
-                        window.location.reload(); 
-                    });
-                } else {
-                    timeLeft--; // ลดเวลาลงทีละ 1 วินาที
-                }
-            }, 1000);
+        function readFlow() {
+            try { return JSON.parse(sessionStorage.getItem(RESET_FLOW_KEY)) || null; } catch { return null; }
+        }
+        function saveFlow() {
+            try { sessionStorage.setItem(RESET_FLOW_KEY, JSON.stringify(flow)); } catch { /* ใช้งานต่อได้แม้บันทึกไม่ได้ */ }
         }
 
-        // เริ่มทำงานนับถอยหลังทันทีเมื่อโหลดหน้าเว็บ
-        startTimer();
+        // ต้องเริ่มจากหน้ากรอกรหัสนักศึกษาก่อน
+        let flow = readFlow();
+        if (!flow || !flow.Student_ID) {
+            window.location.replace('resetpass.html');
+        }
 
-        // ทำงานทันทีเมื่อโหลดหน้าเว็บเสร็จ
-        window.addEventListener('DOMContentLoaded', () => {
-            // ดึงค่ารหัสนักศึกษาที่บันทึกไว้ใน sessionStorage จากหน้าแรก
-            const savedStudentId = sessionStorage.getItem('resetStudentId');
+        let isVerifying = false;
+        let isResending = false;
+        let otpExpiredShown = false;
 
-            // หากมีข้อมูลบันทึกอยู่ ให้เปลี่ยนข้อความในแท็ก id="display-student-id"
-            if (savedStudentId) {
-                document.getElementById('display-student-id').textContent = savedStudentId;
+        // ---------- ช่องกรอก OTP ----------
+        function getCode() {
+            return otpInputs.map((input) => input.value).join('');
+        }
+
+        function fillCode(code) {
+            const digits = String(code).replace(/\D/g, '').slice(0, otpInputs.length).split('');
+            otpInputs.forEach((input, i) => { input.value = digits[i] || ''; });
+            onCodeChanged();
+            // กรอกครบแล้วให้โฟกัสปุ่มยืนยัน ถ้ายังไม่ครบให้โฟกัสช่องว่างช่องแรก
+            const next = otpInputs.find((input) => !input.value);
+            (next || verifyBtn).focus();
+        }
+
+        function clearCode() {
+            otpInputs.forEach((input) => { input.value = ''; });
+            otpInputs[0].focus();
+            onCodeChanged();
+        }
+
+        function onCodeChanged() {
+            otpContainer.classList.remove('is-invalid');
+            if (formAlert.classList.contains('is-visible') && !otpExpiredShown) showFormAlert('');
+            verifyBtn.disabled = getCode().length !== otpInputs.length || isVerifying;
+        }
+
+        otpInputs.forEach((input, index) => {
+            input.addEventListener('input', () => {
+                const digits = input.value.replace(/\D/g, '');
+                if (digits.length > 1) {
+                    // กรณีมือถือเติมรหัสทั้งชุดลงช่องเดียว (autocomplete one-time-code)
+                    fillCode(digits);
+                    return;
+                }
+                input.value = digits;
+                if (digits && index < otpInputs.length - 1) otpInputs[index + 1].focus();
+                onCodeChanged();
+            });
+
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Backspace' && !input.value && index > 0) {
+                    otpInputs[index - 1].value = '';
+                    otpInputs[index - 1].focus();
+                    onCodeChanged();
+                    event.preventDefault();
+                } else if (event.key === 'ArrowLeft' && index > 0) {
+                    otpInputs[index - 1].focus();
+                } else if (event.key === 'ArrowRight' && index < otpInputs.length - 1) {
+                    otpInputs[index + 1].focus();
+                } else if (event.key === 'Enter' && !verifyBtn.disabled) {
+                    verifyOtp();
+                }
+            });
+
+            // วางรหัส (Ctrl+V) ทั้งชุดได้ในช่องใดก็ได้
+            input.addEventListener('paste', (event) => {
+                event.preventDefault();
+                fillCode((event.clipboardData || window.clipboardData).getData('text'));
+            });
+
+            input.addEventListener('focus', () => input.select());
+        });
+
+        // ---------- Notification ----------
+        function showNotification() {
+            if (!flow.otp) return;   // ไม่มี OTP ส่งมา (ระบบส่งทางอีเมลจริง) ไม่ต้องแสดง
+            document.getElementById('noti-code').textContent = flow.otp;
+            const minutesLeft = Math.max(1, Math.ceil((flow.expiresAt - Date.now()) / 60000));
+            document.getElementById('noti-minutes').textContent = minutesLeft;
+            notification.hidden = false;
+            notification.classList.remove('is-visible');
+            setTimeout(() => notification.classList.add('is-visible'), NOTIFICATION_DELAY_MS);
+        }
+
+        function hideNotification() {
+            notification.classList.remove('is-visible');
+        }
+
+        // แตะ Notification = กรอกรหัสให้อัตโนมัติ แล้วซ่อน Notification
+        function useNotificationCode() {
+            if (flow.otp) fillCode(flow.otp);
+            hideNotification();
+        }
+        notification.addEventListener('click', useNotificationCode);
+        notification.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                useNotificationCode();
             }
         });
+
+        // ---------- แจ้งเตือน / นับถอยหลัง ----------
+        function showFormAlert(message) {
+            formAlertText.textContent = message || '';
+            formAlert.classList.toggle('is-visible', Boolean(message));
+            if (!message) otpExpiredShown = false;
+        }
+
+        function formatSeconds(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = String(totalSeconds % 60).padStart(2, '0');
+            return `${minutes}:${seconds}`;
+        }
+
+        function renderTimers() {
+            const now = Date.now();
+
+            // ปุ่มส่งรหัสใหม่: นับถอยหลังจนกว่าจะขอใหม่ได้
+            const secondsUntilResend = Math.ceil((flow.resendAt - now) / 1000);
+            if (secondsUntilResend > 0) {
+                resendBox.innerHTML = `ส่งรหัสอีกครั้งได้ใน <span id="timer">${formatSeconds(secondsUntilResend)}</span>`;
+            } else if (!resendBox.querySelector('#resend-btn')) {
+                resendBox.innerHTML = 'ไม่ได้รับรหัส? <button type="button" class="resend-link" id="resend-btn">ส่งรหัสใหม่</button>';
+                document.getElementById('resend-btn').addEventListener('click', resendOtp);
+            }
+
+            // OTP หมดอายุ
+            if (now >= flow.expiresAt && !otpExpiredShown) {
+                showFormAlert('รหัส OTP หมดอายุแล้ว กรุณากด "ส่งรหัสใหม่" เพื่อรับรหัสใหม่');
+                otpExpiredShown = true;
+                hideNotification();
+                flow.resendAt = Math.min(flow.resendAt, now);
+            }
+        }
+
+        // ---------- ยืนยัน OTP ----------
+        function setVerifying(loading) {
+            isVerifying = loading;
+            verifyBtn.classList.toggle('is-loading', loading);
+            verifyBtn.innerHTML = loading ? '<i class="fa-solid fa-spinner fa-spin"></i> กำลังตรวจสอบ...' : VERIFY_LABEL;
+            verifyBtn.disabled = loading || getCode().length !== otpInputs.length;
+        }
+
+        function markInvalid(message) {
+            showFormAlert(message);
+            otpContainer.classList.add('is-invalid');
+            otpContainer.classList.remove('shake');
+            void otpContainer.offsetWidth;   // เริ่มแอนิเมชันสั่นใหม่
+            otpContainer.classList.add('shake');
+        }
+
+        async function verifyOtp() {
+            const code = getCode();
+            if (code.length !== otpInputs.length || isVerifying) return;
+
+            setVerifying(true);
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Student_ID: flow.Student_ID, OTP: code }),
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok && data.success) {
+                    // เก็บรหัสที่ยืนยันแล้ว เพื่อใช้ตอนบันทึกรหัสผ่านใหม่ในหน้าถัดไป
+                    flow.verified = true;
+                    flow.verifiedOtp = code;
+                    if (data.expiresInSeconds) flow.expiresAt = Date.now() + data.expiresInSeconds * 1000;
+                    saveFlow();
+                    window.location.href = 'newpass.html';
+                    return;
+                }
+
+                setVerifying(false);
+                markInvalid(data.message || 'รหัส OTP ไม่ถูกต้อง');
+                if (data.code === 'OTP_EXPIRED' || data.code === 'OTP_LOCKED') {
+                    // ต้องขอรหัสใหม่: เปิดให้กดส่งรหัสใหม่ได้ทันที
+                    otpExpiredShown = true;
+                    flow.otp = null;
+                    flow.resendAt = Date.now();
+                    saveFlow();
+                    hideNotification();
+                    renderTimers();
+                }
+                otpInputs.forEach((input) => { input.value = ''; });
+                otpInputs[0].focus();
+                verifyBtn.disabled = true;
+            } catch (error) {
+                setVerifying(false);
+                showFormAlert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว และลองใหม่อีกครั้ง');
+            }
+        }
+
+        verifyBtn.addEventListener('click', verifyOtp);
+
+        // ---------- ขอรหัส OTP ใหม่ ----------
+        async function resendOtp() {
+            if (isResending) return;
+            isResending = true;
+            const resendBtn = document.getElementById('resend-btn');
+            if (resendBtn) {
+                resendBtn.disabled = true;
+                resendBtn.textContent = 'กำลังส่ง...';
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/request-reset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Student_ID: flow.Student_ID }),
+                });
+                const data = await response.json().catch(() => ({}));
+                const now = Date.now();
+
+                if (response.ok && data.success) {
+                    flow.otp = data.otp || null;
+                    flow.email = data.email || flow.email;
+                    flow.expiresAt = now + (data.expiresInSeconds || 600) * 1000;
+                    flow.resendAt = now + (data.resendAfterSeconds || 60) * 1000;
+                    flow.verified = false;
+                    saveFlow();
+                    showFormAlert('');
+                    clearCode();
+                    showNotification();
+                } else if (response.status === 429 && data.retryAfterSeconds) {
+                    flow.resendAt = now + data.retryAfterSeconds * 1000;
+                    saveFlow();
+                } else {
+                    showFormAlert(data.message || 'ไม่สามารถส่งรหัสใหม่ได้ กรุณาลองใหม่อีกครั้ง');
+                }
+            } catch (error) {
+                showFormAlert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว และลองใหม่อีกครั้ง');
+            } finally {
+                isResending = false;
+                resendBox.innerHTML = '';   // ให้ renderTimers สร้างข้อความ/ปุ่มใหม่ตามสถานะล่าสุด
+                renderTimers();
+            }
+        }
+
+        // ---------- เริ่มต้นหน้า ----------
+        if (flow && flow.Student_ID) {
+            document.getElementById('display-email').textContent = flow.email || `${flow.Student_ID}@kmitl.ac.th`;
+            renderTimers();
+            setInterval(renderTimers, 1000);
+            otpInputs[0].focus();
+            if (Date.now() < flow.expiresAt) showNotification();
+        }
     </script>
-    
 </body>
 </html>
