@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const db = require('./config/db');
 const authRoutes = require('./routes/auth');
+const resetPasswordRoutes = require('./routes/resetPassword');
 const itemRoutes = require('./routes/item');
 const matchRouter = require('./routes/matchitem');
 const adminApproveRouter = require('./routes/adminapprovefound');
@@ -18,6 +19,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/auth', resetPasswordRoutes); // ลืมรหัสผ่าน: /api/auth/request-reset, /verify-otp, /reset-password
 app.use('/api/items', itemRoutes);
 app.use('/api/match', matchRouter);
 app.use('/api/admin', adminApproveRouter);
