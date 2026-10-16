@@ -128,13 +128,3 @@ CREATE TABLE IF NOT EXISTS Notification (
     FOREIGN KEY (Claim_ID) REFERENCES Claim(Claim_ID) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
--- 11. ระบบลบข้อมูลอัตโนมัติภายใน 30 นาที ของสิ่งของที่พบ (FoundItem) ที่รอการอนุมัติ
--- 1. เปิดใช้งานระบบ Event Scheduler ใน MySQL
-SET GLOBAL event_scheduler = ON;
--- 2. สร้าง Event ตรวจเช็คและลบรายการ 'รอดำเนินการ' ที่เกิน 30 นาที ทุกๆ 5 นาที
-CREATE EVENT IF NOT EXISTS delete_unapproved_found_items
-ON SCHEDULE EVERY 5 MINUTE
-DO
-    DELETE FROM FoundItem
-    WHERE Found_status = 'รอการอนุมัติ'
-    AND Foundcheck_at < NOW() - INTERVAL 30 MINUTE;

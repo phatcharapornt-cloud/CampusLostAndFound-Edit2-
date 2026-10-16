@@ -6,7 +6,8 @@ const path = require('path');
 
 // นำเข้าฟังก์ชันประมวลผลจับคู่จากไฟล์ matchitem.js
 const { processMatchingByLostItem, processMatchingByFoundItem } = require('../service/matchingService');
-const { validateLostItemReport } = require('../utils/validators');
+const { validateLostItemReport, validateFoundItemReport } = require('../utils/validators');
+const { FOUND_EXPIRE_MINUTES, MESSAGES: FOUND_MESSAGES } = require('../service/foundstatus');
 const { parseImageDataUrl, saveImage, removeUpload } = require('../utils/imageupload');
 
 // ฟังก์ชันแปลง Base64 แล้วบันทึกเป็นไฟล์รูปภาพลงโฟลเดอร์ uploads
@@ -139,70 +140,124 @@ router.post('/lostitem', async (req, res) => {
     }
 });
 
-// 2. API แจ้งสิ่งของที่พบโดยผู้ใช้งาน(user) (POST /api/items/founditem/user)
+// 2. API แจ้งสิ่งของที่พบโดยผู้ใช้งาน (POST /api/items/founditem/user) ใช้กับหน้า App-user/reportfound.html
+// body (JSON): { User_ID, FoundItem_name, Category_ID, Location_ID, Found_date: 'YYYY-MM-DD', Found_time: 'HH:MM',
+//                Found_description, Found_photo: 'data:image/jpeg;base64,...' (บังคับ) }
+// 201 = บันทึกลงตาราง FoundItem (สถานะ 'รอการอนุมัติ') + แจ้งเตือนผู้ใช้งาน + แจ้งเตือน Admin ทุกคน ("มีรายการแจ้งสิ่งของที่พบเข้ามาใหม่")
+//       ต้องนำสิ่งของมาส่งที่ส่วนกลางภายใน 30 นาที ไม่อย่างนั้นระบบจะเปลี่ยนเป็น 'ถูกปฏิเสธ' (service/foundstatus.js)
+// 400 = ข้อมูลไม่ถูกต้อง { message, errors: { ชื่อฟิลด์: ข้อความ } }, 404 = ไม่พบบัญชีผู้ใช้
 router.post('/founditem/user', async (req, res) => {
-    const{
-        User_ID, // User_ID ของคนที่ล็อกอินมาแจ้ง
-        Category_ID,
-        Location_ID,
-        FoundItem_name,
-        Found_date,
-        Found_time,
-        Found_description,
-        Found_photo,
-    } = req.body;   
+    const { values, errors } = validateFoundItemReport(req.body || {});
 
-    // ตรวจสอบว่ากรอกข้อมูลครบถ้วนหรือไม่
-    if (!User_ID ||!Category_ID || !Location_ID || !FoundItem_name || !Found_date || !Found_time || !Found_photo || !Found_description ) {
+    let image = null;
+    if (values.Found_photo) {
+        image = parseImageDataUrl(values.Found_photo);
+        if (image.error) errors.Found_photo = image.error;
+    }
+
+    if (Object.keys(errors).length > 0) {
         return res.status(400).json({
             success: false,
-            message: 'กรุณากรอกข้อมูลให้ครบถ้วน'
+            message: Object.values(errors)[0],
+            errors
         });
     }
 
+    let connection;
+    let photoPath = null;
+    let inTransaction = false;
     try {
-        const status = 'รอการอนุมัติ';
-        const adminID = null; // ผู้ใช้แจ้งเอง ยังไม่มี Admin อนุมัติ
-        const photoPath = saveBase64Image(Found_photo, 'found');
+        connection = await db.getConnection();
 
-        const insertFoundItemQuery = `
-            INSERT INTO FoundItem (User_ID, Admin_ID, Category_ID, Location_ID, FoundItem_name, Found_date, Found_time, Found_description, Found_photo, Found_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-
-        const [result] = await db.query(insertFoundItemQuery, [
-            User_ID,
-            adminID,
-            Category_ID,
-            Location_ID,
-            FoundItem_name,
-            Found_date,
-            Found_time,
-            Found_description,
-            photoPath,
-            status
-        ]);
-
-        const newFoundId = result.insertId;
-        
-        // บันทึกการแจ้งเตือน ให้ผู้ใช้ทำการส่งมอบสิ่งของไปที่ส่วนกลาง (สถานะรอการอนุมัติ)
-        const notiMessage = `รายงานสิ่งของที่พบ "${FoundItem_name}" สำเร็จแล้ว กรุณานำสิ่งของส่งมอบที่ศูนย์ภายใน 30 นาที (รอเจ้าหน้าที่อนุมัติ)`;
-        await db.query(
-            `INSERT INTO Notification (User_ID, Found_ID, Message) VALUES (?, ?, ?)`,
-            [User_ID, newFoundId, notiMessage]
+        // ตรวจว่าผู้ใช้ หมวดหมู่ และสถานที่ มีอยู่จริงในระบบ
+        const [[exists]] = await connection.query(
+            `SELECT
+                EXISTS(SELECT 1 FROM User WHERE User_ID = ?) AS user,
+                EXISTS(SELECT 1 FROM Category WHERE Category_ID = ?) AS category,
+                EXISTS(SELECT 1 FROM Location WHERE Location_ID = ?) AS location`,
+            [values.User_ID, values.Category_ID, values.Location_ID]
         );
+        if (!exists.user) {
+            return res.status(404).json({
+                success: false,
+                code: 'USER_NOT_FOUND',
+                message: 'ไม่พบบัญชีผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่อีกครั้ง'
+            });
+        }
+        const refErrors = {};
+        if (!exists.category) refErrors.Category_ID = 'ไม่พบหมวดหมู่ที่เลือก กรุณาเลือกใหม่';
+        if (!exists.location) refErrors.Location_ID = 'ไม่พบสถานที่ที่เลือก กรุณาเลือกใหม่';
+        if (Object.keys(refErrors).length > 0) {
+            return res.status(400).json({ success: false, message: Object.values(refErrors)[0], errors: refErrors });
+        }
+
+        photoPath = saveImage(image, 'found'); // บันทึกรูปลง Backend/uploads แล้วเก็บแค่ path ในฐานข้อมูล
+
+        // บันทึกสิ่งของที่พบ + การแจ้งเตือนผู้ใช้ + การแจ้งเตือน Admin พร้อมกัน (ไม่สำเร็จอย่างใดอย่างหนึ่ง ยกเลิกทั้งหมด)
+        await connection.beginTransaction();
+        inTransaction = true;
+
+        const [result] = await connection.query(
+            `INSERT INTO FoundItem (User_ID, Admin_ID, Category_ID, Location_ID, FoundItem_name, Found_date, Found_time, Found_description, Found_photo, Found_status)
+             VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, 'รอการอนุมัติ')`,
+            [
+                values.User_ID,
+                values.Category_ID,
+                values.Location_ID,
+                values.FoundItem_name,
+                values.Found_date,
+                values.Found_time,
+                values.Found_description,
+                photoPath
+            ]
+        );
+        const newFoundId = result.insertId;
+
+        const notiMessage = FOUND_MESSAGES.reported(values.FoundItem_name);
+        const [notiResult] = await connection.query(
+            'INSERT INTO Notification (User_ID, Found_ID, Message) VALUES (?, ?, ?)',
+            [values.User_ID, newFoundId, notiMessage]
+        );
+
+        // แจ้งเตือน Admin ทุกคน (ตาราง Notification ผูกกับ Admin_ID ทีละคน)
+        await connection.query(
+            'INSERT INTO Notification (Admin_ID, Found_ID, Message) SELECT Admin_ID, ?, ? FROM Admin',
+            [newFoundId, FOUND_MESSAGES.adminNew(values.FoundItem_name)]
+        );
+
+        // เวลาที่ต้องนำสิ่งของมาส่งภายใน (นับจากเวลาที่แจ้ง ตามเวลาของฐานข้อมูล)
+        const [[deadline]] = await connection.query(
+            `SELECT DATE_FORMAT(Foundcheck_at + INTERVAL ? MINUTE, '%Y-%m-%d %H:%i:%s') AS deliverBy FROM FoundItem WHERE Found_ID = ?`,
+            [FOUND_EXPIRE_MINUTES, newFoundId]
+        );
+
+        await connection.commit();
+        inTransaction = false;
 
         res.status(201).json({
             success: true,
-            message: 'แจ้งสิ่งของที่พบสำเร็จ (รอ Admin อนุมัติ)',
-            FoundItem_ID: result.insertId
+            message: 'ท่านได้ทำการแจ้งสิ่งของที่พบสำเร็จ',
+            Found_ID: newFoundId,
+            FoundItem_ID: newFoundId, // ชื่อเดิม (เผื่อโค้ดเก่าที่ยังใช้อยู่)
+            Found_status: 'รอการอนุมัติ',
+            Found_photo: photoPath,
+            deliverWithinMinutes: FOUND_EXPIRE_MINUTES,
+            deliverBy: deadline.deliverBy,
+            notification: {
+                Notification_ID: notiResult.insertId,
+                Message: notiMessage
+            }
         });
     } catch (error) {
+        if (inTransaction) await connection.rollback().catch(() => {});
+        removeUpload(photoPath);
         console.error('Error reporting found item by user:', error);
         res.status(500).json({
             success: false,
-            message: 'เกิดข้อผิดพลาดในการแจ้งสิ่งของที่พบ'
+            message: 'เกิดข้อผิดพลาดในการแจ้งสิ่งของที่พบ กรุณาลองใหม่อีกครั้ง'
         });
+    } finally {
+        if (connection) connection.release();
     }
 });
 

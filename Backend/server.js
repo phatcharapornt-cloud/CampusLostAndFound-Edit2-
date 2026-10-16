@@ -9,6 +9,7 @@ const resetPasswordRoutes = require('./routes/resetpassword');
 const adminAuthRoutes = require('./routes/adminauth');
 const adminDashboardRoutes = require('./routes/admindashboard');
 const adminHistoryRoutes = require('./routes/adminhistory');
+const adminNotificationRoutes = require('./routes/adminnotifications');
 const itemSearchRoutes = require('./routes/itemsearch');
 const myItemsRoutes = require('./routes/myitems');
 const notificationRoutes = require('./routes/notifications');
@@ -16,6 +17,7 @@ const itemRoutes = require('./routes/item');
 const matchRouter = require('./routes/matchitem');
 const adminApproveRouter = require('./routes/adminapprovefound');
 const claimRoutes = require('./routes/claimitem');
+const { startFoundExpiryJob } = require('./service/foundstatus');
 
 const app = express();
 
@@ -35,7 +37,8 @@ app.use('/api/notifications', notificationRoutes); // การแจ้งเ�
 app.use('/api/match', matchRouter);
 app.use('/api/admin', adminApproveRouter);
 app.use('/api/admin', adminDashboardRoutes); // หน้าหลัก Web-Admin: /api/admin/summary
-app.use('/api/admin', adminHistoryRoutes);   // History ของ Web-Admin: /api/admin/history/lost
+app.use('/api/admin', adminHistoryRoutes);   // History ของ Web-Admin: /api/admin/history/lost, /history/found
+app.use('/api/admin', adminNotificationRoutes); // กระดิ่งแจ้งเตือนของ Admin: /api/admin/notifications
 app.use('/api/claim', claimRoutes);
 
 // เปิดให้เข้าถึงไฟล์รูปภาพในโฟลเดอร์ uploads ผ่าน URL ได้
@@ -81,4 +84,6 @@ app.listen(PORT, (error) => {
     process.exit(1);
   }
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+  // สิ่งของที่พบที่ 'รอการอนุมัติ' เกิน 30 นาที → 'ถูกปฏิเสธ' อัตโนมัติ + แจ้งเตือนผู้ใช้ (ตรวจทุก 1 นาที)
+  startFoundExpiryJob();
 });

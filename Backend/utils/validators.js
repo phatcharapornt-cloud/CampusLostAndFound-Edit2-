@@ -289,10 +289,41 @@ function validateLostItemReport(body, now = new Date()) {
     };
 }
 
+// ตรวจข้อมูลการแจ้งสิ่งของที่พบ (หน้า App-user/reportfound.html) ต่างจากของหายตรงที่ "รูปภาพบังคับ"
+// ตรวจแค่ว่าแนบรูปมาไหม ส่วนความถูกต้องของไฟล์รูปตรวจใน utils/imageupload.js
+function validateFoundItemReport(body, now = new Date()) {
+    const values = {
+        User_ID: toPositiveInt(body.User_ID),
+        FoundItem_name: toText(body.FoundItem_name).trim(),
+        Category_ID: toPositiveInt(body.Category_ID),
+        Location_ID: toPositiveInt(body.Location_ID),
+        Found_date: toText(body.Found_date).trim(),
+        Found_time: toText(body.Found_time).trim(),
+        Found_description: toText(body.Found_description).trim(),
+        Found_photo: typeof body.Found_photo === 'string' ? body.Found_photo : '',
+    };
+    const dateError = validateItemDate(values.Found_date, now);
+
+    return {
+        values,
+        errors: collectErrors({
+            User_ID: values.User_ID ? null : 'ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่',
+            FoundItem_name: validateRequiredText(values.FoundItem_name, 'ชื่อสิ่งของ', ITEM_NAME_MAX_LENGTH),
+            Category_ID: values.Category_ID ? null : 'กรุณาเลือกหมวดหมู่ของสิ่งของ',
+            Location_ID: values.Location_ID ? null : 'กรุณาเลือกสถานที่ที่พบเจอสิ่งของ',
+            Found_date: dateError,
+            Found_time: validateItemTime(values.Found_time, dateError ? null : values.Found_date, now),
+            Found_photo: values.Found_photo ? null : 'กรุณาแนบรูปภาพของสิ่งของที่พบ',
+            Found_description: validateRequiredText(values.Found_description, 'รายละเอียดเพิ่มเติม', ITEM_DESCRIPTION_MAX_LENGTH),
+        }),
+    };
+}
+
 module.exports = {
     ITEM_NAME_MAX_LENGTH,
     ITEM_DESCRIPTION_MAX_LENGTH,
     validateLostItemReport,
+    validateFoundItemReport,
     STUDENT_ID_PATTERN,
     UNIVERSITY_EMAIL_DOMAIN,
     PASSWORD_RULES,
