@@ -5,7 +5,7 @@ require('dotenv').config();
 
 const db = require('./config/db');
 const authRoutes = require('./routes/auth');
-const resetPasswordRoutes = require('./routes/resetPassword');
+const resetPasswordRoutes = require('./routes/resetpassword');
 const itemRoutes = require('./routes/item');
 const matchRouter = require('./routes/matchitem');
 const adminApproveRouter = require('./routes/adminapprovefound');
