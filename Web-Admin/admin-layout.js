@@ -23,13 +23,13 @@ const AdminLayout = (() => {
     const PAGES = [
         { key: 'home',            label: 'หน้าหลัก',                  icon: 'fa-solid fa-house',            href: 'dashboard.html',      ready: true },
         { key: 'approve-found',   label: 'อนุมัติสิ่งของที่พบ',         icon: 'fa-solid fa-box-open',         href: 'approvefound.html',   ready: true },
-        { key: 'matches',         label: 'รายการจับคู่สิ่งของ',         icon: 'fa-solid fa-link',             href: 'matches.html',        ready: false },
+        { key: 'matches',         label: 'รายการจับคู่สิ่งของ',         icon: 'fa-solid fa-link',             href: 'matches.html',        ready: true },
         { key: 'claims',          label: 'คำขอรับสิ่งของคืน',           icon: 'fa-solid fa-hand-holding',     href: 'claims.html',         ready: false },
         { key: 'record-found',    label: 'บันทึกรายการสิ่งของที่พบ',     icon: 'fa-solid fa-plus',             href: 'recordfound.html',    ready: false },
         // กลุ่ม History
         { key: 'history-lost',    label: 'รายการสิ่งของที่หาย',         icon: 'fa-solid fa-magnifying-glass', href: 'historylost.html',    ready: true,  group: 'history' },
         { key: 'history-found',   label: 'รายการสิ่งของที่พบ',          icon: 'fa-solid fa-box',              href: 'historyfound.html',   ready: true,  group: 'history' },
-        { key: 'history-matches', label: 'รายการจับคู่สิ่งของ',         icon: 'fa-solid fa-link',             href: 'historymatches.html', ready: false, group: 'history' },
+        { key: 'history-matches', label: 'รายการจับคู่สิ่งของ',         icon: 'fa-solid fa-link',             href: 'historymatches.html', ready: true,  group: 'history' },
         { key: 'history-claims',  label: 'รายการการขอรับสิ่งของคืน',     icon: 'fa-solid fa-hand-holding',     href: 'historyclaims.html',  ready: false, group: 'history' },
     ];
     const HISTORY_OPEN_KEY = 'adminNavHistoryOpen';
@@ -193,14 +193,17 @@ const AdminLayout = (() => {
             return;
         }
         list.innerHTML = items.map((n) => {
-            const approvePage = getPage('approve-found');
-            const href = n.Needs_action && approvePage && approvePage.ready ? `${approvePage.href}?focus=${encodeURIComponent(n.Found_ID)}` : '';
+            // Target บอกว่าการแจ้งเตือนนี้เกี่ยวกับหน้าไหน (matches = รายการจับคู่, approve-found = อนุมัติสิ่งของที่พบ)
+            const targetPage = n.Target ? getPage(n.Target) : null;
+            const focusId = n.Target === 'matches' ? n.Match_ID : n.Found_ID;
+            const href = n.Needs_action && targetPage && targetPage.ready ? `${targetPage.href}?focus=${encodeURIComponent(focusId)}` : '';
+            const ref = n.Target === 'matches' ? ` · รหัสจับคู่ #${escapeHtml(n.Match_ID)}` : (n.Found_ID ? ` · รหัสสิ่งของ #${escapeHtml(n.Found_ID)}` : '');
             const tag = n.Needs_action ? '<span class="noti-tag">รอตรวจสอบ</span>' : '';
             const inner = `
                 <span class="noti-dot${n.Is_read ? ' is-read' : ''}" aria-hidden="true"></span>
                 <span class="noti-body">
                     <span class="noti-msg">${escapeHtml(n.Message)}</span>
-                    <span class="noti-time">${escapeHtml(timeAgo(n.Notice_at))}${n.Found_ID ? ` · รหัสสิ่งของ #${escapeHtml(n.Found_ID)}` : ''}${tag}</span>
+                    <span class="noti-time">${escapeHtml(timeAgo(n.Notice_at))}${ref}${tag}</span>
                 </span>`;
             return `<li>${href ? `<a class="noti-item${n.Is_read ? '' : ' is-unread'}" href="${href}">${inner}</a>` : `<div class="noti-item${n.Is_read ? '' : ' is-unread'}">${inner}</div>`}</li>`;
         }).join('');

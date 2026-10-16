@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายการจับคู่สิ่งของ | Campus Lost & Found Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin-layout.css">
+    <link rel="stylesheet" href="match-view.css">
+
+    <style>
+        [hidden] { display: none !important; }
+
+        .page-head {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .page-head .crumb {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+        .page-head .crumb a { color: var(--text-muted); text-decoration: none; }
+        .page-head .crumb a:hover { color: var(--primary); }
+        .page-head p {
+            font-size: 13.5px;
+            color: var(--text-muted);
+        }
+        .refresh-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            border: 1px solid var(--border);
+            background-color: var(--surface);
+            color: var(--text);
+            font-size: 13px;
+            padding: 8px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .refresh-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .refresh-btn:disabled { opacity: 0.6; cursor: wait; }
+
+        /* ---------- แถบค้นหา + กรองสถานะ ---------- */
+        .panel {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+        .toolbar {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+        .toolbar-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 240px;
+            max-width: 460px;
+        }
+        .search-box i {
+            position: absolute;
+            left: 13px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 13px;
+            pointer-events: none;
+        }
+        .search-box input {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 9px 34px 9px 36px;
+            font-size: 13.5px;
+            outline: none;
+            background-color: #ffffff;
+        }
+        .search-box input:focus { border-color: var(--primary); }
+        .search-box .clear {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 26px;
+            height: 26px;
+            border: none;
+            border-radius: 50%;
+            background: none;
+            color: #9ca3af;
+            cursor: pointer;
+        }
+        .search-box .clear:hover { background-color: var(--bg); color: var(--text); }
+        .toggle-names {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+            user-select: none;
+        }
+        .toggle-names input { accent-color: var(--primary); width: 16px; height: 16px; }
+        .status-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .status-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            color: #374151;
+            font-size: 13px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .status-tab .count {
+            min-width: 22px;
+            padding: 0 6px;
+            border-radius: 999px;
+            background-color: var(--bg);
+            font-size: 11.5px;
+            font-weight: 600;
+            text-align: center;
+        }
+        .status-tab:hover { border-color: #f8c9b0; }
+        .status-tab[aria-pressed="true"] {
+            border-color: var(--primary);
+            background-color: var(--primary-soft);
+            color: var(--primary);
+            font-weight: 500;
+        }
+        .status-tab[aria-pressed="true"] .count { background-color: var(--primary); color: #ffffff; }
+
+        /* ---------- ตาราง ---------- */
+        .table-wrap { overflow-x: auto; }
+        table {
+            width: 100%;
+            min-width: 1060px;
+            border-collapse: collapse;
+            font-size: 13.5px;
+        }
+        thead th {
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            background-color: #fafbfc;
+            padding: 11px 14px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        thead th small { display: block; font-weight: 400; font-size: 11px; color: #9ca3af; }
+        tbody td {
+            padding: 14px;
+            border-bottom: 1px solid #f0f1f4;
+            vertical-align: top;
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover td { background-color: #fcfcfd; }
+        .col-id { width: 92px; }
+        .col-student { width: 120px; }
+        .col-ref { width: 170px; }
+        .col-photo { width: 92px; }
+        .col-status { width: 160px; }
+        .lost-id {
+            font-weight: 600;
+            color: var(--navy);
+            font-variant-numeric: tabular-nums;
+        }
+        .student-id { font-variant-numeric: tabular-nums; }
+
+        /* รหัสหมวดหมู่/สถานที่: กดเพื่อแสดงชื่อ */
+        .id-chip {
+            display: inline-flex;
+            align-items: flex-start;
+            gap: 6px;
+            max-width: 100%;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            color: var(--text);
+            font-size: 13px;
+            line-height: 1.4;
+            padding: 4px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+        }
+        .id-chip:hover { border-color: var(--primary); }
+        .id-chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+        .id-chip i { color: #9ca3af; font-size: 11px; margin-top: 4px; }
+        .id-chip .num { font-weight: 600; font-variant-numeric: tabular-nums; }
+        .id-chip .name {
+            color: var(--navy-light);
+            border-left: 1px solid var(--border);
+            padding-left: 6px;
+        }
+        .id-chip[aria-expanded="true"] {
+            border-color: #f8c9b0;
+            background-color: var(--primary-soft);
+        }
+        .id-chip[aria-expanded="true"] i { color: var(--primary); }
+
+        .desc .item-name {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 2px;
+            word-break: break-word;
+        }
+        .desc .text {
+            color: #374151;
+            line-height: 1.55;
+            word-break: break-word;
+        }
+        .desc .when {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .photo-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            padding: 0;
+            overflow: hidden;
+            background-color: #eef2f7;
+            cursor: zoom-in;
+            display: block;
+        }
+        .photo-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .photo-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .no-photo {
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
+            border: 1px dashed #d1d5db;
+            color: #9ca3af;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            text-align: center;
+            line-height: 1.2;
+        }
+        .no-photo i { font-size: 15px; }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .badge::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: currentColor;
+        }
+        .badge.s-notfound { background-color: #fff7e6; color: #b45309; }
+        .badge.s-found    { background-color: #e8f1fd; color: #1d4ed8; }
+        .badge.s-returned { background-color: var(--success-soft); color: var(--success); }
+        .badge.s-cancel   { background-color: #f3f4f6; color: #6b7280; }
+        .badge.s-rejected { background-color: var(--error-soft); color: var(--error); }
+        .badge { white-space: normal; line-height: 1.4; }
+        .col-match-status { width: 200px; }
+        .status-note {
+            display: block;
+            margin-top: 6px;
+            font-size: 11.5px;
+            line-height: 1.45;
+            color: var(--text-muted);
+            word-break: break-word;
+        }
+        .status-note.is-auto { color: var(--error); }
+
+        /* สถานะว่าง / โหลด */
+        .state {
+            text-align: center;
+            padding: 48px 16px;
+            color: var(--text-muted);
+            font-size: 13.5px;
+        }
+        .state i { display: block; font-size: 28px; color: #c4c8cf; margin-bottom: 10px; }
+        .skeleton-row td div {
+            height: 14px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #eef0f3 25%, #f6f7f9 50%, #eef0f3 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite;
+        }
+        @keyframes shimmer { to { background-position: -200% 0; } }
+
+        /* ---------- แบ่งหน้า ---------- */
+        .pager {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 12px 18px;
+            border-top: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .pager-buttons { display: flex; gap: 6px; align-items: center; }
+        .pager-buttons button {
+            min-width: 34px;
+            height: 34px;
+            padding: 0 10px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text);
+            cursor: pointer;
+        }
+        .pager-buttons button:disabled { opacity: 0.45; cursor: default; }
+        .pager-buttons button[aria-current="page"] {
+            border-color: var(--primary);
+            background-color: var(--primary);
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .pager-buttons .gap { padding: 0 2px; }
+
+        /* ---------- ดูรูปขนาดใหญ่ ---------- */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            background-color: rgba(15, 23, 42, 0.82);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            gap: 12px;
+        }
+        .lightbox img {
+            max-width: min(900px, 100%);
+            max-height: calc(100vh - 140px);
+            border-radius: 12px;
+            background-color: #ffffff;
+            object-fit: contain;
+        }
+        .lightbox .caption { color: #ffffff; font-size: 14px; text-align: center; }
+        .lightbox .close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.14);
+            color: #ffffff;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .lightbox .close:hover { background-color: rgba(255, 255, 255, 0.24); }
+
+        @media (max-width: 640px) {
+            .toolbar { padding: 14px; }
+            .search-box { min-width: 0; max-width: none; flex-basis: 100%; }
+            .pager { padding: 12px 14px; }
+        }
+    </style>
+</head>
+
+<body class="is-checking">
+    <div class="admin-app">
+        <aside class="admin-sidebar" id="admin-sidebar"></aside>
+        <div class="admin-main">
+            <header class="admin-topbar" id="admin-topbar"></header>
+            <main class="admin-content">
+                <div class="page-head">
+                    <div>
+                        <div class="crumb"><a href="dashboard.html">หน้าหลัก</a> / History</div>
+                        <p>รายการจับคู่สิ่งของทั้งหมด ทุกสถานะ รวมรายการที่ Admin ปฏิเสธการส่งให้ผู้ใช้งาน</p>
+                    </div>
+                    <button type="button" class="refresh-btn" id="refresh-btn"><i class="fa-solid fa-rotate-right"></i>รีเฟรช</button>
+                </div>
+
+                <div class="page-alert" id="page-alert" role="alert"><i class="fa-solid fa-circle-exclamation"></i><span></span></div>
+
+                <section class="panel" aria-label="รายการจับคู่สิ่งของ">
+                    <div class="toolbar">
+                        <div class="toolbar-row">
+                            <form class="search-box" id="search-form" role="search">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="search" maxlength="100" autocomplete="off" enterkeyhint="search"
+                                       placeholder="ค้นหารหัสจับคู่, รหัสสิ่งของ, รหัสนักศึกษา หรือชื่อสิ่งของ" aria-label="ค้นหา">
+                                <button type="button" class="clear" id="search-clear" aria-label="ล้างคำค้นหา" hidden><i class="fa-solid fa-xmark"></i></button>
+                            </form>
+                        </div>
+                        <div class="status-tabs" id="status-tabs" role="group" aria-label="กรองตามสถานะ"></div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table class="match-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-match-id">รหัสจับคู่</th>
+                                    <th>สิ่งของที่หาย</th>
+                                    <th>สิ่งของที่พบ</th>
+                                    <th class="col-score">Match Score</th>
+                                    <th class="col-match-status">สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rows"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="pager" id="pager" hidden>
+                        <span id="pager-info"></span>
+                        <div class="pager-buttons" id="pager-buttons"></div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+    <div class="admin-backdrop" id="admin-backdrop"></div>
+
+    <!-- ดูรูปขนาดใหญ่ -->
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="รูปภาพสิ่งของ" hidden>
+        <button type="button" class="close" id="lightbox-close" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+        <img id="lightbox-img" alt="">
+        <div class="caption" id="lightbox-caption"></div>
+    </div>
+
+    <script src="admin-session.js"></script>
+    <script src="admin-layout.js"></script>
+    <script src="match-view.js"></script>
+    <script>
+        const session = AdminLayout.init('history-matches');
+        const esc = AdminLayout.escapeHtml;
+        const $ = (id) => document.getElementById(id);
+
+        const PAGE_SIZE = 20;
+        // สถานะของรายการจับคู่ (ENUM ของ MatchItem.Match_status, 'รอการตรวจสอบ' = Admin ยังไม่ได้ตรวจ) → สีของป้าย
+        const STATUSES = [
+            { value: 'รอการตรวจสอบ',                              css: 's-notfound' },
+            { value: 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน',            css: 's-found' },
+            { value: 'ปฏิเสธการส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน',    css: 's-rejected' },
+            { value: 'ผู้ใช้งานยืนยันการขอรับสิ่งของคืน',               css: 's-returned' },
+            { value: 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน',               css: 's-cancel' },
+        ];
+
+        // สถานะการค้นหาเก็บไว้ใน URL ด้วย (รีเฟรชหน้าแล้วยังอยู่ที่เดิม)
+        const params = new URLSearchParams(window.location.search);
+        const state = {
+            status: STATUSES.some((s) => s.value === params.get('status')) ? params.get('status') : '',
+            q: (params.get('q') || '').slice(0, 100),
+            page: Math.max(1, parseInt(params.get('page'), 10) || 1),
+        };
+        let statusCounts = null;
+        let requestSeq = 0;
+
+        // ---------- ช่วยแสดงผล ----------
+        function photoUrl(path) {
+            if (!path) return '';
+            return /^https?:\/\//.test(path) ? path : `${AdminSession.API_BASE_URL}${path}`;
+        }
+        function formatFoundDate(dateText, timeText) {
+            if (!dateText) return '-';
+            const [y, m, d] = dateText.split('-').map(Number);
+            const date = new Date(y, m - 1, d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+            return timeText ? `${date} ${timeText} น.` : `${date} (ไม่ระบุเวลา)`;
+        }
+        function rowHtml(match) {
+            const found = STATUSES.find((st) => st.value === match.Match_status);
+            return `
+                <tr>
+                    <td><span class="match-id">#${esc(match.Match_ID)}</span><span class="match-when">จับคู่เมื่อ ${esc(MatchView.formatDate(match.Match_date, match.Match_time))}</span></td>
+                    <td>${MatchView.itemCell('lost', match.lost, match.found)}</td>
+                    <td>${MatchView.itemCell('found', match.found, match.lost)}</td>
+                    <td>${MatchView.scoreCell(match)}</td>
+                    <td><span class="badge ${found ? found.css : 's-cancel'}">${esc(match.Match_status)}</span></td>
+                </tr>`;
+        }
+        function stateRow(icon, message) {
+            return `<tr><td colspan="5"><div class="state"><i class="${icon}"></i>${message}</div></td></tr>`;
+        }
+        function skeletonRows() {
+            const row = '<tr class="skeleton-row">' + Array.from({ length: 5 }, (_, i) => `<td><div style="width:${[40, 90, 90, 60, 70][i]}%"></div></td>`).join('') + '</tr>';
+            return row.repeat(3);
+        }
+
+        function showAlert(message) {
+            const alert = $('page-alert');
+            alert.querySelector('span').textContent = message || '';
+            alert.classList.toggle('is-visible', Boolean(message));
+        }
+
+        // ---------- แท็บสถานะ ----------
+        function renderTabs() {
+            const counts = statusCounts || {};
+            const all = Object.values(counts).reduce((a, b) => a + b, 0);
+            const tabs = [{ value: '', label: 'ทั้งหมด', count: all }]
+                .concat(STATUSES.map((s) => ({ value: s.value, label: s.value, count: counts[s.value] || 0 })));
+            $('status-tabs').innerHTML = tabs.map((tab) => `
+                <button type="button" class="status-tab" data-status="${esc(tab.value)}" aria-pressed="${tab.value === state.status}">
+                    ${esc(tab.label)}<span class="count">${statusCounts ? tab.count : '–'}</span>
+                </button>`).join('');
+        }
+        $('status-tabs').addEventListener('click', (event) => {
+            const tab = event.target.closest('[data-status]');
+            if (!tab || tab.dataset.status === state.status) return;
+            state.status = tab.dataset.status;
+            state.page = 1;
+            load();
+        });
+
+        // ---------- แบ่งหน้า ----------
+        function pageList(current, total) {
+            const pages = new Set([1, total, current - 1, current, current + 1]);
+            return [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+        }
+        function renderPager(data) {
+            const pager = $('pager');
+            pager.hidden = data.total === 0;
+            if (data.total === 0) return;
+            const from = (data.page - 1) * data.pageSize + 1;
+            const to = from + data.items.length - 1;
+            $('pager-info').textContent = `แสดง ${from}–${to} จาก ${data.total} รายการ`;
+
+            let html = `<button type="button" data-page="${data.page - 1}" ${data.page <= 1 ? 'disabled' : ''} aria-label="หน้าก่อนหน้า"><i class="fa-solid fa-chevron-left"></i></button>`;
+            let prev = 0;
+            for (const p of pageList(data.page, data.totalPages)) {
+                if (p - prev > 1) html += '<span class="gap">…</span>';
+                html += `<button type="button" data-page="${p}" ${p === data.page ? 'aria-current="page"' : ''}>${p}</button>`;
+                prev = p;
+            }
+            html += `<button type="button" data-page="${data.page + 1}" ${data.page >= data.totalPages ? 'disabled' : ''} aria-label="หน้าถัดไป"><i class="fa-solid fa-chevron-right"></i></button>`;
+            $('pager-buttons').innerHTML = html;
+        }
+        $('pager-buttons').addEventListener('click', (event) => {
+            const button = event.target.closest('[data-page]');
+            if (!button || button.disabled || button.getAttribute('aria-current')) return;
+            state.page = Number(button.dataset.page);
+            load();
+            document.querySelector('.panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        // ---------- โหลดข้อมูล ----------
+        function syncUrl() {
+            const query = new URLSearchParams();
+            if (state.status) query.set('status', state.status);
+            if (state.q) query.set('q', state.q);
+            if (state.page > 1) query.set('page', state.page);
+            const text = query.toString();
+            history.replaceState(null, '', text ? `?${text}` : window.location.pathname);
+        }
+
+        async function load() {
+            const seq = ++requestSeq;   // ถ้ากดหลายครั้งติดกัน ใช้เฉพาะผลของครั้งล่าสุด
+            syncUrl();
+            renderTabs();
+            showAlert('');
+            const rows = $('rows');
+            rows.innerHTML = skeletonRows();
+            $('refresh-btn').disabled = true;
+
+            const query = new URLSearchParams({ page: state.page, pageSize: PAGE_SIZE });
+            if (state.status) query.set('status', state.status);
+            if (state.q) query.set('q', state.q);
+
+            try {
+                const { ok, data } = await AdminSession.apiFetch(`/api/admin/history/matches?${query}`);
+                if (seq !== requestSeq) return;
+                if (!ok) throw new Error(data.message || 'โหลดรายการไม่สำเร็จ');
+
+                statusCounts = data.statusCounts;
+                state.page = data.page;
+                syncUrl();
+                renderTabs();
+
+                if (data.items.length === 0) {
+                    rows.innerHTML = state.q || state.status
+                        ? stateRow('fa-solid fa-magnifying-glass', 'ไม่พบรายการที่ตรงกับการค้นหา')
+                        : stateRow('fa-regular fa-folder-open', 'ยังไม่มีรายการจับคู่สิ่งของ');
+                } else {
+                    rows.innerHTML = data.items.map(rowHtml).join('');
+                    MatchView.bindBrokenPhotos(rows);
+                }
+                renderPager(data);
+            } catch (error) {
+                if (error.unauthorized || seq !== requestSeq) return;
+                rows.innerHTML = stateRow('fa-solid fa-plug-circle-exclamation', 'โหลดรายการไม่สำเร็จ');
+                $('pager').hidden = true;
+                showAlert(error instanceof TypeError
+                    ? 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว'
+                    : error.message);
+            } finally {
+                if (seq === requestSeq) $('refresh-btn').disabled = false;
+            }
+        }
+
+        // ---------- ค้นหา ----------
+        const searchInput = $('search');
+        let searchTimer = null;
+        function applySearch() {
+            clearTimeout(searchTimer);
+            const q = searchInput.value.trim();
+            $('search-clear').hidden = !searchInput.value;
+            if (q === state.q) return;
+            state.q = q;
+            state.page = 1;
+            load();
+        }
+        searchInput.addEventListener('input', () => {
+            $('search-clear').hidden = !searchInput.value;
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(applySearch, 400);
+        });
+        $('search-form').addEventListener('submit', (event) => { event.preventDefault(); applySearch(); });
+        $('search-clear').addEventListener('click', () => {
+            searchInput.value = '';
+            applySearch();
+            searchInput.focus();
+        });
+
+        // ---------- กดรูปเพื่อดูรูปใหญ่ ----------
+        $('rows').addEventListener('click', (event) => {
+            const photo = event.target.closest('.mi-photo');
+            if (photo) openLightbox(photo.dataset.photo, photo.dataset.caption, photo);
+        });
+
+        let lightboxOpener = null;
+        function openLightbox(src, caption, opener) {
+            lightboxOpener = opener;
+            $('lightbox-img').src = src;
+            $('lightbox-caption').textContent = caption || '';
+            $('lightbox').hidden = false;
+            $('lightbox-close').focus();
+        }
+        function closeLightbox() {
+            $('lightbox').hidden = true;
+            $('lightbox-img').removeAttribute('src');
+            if (lightboxOpener) lightboxOpener.focus();
+        }
+        $('lightbox-close').addEventListener('click', closeLightbox);
+        $('lightbox').addEventListener('click', (event) => { if (event.target.id === 'lightbox') closeLightbox(); });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !$('lightbox').hidden) closeLightbox();
+        });
+
+        $('refresh-btn').addEventListener('click', load);
+
+        // ---------- เริ่มต้นหน้า ----------
+        if (session) {
+            searchInput.value = state.q;
+            $('search-clear').hidden = !state.q;
+            load();
+        }
+    </script>
+</body>
+</html>

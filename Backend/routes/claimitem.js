@@ -20,7 +20,7 @@ router.post('/request', async (req, res) => {
             SELECT m.Match_ID, m.Lost_ID, m.Found_ID, m.Match_status, l.LostItem_name, l.Lost_description, n.Notice_at 
             FROM MatchItem m
             JOIN LostItem l ON m.Lost_ID = l.Lost_ID
-            LEFT JOIN Notification n ON n.Match_ID = m.Match_ID
+            LEFT JOIN Notification n ON n.Match_ID = m.Match_ID AND n.User_ID IS NOT NULL   -- เวลาที่แจ้งผู้ใช้ (ไม่ใช่การแจ้งเตือนของ Admin)
             WHERE m.Match_ID = ?
         `;
         const [matches] = await db.query(selectMatchQuery, [Match_ID]);

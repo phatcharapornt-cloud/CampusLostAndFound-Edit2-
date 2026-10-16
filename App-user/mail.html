@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>อีเมล | Campus Lost & Found</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="userapp.css">
+
+    <!--
+        อีเมลจำลอง (Mockup): ระบบไม่ได้ส่งอีเมลจริง หน้านี้แสดง "อีเมล" ที่ผู้ใช้จะได้รับเมื่อ Admin อนุมัติรายการจับคู่สิ่งของ
+          mail.html            กล่องจดหมาย (อีเมลทั้งหมด ใหม่สุดก่อน)
+          mail.html?match=12   เปิดอีเมลของรายการจับคู่ #12 (ลิงก์จากหน้าการแจ้งเตือน)
+        ข้อมูลจาก Backend: GET /api/mail?User_ID=..  และ  GET /api/mail/:matchId?User_ID=..
+    -->
+    <style>
+        [hidden] { display: none !important; }
+        /* หน้านี้ไม่มีแถบเมนูด้านล่าง */
+        .phone-scroll { padding-bottom: 28px; }
+        .toast { bottom: 24px; }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            color: var(--text);
+            font-size: 15px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .back-btn:focus-visible { outline: 2px solid var(--primary); }
+        .page-header h1 { font-size: 20px; font-weight: 600; line-height: 1.3; color: var(--text); }
+        .page-header p { font-size: 12.5px; color: var(--text-muted); word-break: break-all; }
+
+        /* ป้ายบอกว่าเป็นอีเมลจำลอง */
+        .mock-note {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            font-size: 11.5px;
+            line-height: 1.5;
+            color: #6b5a00;
+            background-color: #fff8db;
+            border: 1px solid #f3e3a1;
+            border-radius: 12px;
+            padding: 8px 11px;
+            margin-bottom: 14px;
+        }
+        .mock-note i { margin-top: 2px; }
+
+        /* ---------- กล่องจดหมาย ---------- */
+        .mail-list {
+            list-style: none;
+            background-color: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(15, 42, 74, 0.05);
+        }
+        .mail-list li + li { border-top: 1px solid #f0f1f4; }
+        .mail-row {
+            display: flex;
+            gap: 11px;
+            padding: 13px 14px;
+            text-decoration: none;
+            color: inherit;
+        }
+        .mail-row:hover { background-color: #fafbfc; }
+        .mail-row:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+        .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background-color: var(--navy);
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .mail-main { flex: 1; min-width: 0; }
+        .mail-top { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+        .mail-from { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mail-time { color: var(--text-muted); white-space: nowrap; font-size: 11.5px; }
+        .mail-subject { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.45; margin-top: 2px; }
+        .mail-preview {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.45;
+            margin-top: 2px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 9px;
+            border-radius: 999px;
+            margin-top: 6px;
+        }
+        .chip.is-waiting   { background-color: var(--primary-soft); color: var(--primary); }
+        .chip.is-confirmed { background-color: var(--success-soft); color: var(--success); }
+        .chip.is-closed    { background-color: #f0f1f4; color: var(--text-muted); }
+
+        /* ---------- อีเมล 1 ฉบับ ---------- */
+        .mail-subject-lg { font-size: 16.5px; font-weight: 600; line-height: 1.45; color: var(--text); margin-bottom: 12px; }
+        .mail-head {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .mail-head .who { min-width: 0; flex: 1; word-break: break-all; }
+        .mail-head b { color: var(--text); font-weight: 600; }
+        .mail-body {
+            background-color: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #1f2937;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: var(--navy);
+            color: #ffffff;
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .brand img { width: 30px; height: 30px; border-radius: 8px; background-color: #ffffff; object-fit: contain; padding: 2px; }
+        .mail-content { padding: 16px; }
+        .mail-content p + p { margin-top: 8px; }
+        .score-pill {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 4px;
+            background-color: var(--success-soft);
+            color: var(--success);
+            border-radius: 999px;
+            padding: 3px 12px;
+            font-weight: 600;
+            margin: 10px 0 2px;
+        }
+        .score-pill b { font-size: 18px; }
+        .item-box {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+        .item-box h3 { font-size: 12.5px; font-weight: 600; margin-bottom: 8px; }
+        .item-box.is-found h3 { color: var(--primary); }
+        .item-box.is-lost h3 { color: var(--text-muted); }
+        .item-photo {
+            display: block;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            border: none;
+            padding: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #eef2f7;
+            margin-bottom: 10px;
+            cursor: zoom-in;
+        }
+        .item-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .item-photo:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .item-name { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; word-break: break-word; }
+        .rows { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12.5px; }
+        .rows dt { color: var(--text-muted); white-space: nowrap; }
+        .rows dd { color: #1f2937; word-break: break-word; }
+        .deadline {
+            border-radius: 14px;
+            padding: 12px 14px;
+            margin-top: 14px;
+            font-size: 12.5px;
+            line-height: 1.6;
+        }
+        .deadline.is-waiting   { background-color: var(--primary-soft); color: #7c2d12; }
+        .deadline.is-confirmed { background-color: var(--success-soft); color: #14532d; }
+        .deadline.is-closed    { background-color: #f3f4f6; color: #374151; }
+        .countdown { font-size: 20px; font-weight: 700; color: var(--primary); font-variant-numeric: tabular-nums; display: block; margin-top: 2px; }
+        .cta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            margin-top: 12px;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            background-color: var(--primary);
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .cta:hover { background-color: var(--primary-hover); }
+        .cta:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+        .cta.is-secondary { background-color: #ffffff; color: var(--text); border: 1px solid var(--border); }
+        .mail-footer {
+            border-top: 1px solid #f0f1f4;
+            padding: 12px 16px;
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* ดูรูปใหญ่ */
+        .lightbox {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.88);
+            z-index: 8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .lightbox img { max-width: 100%; max-height: 80%; border-radius: 12px; }
+        .lightbox button {
+            position: absolute;
+            top: 56px;
+            right: 18px;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .state {
+            text-align: center;
+            padding: 40px 18px;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.6;
+            background-color: var(--surface);
+            border-radius: 16px;
+        }
+        .state > i { font-size: 30px; color: #c4c8cf; display: block; margin-bottom: 10px; }
+        .state strong { display: block; color: var(--text); font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+        .state.is-error > i { color: var(--error); }
+        .state button, .state a {
+            display: inline-block;
+            margin-top: 12px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 8px 16px;
+            font-size: 13px;
+            color: var(--text);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .skeleton {
+            height: 76px;
+            border-radius: 14px;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #eef0f3 25%, #f6f7f9 50%, #eef0f3 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite;
+        }
+        @keyframes shimmer { to { background-position: -200% 0; } }
+    </style>
+</head>
+
+<body class="is-checking">
+    <div class="phone">
+        <div class="dynamic-island"></div>
+
+        <div class="phone-scroll" id="scroll">
+            <header class="page-header">
+                <button type="button" class="back-btn" id="back-btn" aria-label="ย้อนกลับ"><i class="fa-solid fa-chevron-left"></i></button>
+                <div>
+                    <h1 id="page-title">อีเมล</h1>
+                    <p id="summary">&nbsp;</p>
+                </div>
+            </header>
+
+            <div class="mock-note" role="note">
+                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                <span>อีเมลจำลอง (Mockup) สำหรับสาธิตระบบ ระบบไม่ได้ส่งอีเมลจริง แต่แสดงอีเมลที่ผู้ใช้จะได้รับไว้ในหน้านี้</span>
+            </div>
+
+            <div id="content" aria-live="polite">
+                <div class="skeleton"></div><div class="skeleton"></div>
+            </div>
+        </div>
+
+        <div class="lightbox" id="lightbox" hidden role="dialog" aria-label="รูปสิ่งของที่พบ">
+            <button type="button" id="lightbox-close" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+            <img id="lightbox-img" alt="">
+        </div>
+
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <script src="userapp.js"></script>
+    <script>
+        const user = UserApp.init('mail');
+        const esc = UserApp.escapeHtml;
+        const $ = (id) => document.getElementById(id);
+        const matchId = new URLSearchParams(location.search).get('match');
+        const isDetail = /^\d+$/.test(matchId || '');
+
+        // ---------- วันเวลา ----------
+        // 'YYYY-MM-DD HH:MM:SS' (เวลาของเซิร์ฟเวอร์) → Date ตามเวลาเครื่อง
+        function parseTime(text) {
+            const [d, t = '00:00:00'] = String(text || '').split(' ');
+            const [y, m, day] = d.split('-').map(Number);
+            const [h, mi, s] = t.split(':').map(Number);
+            return new Date(y, (m || 1) - 1, day || 1, h || 0, mi || 0, s || 0);
+        }
+        const hhmm = (date) => date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+        function fullDate(text) {
+            const date = parseTime(text);
+            return `${date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })} ${hhmm(date)} น.`;
+        }
+        function shortDate(text) {
+            const date = parseTime(text);
+            const today = new Date();
+            if (date.toDateString() === today.toDateString()) return `${hhmm(date)} น.`;
+            return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+        }
+        function itemDate(dateText, timeText) {
+            if (!dateText) return '-';
+            const [y, m, d] = dateText.split('-').map(Number);
+            const date = new Date(y, m - 1, d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+            return timeText ? `${date} เวลา ${timeText} น.` : date;
+        }
+        function leftText(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            return h > 0 ? `เหลือ ${h} ชม. ${m} นาที` : `เหลือ ${Math.max(1, m)} นาที`;
+        }
+        const score = (value) => String(Number(Number(value).toFixed(2)));
+
+        const STATE_CHIP = {
+            waiting:   (mail) => `<span class="chip is-waiting"><i class="fa-regular fa-clock"></i>รอตอบกลับ · ${esc(leftText(mail.Seconds_left))}</span>`,
+            confirmed: () => '<span class="chip is-confirmed"><i class="fa-solid fa-check"></i>ส่งคำขอรับคืนแล้ว</span>',
+            closed:    () => '<span class="chip is-closed"><i class="fa-solid fa-lock"></i>ปิดแล้ว</span>',
+        };
+
+        // ---------- ปุ่มย้อนกลับ ----------
+        $('back-btn').addEventListener('click', () => {
+            const fromApp = document.referrer && new URL(document.referrer).origin === location.origin;
+            if (fromApp && history.length > 1) history.back();
+            else location.href = isDetail ? 'mail.html' : 'home.html';
+        });
+
+        // ---------- เรียก API ----------
+        async function fetchMail(path) {
+            const { ok, status, data } = await UserApp.apiGet(`${path}${path.includes('?') ? '&' : '?'}User_ID=${encodeURIComponent(user.User_ID)}`);
+            if (status === 404 && data.code === 'USER_NOT_FOUND') {
+                UserApp.toast(data.message);
+                setTimeout(UserApp.logout, 2000);
+                return null;
+            }
+            if (!ok) {
+                const error = new Error(data.message || 'error');
+                error.status = status;
+                throw error;
+            }
+            return data;
+        }
+
+        function showError(title, detail, retry) {
+            $('content').innerHTML = `<div class="state is-error"><i class="fa-solid fa-plug-circle-exclamation"></i><strong>${esc(title)}</strong>${esc(detail)}<br>${retry ? '<button type="button" id="retry-btn">ลองใหม่</button>' : '<a href="mail.html">ไปที่กล่องจดหมาย</a>'}</div>`;
+            if (retry) $('retry-btn').addEventListener('click', retry);
+        }
+
+        // ---------- กล่องจดหมาย ----------
+        async function loadInbox() {
+            $('page-title').textContent = 'อีเมล';
+            try {
+                const data = await fetchMail('/api/mail');
+                if (!data) return;
+                const emails = data.emails;
+                $('summary').textContent = emails.length ? (emails[0].To.address || ' ') : ' ';
+                if (emails.length === 0) {
+                    $('content').innerHTML = '<div class="state"><i class="fa-regular fa-envelope-open"></i><strong>ยังไม่มีอีเมล</strong>เมื่อเจ้าหน้าที่ตรวจพบสิ่งของที่คล้ายกับของที่คุณแจ้งหาย จะมีอีเมลแจ้งรายละเอียดที่นี่</div>';
+                    return;
+                }
+                $('content').innerHTML = `<ul class="mail-list">${emails.map((mail) => `
+                    <li><a class="mail-row" href="mail.html?match=${encodeURIComponent(mail.Match_ID)}">
+                        <span class="avatar" aria-hidden="true">CL</span>
+                        <div class="mail-main">
+                            <div class="mail-top"><span class="mail-from">${esc(mail.From.name)}</span><span class="mail-time">${esc(shortDate(mail.Sent_at))}</span></div>
+                            <div class="mail-subject">${esc(mail.Subject)}</div>
+                            <div class="mail-preview">สิ่งของที่พบ: ${esc(mail.match.found.FoundItem_name)} · ${esc(mail.match.found.Location_name || '-')}</div>
+                            ${STATE_CHIP[mail.State](mail)}
+                        </div>
+                    </a></li>`).join('')}</ul>`;
+            } catch {
+                showError('โหลดอีเมลไม่สำเร็จ', 'กรุณาตรวจสอบว่าเปิด Backend แล้ว', loadInbox);
+            }
+        }
+
+        // ---------- อีเมล 1 ฉบับ ----------
+        let countdownTimer = null;
+
+        function deadlineHtml(mail) {
+            if (mail.State === 'waiting') {
+                return `
+                    <div class="deadline is-waiting">
+                        หากเป็นสิ่งของของคุณ กรุณาส่งคำขอรับสิ่งของคืนภายใน ${mail.Claim_window_hours} ชั่วโมง
+                        (ก่อน ${esc(fullDate(mail.Deadline_at))}) ไม่อย่างนั้นระบบจะค้นหาสิ่งของให้คุณใหม่
+                        <span class="countdown" id="countdown" aria-live="off"></span>
+                    </div>
+                    <button type="button" class="cta" id="claim-btn"><i class="fa-solid fa-hand-holding"></i>ขอรับสิ่งของคืน</button>`;
+            }
+            if (mail.State === 'confirmed') {
+                return `
+                    <div class="deadline is-confirmed"><i class="fa-solid fa-circle-check"></i> คุณส่งคำขอรับสิ่งของคืนสำหรับรายการนี้แล้ว รอเจ้าหน้าที่ตรวจสอบ</div>
+                    <a class="cta is-secondary" href="myitems.html#claims"><i class="fa-solid fa-list-ul"></i>ดูการขอรับสิ่งของคืน</a>`;
+            }
+            return `<div class="deadline is-closed"><i class="fa-solid fa-lock"></i> รายการนี้ปิดแล้ว เนื่องจากเกินเวลา ${mail.Claim_window_hours} ชั่วโมงหรือไม่ได้ส่งคำขอรับคืน ระบบได้เริ่มค้นหาสิ่งของให้คุณใหม่ และจะแจ้งเตือนเมื่อพบรายการที่คล้ายกัน</div>`;
+        }
+
+        function renderMail(mail) {
+            const { lost, found } = mail.match;
+            const photo = UserApp.photoUrl(found.Found_photo);
+            $('page-title').textContent = 'อีเมล';
+            $('summary').textContent = mail.To.address || ' ';
+            document.title = `${mail.Subject} | Campus Lost & Found`;
+            $('content').innerHTML = `
+                <h2 class="mail-subject-lg">${esc(mail.Subject)}</h2>
+                <div class="mail-head">
+                    <span class="avatar" aria-hidden="true">CL</span>
+                    <div class="who">
+                        <b>${esc(mail.From.name)}</b> &lt;${esc(mail.From.address)}&gt;<br>
+                        ถึง ${esc(mail.To.name)} &lt;${esc(mail.To.address)}&gt;<br>
+                        ${esc(fullDate(mail.Sent_at))}
+                    </div>
+                </div>
+                <article class="mail-body">
+                    <div class="brand"><img src="logo.png" alt="">Campus Lost &amp; Found</div>
+                    <div class="mail-content">
+                        <p>สวัสดีคุณ ${esc(mail.To.name)}</p>
+                        <p>ระบบพบรายการสิ่งของที่คล้ายคลึงกับ <b>"${esc(lost.LostItem_name)}"</b> ที่คุณแจ้งหาย (รหัสสิ่งของ #${esc(lost.Lost_ID)})</p>
+                        <span class="score-pill">Match Score <b>${esc(score(mail.match.Match_score))}%</b></span>
+
+                        <section class="item-box is-found" aria-label="สิ่งของที่พบ">
+                            <h3><i class="fa-solid fa-box-open"></i> สิ่งของที่พบ (รหัส #${esc(found.Found_ID)})</h3>
+                            ${photo ? `<button type="button" class="item-photo" id="found-photo" aria-label="ดูรูปใหญ่"><img src="${esc(photo)}" alt="รูป${esc(found.FoundItem_name)}"></button>` : ''}
+                            <div class="item-name">${esc(found.FoundItem_name)}</div>
+                            <dl class="rows">
+                                <dt>หมวดหมู่</dt><dd>${esc(found.Category_name || '-')}</dd>
+                                <dt>สถานที่ที่พบ</dt><dd>${esc(found.Location_name || '-')}</dd>
+                                <dt>วันที่พบ</dt><dd>${esc(itemDate(found.Found_date, found.Found_time))}</dd>
+                                <dt>รายละเอียด</dt><dd>${esc(found.Found_description || '-')}</dd>
+                            </dl>
+                        </section>
+
+                        <section class="item-box is-lost" aria-label="สิ่งของที่คุณแจ้งหาย">
+                            <h3><i class="fa-solid fa-magnifying-glass"></i> สิ่งของที่คุณแจ้งหาย (รหัส #${esc(lost.Lost_ID)})</h3>
+                            <dl class="rows">
+                                <dt>ชื่อ</dt><dd>${esc(lost.LostItem_name)}</dd>
+                                <dt>หมวดหมู่</dt><dd>${esc(lost.Category_name || '-')}</dd>
+                                <dt>สถานที่</dt><dd>${esc(lost.Location_name || '-')}</dd>
+                                <dt>วันที่หาย</dt><dd>${esc(itemDate(lost.Lost_date, lost.Lost_time))}</dd>
+                            </dl>
+                        </section>
+
+                        ${deadlineHtml(mail)}
+                    </div>
+                    <div class="mail-footer">อีเมลนี้ส่งอัตโนมัติจากระบบ Campus Lost &amp; Found กรุณาอย่าตอบกลับ</div>
+                </article>`;
+
+            const photoBtn = $('found-photo');
+            if (photoBtn) {
+                photoBtn.querySelector('img').addEventListener('error', () => photoBtn.remove());
+                photoBtn.addEventListener('click', () => openPhoto(photo));
+            }
+            const claimBtn = $('claim-btn');
+            if (claimBtn) {
+                // หน้าขอรับสิ่งของคืนยังไม่ได้สร้าง: เมื่อสร้างแล้วให้เปลี่ยน claim.ready เป็น true ใน userapp.js
+                claimBtn.addEventListener('click', () => {
+                    if (UserApp.PAGES.claim && UserApp.PAGES.claim.ready) location.href = `${UserApp.PAGES.claim.href}?match=${encodeURIComponent(mail.Match_ID)}`;
+                    else UserApp.goTo('claim');
+                });
+                startCountdown(mail.Seconds_left);
+            }
+        }
+
+        // นับถอยหลังเวลาที่เหลือ (เริ่มจากค่าที่ Backend คำนวณ) ครบเวลาแล้วโหลดใหม่เพื่อแสดงสถานะล่าสุด
+        function startCountdown(secondsLeft) {
+            clearInterval(countdownTimer);
+            const endAt = Date.now() + secondsLeft * 1000;
+            const tick = () => {
+                const left = Math.max(0, Math.round((endAt - Date.now()) / 1000));
+                const el = $('countdown');
+                if (!el) return clearInterval(countdownTimer);
+                const pad = (n) => String(n).padStart(2, '0');
+                el.textContent = `เหลือเวลา ${pad(Math.floor(left / 3600))}:${pad(Math.floor((left % 3600) / 60))}:${pad(left % 60)}`;
+                if (left === 0) {
+                    clearInterval(countdownTimer);
+                    setTimeout(loadDetail, 1500);
+                }
+            };
+            tick();
+            countdownTimer = setInterval(tick, 1000);
+        }
+
+        async function loadDetail() {
+            try {
+                const data = await fetchMail(`/api/mail/${encodeURIComponent(matchId)}`);
+                if (!data) return;
+                renderMail(data.email);
+            } catch (error) {
+                if (error.status === 404) showError('ไม่พบอีเมลนี้', 'อีเมลอาจไม่ใช่ของบัญชีนี้ หรือถูกลบไปแล้ว', null);
+                else showError('โหลดอีเมลไม่สำเร็จ', 'กรุณาตรวจสอบว่าเปิด Backend แล้ว', loadDetail);
+            }
+        }
+
+        // ---------- ดูรูปใหญ่ ----------
+        function openPhoto(src) {
+            $('lightbox-img').src = src;
+            $('lightbox').hidden = false;
+            $('lightbox-close').focus();
+        }
+        function closePhoto() { $('lightbox').hidden = true; }
+        $('lightbox-close').addEventListener('click', closePhoto);
+        $('lightbox').addEventListener('click', (e) => { if (e.target === $('lightbox')) closePhoto(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePhoto(); });
+
+        if (user) (isDetail ? loadDetail : loadInbox)();
+    </script>
+</body>
+</html>

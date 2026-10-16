@@ -29,6 +29,8 @@ const UserApp = (() => {
         reportFound: { label: 'แจ้งสิ่งของที่พบ',   icon: 'fa-solid fa-hand-holding-heart', href: 'reportfound.html', ready: true },
         reportLost:  { label: 'แจ้งสิ่งของที่หาย',  icon: 'fa-solid fa-magnifying-glass',  href: 'reportlost.html',  ready: true },
         notifications: { label: 'การแจ้งเตือน',    icon: 'fa-regular fa-bell',           href: 'notifications.html', ready: true },
+        mail:        { label: 'อีเมล',             icon: 'fa-regular fa-envelope',       href: 'mail.html',        ready: true },   // อีเมลจำลอง (ไม่ได้ส่งจริง)
+        claim:       { label: 'ขอรับสิ่งของคืน',     icon: 'fa-solid fa-hand-holding',     href: 'claim.html',       ready: false },
     };
     const BOTTOM_NAV = ['home', 'myitems', 'profile'];
 

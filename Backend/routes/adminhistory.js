@@ -3,10 +3,12 @@
 //   GET /api/admin/history/lost    5.1 รายการสิ่งของที่หายที่ผู้ใช้งานแจ้งไว้ (หน้า Web-Admin/historylost.html)
 //   GET /api/admin/history/found   5.2 รายการสิ่งของที่พบทั้งหมด ทุกสถานะ (หน้า Web-Admin/historyfound.html)
 //                                      รวมรายการที่ถูกปฏิเสธอัตโนมัติเพราะไม่ได้นำมาส่งภายใน 30 นาที
+//   GET /api/admin/history/matches 5.3 รายการจับคู่สิ่งของทั้งหมด ทุกสถานะ (หน้า Web-Admin/historymatches.html)
+//                                      สถานะ 'รอการตรวจสอบ' = Admin ยังไม่ได้อนุมัติ/ปฏิเสธ (Match_status เป็น NULL)
 //
 // query ที่ใช้ได้ทั้งสองแบบ: ?status=...&q=...&page=1&pageSize=20
 //   status   = กรองตามสถานะ (ไม่ใส่ = ทุกสถานะ)
-//   q        = ค้นหาจากรหัสสิ่งของ, รหัสนักศึกษา, ชื่อสิ่งของ หรือรายละเอียด
+//   q        = ค้นหาจากรหัสสิ่งของ (หรือรหัสจับคู่), รหัสนักศึกษา, ชื่อสิ่งของ หรือรายละเอียด
 //   page     = หน้าที่ต้องการ (เริ่มที่ 1), pageSize = จำนวนต่อหน้า (สูงสุด 100)
 // 200 = { items: [...], total, page, pageSize, totalPages, statusCounts: { สถานะ: จำนวน, ... } }
 //   เรียงตามรหัสสิ่งของจากน้อยไปมาก
@@ -15,6 +17,8 @@ const router = express.Router();
 const db = require('../config/db');
 const { requireAdmin } = require('../utils/admintoken');
 const { expireOverdueFoundItems } = require('../service/foundstatus');
+const { checkAndProcessExpiredMatches } = require('../service/matchingService');
+const { MATCH_STATUSES, STATUS_SQL, MATCH_FROM, MATCH_COLUMNS, shapeMatchRow } = require('../service/matchquery');
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
@@ -94,6 +98,25 @@ const HISTORY = {
         map: (item) => ({ ...item, Auto_rejected: Boolean(item.Auto_rejected) }),
         errorText: 'เกิดข้อผิดพลาดในการดึงรายการสิ่งของที่พบ',
     },
+    matches: {
+        statuses: MATCH_STATUSES,
+        id: 'm.Match_ID',
+        status: STATUS_SQL,
+        from: MATCH_FROM,
+        columns: MATCH_COLUMNS,
+        // ค้นหาได้ทั้งรหัสจับคู่ / รหัสสิ่งของที่หายหรือที่พบ, รหัสนักศึกษาของทั้งสองฝั่ง, ชื่อสิ่งของทั้งสองฝั่ง
+        search: (q, like, prefix) => {
+            const isId = /^\d+$/.test(q);
+            return {
+                sql: `(${isId ? 'm.Match_ID = ? OR l.Lost_ID = ? OR f.Found_ID = ? OR ' : ''}lu.Student_ID LIKE ? OR fu.Student_ID LIKE ?
+                       OR l.LostItem_name LIKE ? OR f.FoundItem_name LIKE ?)`,
+                params: [...(isId ? [Number(q), Number(q), Number(q)] : []), prefix, prefix, like, like],
+            };
+        },
+        before: checkAndProcessExpiredMatches,
+        map: shapeMatchRow,
+        errorText: 'เกิดข้อผิดพลาดในการดึงรายการจับคู่สิ่งของ',
+    },
 };
 
 function historyHandler(config) {
@@ -115,10 +138,17 @@ function historyHandler(config) {
         const searchParams = [];
         if (q) {
             const like = `%${escapeLike(q)}%`;
-            const idPart = /^\d+$/.test(q) ? `${config.id} = ? OR ` : '';
-            searchWhere.push(`(${idPart}u.Student_ID LIKE ? OR ${config.name} LIKE ? OR ${config.description} LIKE ?)`);
-            if (idPart) searchParams.push(Number(q));
-            searchParams.push(`${escapeLike(q)}%`, like, like);
+            const prefix = `${escapeLike(q)}%`;
+            if (config.search) {
+                const custom = config.search(q, like, prefix);
+                searchWhere.push(custom.sql);
+                searchParams.push(...custom.params);
+            } else {
+                const idPart = /^\d+$/.test(q) ? `${config.id} = ? OR ` : '';
+                searchWhere.push(`(${idPart}u.Student_ID LIKE ? OR ${config.name} LIKE ? OR ${config.description} LIKE ?)`);
+                if (idPart) searchParams.push(Number(q));
+                searchParams.push(prefix, like, like);
+            }
         }
 
         try {
@@ -165,5 +195,6 @@ function historyHandler(config) {
 
 router.get('/history/lost', requireAdmin, historyHandler(HISTORY.lost));
 router.get('/history/found', requireAdmin, historyHandler(HISTORY.found));
+router.get('/history/matches', requireAdmin, historyHandler(HISTORY.matches));
 
 module.exports = router;

@@ -8,7 +8,7 @@ const { requireAdmin } = require('../utils/admintoken');
 
 // เงื่อนไขการนับใช้ชุดเดียวกับ API ที่แสดงรายการจริง เพื่อให้ตัวเลขบนหน้าหลักตรงกับจำนวนรายการในแต่ละหน้า
 //   pendingFound   = GET /api/admin/pendingfound  (สิ่งของที่พบ สถานะ 'รอการอนุมัติ')
-//   pendingMatches = GET /api/match/pending       (คู่ที่ของหายยัง 'ไม่พบ' และยังไม่ได้แจ้งเจ้าของ)
+//   pendingMatches = GET /api/match/pending       (คู่ที่ Admin ยังไม่ได้ตรวจสอบ ของหาย 'ไม่พบ' ของที่พบ 'อนุมัติแล้ว')
 //   pendingClaims  = GET /api/claim/pending       (คำขอรับคืน สถานะ 'รอการอนุมัติ')
 //   awaitingReturn = คำขอที่อนุมัติแล้ว รอเจ้าของมารับสิ่งของ (สถานะ 'อนุมัติ')
 const SUMMARY_QUERY = `
@@ -19,11 +19,9 @@ const SUMMARY_QUERY = `
            FROM MatchItem m
            JOIN LostItem l  ON m.Lost_ID = l.Lost_ID
            JOIN FoundItem f ON m.Found_ID = f.Found_ID
-          WHERE l.Lost_status = 'ไม่พบ'
-            AND NOT EXISTS (
-                SELECT 1 FROM Notification n
-                 WHERE n.Match_ID = m.Match_ID AND n.User_ID = l.User_ID
-            )) AS pendingMatches,
+          WHERE m.Match_status IS NULL
+            AND l.Lost_status = 'ไม่พบ'
+            AND f.Found_status = 'อนุมัติแล้ว') AS pendingMatches,
 
         (SELECT COUNT(*) FROM Claim WHERE Claim_status = 'รอการอนุมัติ') AS pendingClaims,
         (SELECT COUNT(*) FROM Claim WHERE Claim_status = 'อนุมัติ') AS awaitingReturn,

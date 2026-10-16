@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 // นำเข้าฟังก์ชันประมวลผลจับคู่จากไฟล์ matchitem.js
-const { processMatchingByLostItem, processMatchingByFoundItem } = require('../service/matchingService');
+const { processMatchingByLostItem, processMatchingByFoundItem } = require('../service/matchingservice');
 const { validateLostItemReport, validateFoundItemReport } = require('../utils/validators');
 const { FOUND_EXPIRE_MINUTES, MESSAGES: FOUND_MESSAGES } = require('../service/foundstatus');
 const { parseImageDataUrl, saveImage, removeUpload } = require('../utils/imageupload');

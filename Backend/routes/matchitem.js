@@ -1,190 +1,181 @@
+// API หน้า "รายการจับคู่สิ่งของ" ของ Web-Admin (Web-Admin/matches.html)
+// ต้องเข้าสู่ระบบ Admin ก่อน: ส่ง header Authorization: Bearer <token>
+// เปิดใช้ใน server.js ที่ path /api/match:
+//   GET  /api/match/pending            คู่ที่รอ Admin ตรวจสอบ (Match Score >= 80, ของหาย 'ไม่พบ', ของที่พบ 'อนุมัติแล้ว')
+//   PUT  /api/match/approve/:matchId   อนุมัติ → แจ้งเตือนผู้ใช้ (+ อีเมลจำลอง ดูได้ใน App-user/mail.html), ของหาย → 'พบ',
+//                                      Match_status → 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน'
+//   PUT  /api/match/reject/:matchId    ปฏิเสธ → ไม่แจ้งผู้ใช้, Match_status → 'ปฏิเสธการส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน'
+//                                      (ไม่ลบข้อมูล ดูย้อนหลังได้ที่ History › รายการจับคู่สิ่งของ)
+//   POST /api/match/run/:lostId        สั่งคำนวณจับคู่ของสิ่งของที่หายรายการนี้ใหม่
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
-const { processMatchingByLostItem, checkAndProcessExpiredMatches } = require('../service/matchingService');
+const { requireAdmin } = require('../utils/admintoken');
+const {
+    formatScore,
+    processMatchingByLostItem,
+    checkAndProcessExpiredMatches,
+} = require('../service/matchingService');
+const { MATCH_FROM, MATCH_COLUMNS, shapeMatchRow } = require('../service/matchquery');
 
-// 1. API การประมวลผลจับคู่สิ่งของที่หาย (POST /api/match/run/:lostId)
-router.post('/run/:lostId', async (req, res) => {
+const MESSAGE_MAX_LENGTH = 200;   // Notification.Message VARCHAR(200)
+const STATUS_SENT = 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน';
+const STATUS_REJECTED = 'ปฏิเสธการส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน';
+
+function parseId(value) {
+    const text = String(value || '');
+    if (!/^\d+$/.test(text)) return null;
+    const number = Number(text);
+    return Number.isSafeInteger(number) && number > 0 ? number : null;
+}
+
+// ข้อความแจ้งเตือนผู้ใช้ (ตัดชื่อสิ่งของให้สั้นลงถ้ายาวเกิน 200 ตัวอักษรรวมทั้งข้อความ)
+function userMatchMessage(lostName, score) {
+    const build = (name) => `พบเจอรายการสิ่งของที่คล้ายคลึงกับสิ่งของที่คุณตามหา "${name}" (Match Score ${formatScore(score)}%) สามารถทำการกดดูรายละเอียดได้ในอีเมล`;
+    const room = MESSAGE_MAX_LENGTH - build('').length;
+    const name = String(lostName);
+    return build(name.length > room ? `${name.slice(0, room - 1)}…` : name);
+}
+
+// 1. ประมวลผลจับคู่ของสิ่งของที่หายรายการนี้ใหม่ (POST /api/match/run/:lostId)
+router.post('/run/:lostId', requireAdmin, async (req, res) => {
+    const lostId = parseId(req.params.lostId);
+    if (!lostId) return res.status(400).json({ success: false, message: 'รหัสสิ่งของไม่ถูกต้อง' });
     try {
-        const { lostId } = req.params;
-        await checkAndProcessExpiredMatches(); //ตรวจสอบรายการที่หมดอายุก่อน
-        await processMatchingByLostItem(lostId);
-        res.status(200).json({
-            success: true,
-            message: 'ประมวลผลการจับคู่สิ่งของเรียบร้อยแล้ว'
-        });
+        await checkAndProcessExpiredMatches();
+        const created = await processMatchingByLostItem(lostId);
+        res.json({ success: true, message: 'ประมวลผลการจับคู่สิ่งของเรียบร้อยแล้ว', created });
     } catch (error) {
         console.error('Error running match:', error);
-        res.status(500).json({
-            success: false,
-            message: 'เกิดข้อผิดพลาดในการประมวลผลจับคู่'
-        });
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการประมวลผลจับคู่' });
     }
 });
 
-// 2. API ดึงรายการจับคู่สิ่งของที่มากกว่า 80% เพื่อรอการอนุมัติ (GET /api/match/pending)
-router.get('/pending', async (req, res) => {
+// 2. รายการจับคู่ที่รอ Admin ตรวจสอบ (GET /api/match/pending) เรียงรหัสจับคู่จากน้อยไปมาก
+// 200 = { items: [{ Match_ID, Match_score, Match_status, breakdown, lost: {...}, found: {...} }], total }
+router.get('/pending', requireAdmin, async (req, res) => {
     try {
-        await checkAndProcessExpiredMatches(); // ตรวจสอบและจัดการรายการหมดอายุเกิน 24 ชม. ก่อนดึงข้อมูล
-        const query = `
-            SELECT 
-                m.Match_ID,
-                m.Match_score,
-                m.Match_date,
-                m.Match_time,
-                m.Match_status,
-                
-                -- ข้อมูลของหาย
-                l.Lost_ID,
-                l.LostItem_name,
-                l.Lost_date,
-                l.Lost_time,
-                l.Lost_description,
-                l.Lost_photo,
-                l.Lost_status,
-
-                -- ข้อมูลเจ้าของของสิ่งของที่หาย
-                u_lost.User_ID AS Lost_User_ID,
-                u_lost.FName AS Lost_User_FName,
-                u_lost.LName AS Lost_User_LName,
-                u_lost.Email AS Lost_User_Email,
-
-                -- ข้อมูลของที่พบ
-                f.Found_ID,
-                f.FoundItem_name,
-                f.Found_date,
-                f.Found_time,
-                f.Found_description,
-                f.Found_photo,
-                f.Found_status,
-
-                -- ข้อมูลหมวดหมู่และสถานที่
-                c.Category_name,
-                loc.Location_name
-
-            FROM MatchItem m
-            JOIN LostItem l ON m.Lost_ID = l.Lost_ID
-            JOIN FoundItem f ON m.Found_ID = f.Found_ID
-            LEFT JOIN Category c ON l.Category_ID = c.Category_ID
-            LEFT JOIN Location loc ON l.Location_ID = loc.Location_ID
-            LEFT JOIN User u_lost ON l.User_ID = u_lost.User_ID
-
-            -- กรองเฉพาะสิ่งของที่หายที่ยังมีสถานะ 'ไม่พบ' เท่านั้น
-            WHERE l.Lost_status = 'ไม่พบ'
-              AND NOT EXISTS ( 
-                SELECT 1 FROM Notification n 
-                WHERE n.Match_ID = m.Match_ID AND n.User_ID = l.User_ID
-            )
-
-            ORDER BY m.Match_score DESC, m.Match_ID DESC
-        `;
-
-        const [pendingMatches] = await db.query(query);
-
-        res.status(200).json({
-            success: true,
-            pendingMatches: pendingMatches
-        });
+        await checkAndProcessExpiredMatches();   // คู่ที่ผู้ใช้ไม่ตอบภายใน 24 ชม. → ของหายกลับเป็น 'ไม่พบ' และจับคู่ใหม่
+        const [rows] = await db.query(
+            `SELECT ${MATCH_COLUMNS} ${MATCH_FROM}
+             WHERE m.Match_status IS NULL AND l.Lost_status = 'ไม่พบ' AND f.Found_status = 'อนุมัติแล้ว'
+             ORDER BY m.Match_ID ASC`
+        );
+        const items = rows.map(shapeMatchRow);
+        res.json({ success: true, items, total: items.length });
     } catch (error) {
         console.error('Error fetching pending matches:', error);
-        res.status(500).json({
-            success: false,
-            message: 'เกิดข้อผิดพลาดในการดึงรายการจับคู่'
-        });
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงรายการจับคู่' });
     }
 });
 
-// 3. API Admin ทำการอนุมัติการจับคู่ เพื่อส่งการแจ้งเตือนไปยังผู้ใช้งาน (PUT /api/match/approve/:matchId)
-router.put('/approve/:matchId', async (req, res) => {
+// ตรวจและล็อกรายการจับคู่ที่ยังรอตรวจสอบ (ใช้ร่วมกันทั้งอนุมัติ/ปฏิเสธ) คืน { match } หรือ { status, body } ถ้าใช้ไม่ได้
+async function lockPendingMatch(conn, matchId) {
+    const [[match]] = await conn.query(
+        `SELECT m.Match_ID, m.Match_score, m.Match_status, m.Lost_ID, m.Found_ID,
+                l.User_ID AS Lost_User_ID, l.LostItem_name, l.Lost_status, f.Found_status
+         FROM MatchItem m
+         JOIN LostItem l ON m.Lost_ID = l.Lost_ID
+         JOIN FoundItem f ON m.Found_ID = f.Found_ID
+         WHERE m.Match_ID = ?
+         FOR UPDATE`,
+        [matchId]
+    );
+    if (!match) return { status: 404, body: { success: false, message: 'ไม่พบรายการจับคู่นี้' } };
+    if (match.Match_status !== null) {
+        return { status: 409, body: { success: false, code: 'NOT_PENDING', message: `รายการจับคู่นี้ถูกดำเนินการไปแล้ว (สถานะ: ${match.Match_status})` } };
+    }
+    if (match.Lost_status !== 'ไม่พบ') {
+        return { status: 409, body: { success: false, code: 'LOST_NOT_AVAILABLE', message: `สิ่งของที่หาย #${match.Lost_ID} ไม่ได้อยู่ในสถานะ "ไม่พบ" แล้ว (สถานะ: ${match.Lost_status})` } };
+    }
+    if (match.Found_status !== 'อนุมัติแล้ว') {
+        return { status: 409, body: { success: false, code: 'FOUND_NOT_AVAILABLE', message: `สิ่งของที่พบ #${match.Found_ID} ไม่ได้อยู่ในสถานะ "อนุมัติแล้ว" แล้ว (สถานะ: ${match.Found_status})` } };
+    }
+    return { match };
+}
 
+// การแจ้งเตือน "พบรายการจับคู่ใหม่" ของ Admin สำหรับคู่นี้ ไม่ต้องค้างไว้แล้วเมื่อมีคนจัดการ
+function markAdminMatchNotificationsRead(conn, matchId) {
+    return conn.query('UPDATE Notification SET Is_read = TRUE WHERE Admin_ID IS NOT NULL AND Match_ID = ? AND Is_read = FALSE', [matchId]);
+}
+
+// 3. Admin อนุมัติการจับคู่ → ส่งให้ผู้ใช้งาน (PUT /api/match/approve/:matchId)
+router.put('/approve/:matchId', requireAdmin, async (req, res) => {
+    const matchId = parseId(req.params.matchId);
+    if (!matchId) return res.status(400).json({ success: false, message: 'รหัสรายการจับคู่ไม่ถูกต้อง' });
+
+    let conn;
+    let match;
+    let notiMessage;
+    let recipient;
     try {
-        const { matchId } = req.params;
-        // ดึงข้อมูลการจับคู่
-        const [matches] = await db.query('SELECT * FROM MatchItem WHERE Match_ID = ?', [matchId]);
-
-        if (matches.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'ไม่พบข้อมูลการจับคู่'
-            });
+        conn = await db.getConnection();
+        await conn.beginTransaction();
+        const result = await lockPendingMatch(conn, matchId);
+        if (!result.match) {
+            await conn.rollback();
+            return res.status(result.status).json(result.body);
         }
+        match = result.match;
+        notiMessage = userMatchMessage(match.LostItem_name, match.Match_score);
+        [[recipient]] = await conn.query('SELECT Email FROM User WHERE User_ID = ?', [match.Lost_User_ID]);
 
-        const match = matches[0];
-
-        const [lostItems] = await db.query('SELECT * FROM LostItem WHERE Lost_ID = ?', [match.Lost_ID]);
-        if (lostItems.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'ไม่พบข้อมูลสิ่งของที่หาย'
-            });
-        }
-        const lost = lostItems[0];
-
-        const [foundItems] = await db.query('SELECT * FROM FoundItem WHERE Found_ID = ?', [match.Found_ID]);
-        const foundName = foundItems.length > 0 ? foundItems[0].FoundItem_name : 'สิ่งของ';
-
-        const notiMessage = `ระบบพบรายการสิ่งของที่คาดว่าเป็นของคุณ: "${foundName}" (คะแนนความตรงกัน ${match.Match_score}%)`;
-
-
-        // สร้าง Notification แจ้งไปยังผู้ใช้งานที่แจ้งของหาย
-        await db.query(
-            `INSERT INTO Notification (User_ID, Lost_ID, Found_ID, Match_ID, Message) 
-             VALUES (?, ?, ?, ?, ?)`,
-            [lost.User_ID, match.Lost_ID, match.Found_ID, matchId, notiMessage]
+        await conn.query('UPDATE MatchItem SET Match_status = ? WHERE Match_ID = ?', [STATUS_SENT, matchId]);
+        await conn.query("UPDATE LostItem SET Lost_status = 'พบ' WHERE Lost_ID = ?", [match.Lost_ID]);
+        await conn.query(
+            'INSERT INTO Notification (User_ID, Lost_ID, Found_ID, Match_ID, Message) VALUES (?, ?, ?, ?, ?)',
+            [match.Lost_User_ID, match.Lost_ID, match.Found_ID, matchId, notiMessage]
         );
-
-        // อัปเดตสถานะของสิ่งของที่หายเป็น "พบ"
-        await db.query(
-            `UPDATE LostItem SET Lost_status = 'พบ' WHERE Lost_ID = ?`,
-            [match.Lost_ID]
-        );
-
-        // อัปเดตสถานะ Match เป็น "ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน"
-        await db.query(
-            `UPDATE MatchItem SET Match_status = 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน' WHERE Match_ID = ?`,
-            [matchId]
-        );
-
-        res.status(200).json({
-            success: true,
-            message: 'อนุมัติการจับคู่และส่งการแจ้งเตือนไปยังผู้ใช้งานเรียบร้อยแล้ว'
-        });
-
+        await markAdminMatchNotificationsRead(conn, matchId);
+        await conn.commit();
     } catch (error) {
+        if (conn) await conn.rollback().catch(() => {});
         console.error('Error approving match:', error);
-        res.status(500).json({
-            success: false,
-            message: 'เกิดข้อผิดพลาดในการอนุมัติการจับคู่'
-        });
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอนุมัติการจับคู่' });
+    } finally {
+        if (conn) conn.release();
     }
+
+    res.json({
+        success: true,
+        message: 'อนุมัติการจับคู่และส่งการแจ้งเตือนไปยังผู้ใช้งานเรียบร้อยแล้ว',
+        Match_ID: matchId,
+        Match_status: STATUS_SENT,
+        notification: { Message: notiMessage },
+        // อีเมลจำลอง: ไม่ได้ส่งจริง ผู้ใช้เปิดดูได้จากการแจ้งเตือนในแอป (GET /api/mail/:matchId)
+        email: { mock: true, to: recipient ? recipient.Email : null },
+    });
 });
 
-// 4. API Admin กดปฏิเสธ/ลบรายการจับคู่ที่ไม่ถูกต้อง (DELETE /api/match/reject/:matchId)
-router.delete('/reject/:matchId', async (req, res) => {
-    const { matchId } = req.params;
+// 4. Admin ปฏิเสธการจับคู่ (PUT /api/match/reject/:matchId) ไม่แจ้งเตือนผู้ใช้
+router.put('/reject/:matchId', requireAdmin, async (req, res) => {
+    const matchId = parseId(req.params.matchId);
+    if (!matchId) return res.status(400).json({ success: false, message: 'รหัสรายการจับคู่ไม่ถูกต้อง' });
 
+    let conn;
     try {
-        const [result] = await db.query('DELETE FROM MatchItem WHERE Match_ID = ?', [matchId]);
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'ไม่พบรายการจับคู่ที่ต้องการลบ'
-            });
+        conn = await db.getConnection();
+        await conn.beginTransaction();
+        const [[match]] = await conn.query('SELECT Match_ID, Match_status FROM MatchItem WHERE Match_ID = ? FOR UPDATE', [matchId]);
+        if (!match) {
+            await conn.rollback();
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการจับคู่นี้' });
         }
-
-        res.status(200).json({
-            success: true,
-            message: 'ปฏิเสธและลบรายการจับคู่เรียบร้อยแล้ว'
-        });
+        if (match.Match_status !== null) {
+            await conn.rollback();
+            return res.status(409).json({ success: false, code: 'NOT_PENDING', message: `รายการจับคู่นี้ถูกดำเนินการไปแล้ว (สถานะ: ${match.Match_status})` });
+        }
+        await conn.query('UPDATE MatchItem SET Match_status = ? WHERE Match_ID = ?', [STATUS_REJECTED, matchId]);
+        await markAdminMatchNotificationsRead(conn, matchId);
+        await conn.commit();
+        res.json({ success: true, message: 'ปฏิเสธการส่งรายการจับคู่สิ่งของเรียบร้อยแล้ว', Match_ID: matchId, Match_status: STATUS_REJECTED });
     } catch (error) {
+        if (conn) await conn.rollback().catch(() => {});
         console.error('Error rejecting match:', error);
-        res.status(500).json({
-            success: false,
-            message: 'เกิดข้อผิดพลาดในการลบรายการจับคู่'
-        });
+        res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการปฏิเสธการจับคู่' });
+    } finally {
+        if (conn) conn.release();
     }
 });
 
-// ส่งออก router ออกไปใช้งานโดยตรง
 module.exports = router;

@@ -3,7 +3,9 @@
 // เปิดใช้ใน server.js ที่ path /api/admin:
 //   GET /api/admin/notifications            การแจ้งเตือนล่าสุด 30 รายการของ Admin คนนี้ + จำนวนที่ยังไม่ได้อ่าน
 //   PUT /api/admin/notifications/read-all   ทำเครื่องหมายว่าอ่านทั้งหมดแล้ว
-// รายการที่มี Found_ID และสิ่งของยัง 'รอการอนุมัติ' จะมี Needs_action = true (หน้าเว็บพาไปหน้าอนุมัติสิ่งของที่พบ)
+// แต่ละรายการมี Target = หน้าที่เกี่ยวข้อง และ Needs_action = ยังต้องจัดการอยู่หรือไม่
+//   Target 'matches'       : "พบรายการจับคู่สิ่งของรายการใหม่" → หน้ารายการจับคู่สิ่งของ (ยังรอตรวจสอบ = Needs_action)
+//   Target 'approve-found' : "มีรายการแจ้งสิ่งของที่พบเข้ามาใหม่" → หน้าอนุมัติสิ่งของที่พบ (ยัง 'รอการอนุมัติ' = Needs_action)
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
@@ -24,9 +26,20 @@ router.get('/notifications', requireAdmin, async (req, res) => {
                 n.Lost_ID,
                 n.Match_ID,
                 n.Claim_ID,
-                f.Found_status
+                f.Found_status,
+                CASE WHEN n.Match_ID IS NOT NULL THEN 'matches'
+                     WHEN n.Found_ID IS NOT NULL THEN 'approve-found'
+                     ELSE NULL END AS Target,
+                CASE WHEN n.Match_ID IS NOT NULL
+                         THEN (m.Match_status IS NULL AND ml.Lost_status = 'ไม่พบ' AND mf.Found_status = 'อนุมัติแล้ว')
+                     WHEN n.Found_ID IS NOT NULL
+                         THEN (f.Found_status = 'รอการอนุมัติ')
+                     ELSE 0 END AS Needs_action
              FROM Notification n
-             LEFT JOIN FoundItem f ON n.Found_ID = f.Found_ID
+             LEFT JOIN FoundItem f  ON n.Found_ID = f.Found_ID
+             LEFT JOIN MatchItem m  ON n.Match_ID = m.Match_ID
+             LEFT JOIN LostItem ml  ON m.Lost_ID = ml.Lost_ID
+             LEFT JOIN FoundItem mf ON m.Found_ID = mf.Found_ID
              WHERE n.Admin_ID = ?
              ORDER BY n.Notice_at DESC, n.Notification_ID DESC
              LIMIT ?`,
@@ -41,7 +54,7 @@ router.get('/notifications', requireAdmin, async (req, res) => {
             notifications: notifications.map((n) => ({
                 ...n,
                 Is_read: Boolean(n.Is_read),
-                Needs_action: n.Found_status === 'รอการอนุมัติ',
+                Needs_action: Boolean(n.Needs_action),
             })),
             unread: Number(unread)
         });

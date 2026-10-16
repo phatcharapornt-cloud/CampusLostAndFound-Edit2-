@@ -180,8 +180,14 @@
         const esc = UserApp.escapeHtml;
         const $ = (id) => document.getElementById(id);
 
+        // การแจ้งเตือน "พบเจอรายการสิ่งของที่คล้ายคลึง..." (Admin อนุมัติการจับคู่) มีอีเมลจำลองให้เปิดดูรายละเอียด
+        const MATCH_MAIL_PREFIX = 'พบเจอรายการสิ่งของที่คล้ายคลึง';
+
         // ประเภทของการแจ้งเตือน (ดูจากรหัสที่ผูกไว้) → ไอคอน + หน้าที่จะพาไปเมื่อแตะ
         function notiType(n) {
+            if (n.Match_ID && String(n.Message).startsWith(MATCH_MAIL_PREFIX)) {
+                return { css: 't-match', icon: 'fa-regular fa-envelope', href: `mail.html?match=${encodeURIComponent(n.Match_ID)}`, go: 'เปิดอีเมล' };
+            }
             if (n.Claim_ID) return { css: 't-claim', icon: 'fa-solid fa-hand-holding', href: 'myitems.html#claims' };
             if (n.Match_ID) return { css: 't-match', icon: 'fa-solid fa-wand-magic-sparkles', href: 'myitems.html#lost' };
             if (n.Lost_ID)  return { css: 't-lost',  icon: 'fa-solid fa-magnifying-glass', href: 'myitems.html#lost' };
@@ -223,7 +229,7 @@
                 <span class="noti-icon ${type.css}"><i class="${type.icon}" aria-hidden="true"></i></span>
                 <div class="noti-body">
                     <div class="noti-text">${esc(n.Message)}</div>
-                    <div class="noti-time"><span>${esc(timeAgo(date))}</span>${type.href ? '<span class="go">· ดูรายการ</span>' : ''}</div>
+                    <div class="noti-time"><span>${esc(timeAgo(date))}</span>${type.href ? `<span class="go">· ${esc(type.go || 'ดูรายการ')}</span>` : ''}</div>
                 </div>
                 ${n.Is_read ? '' : '<span class="unread-dot" aria-label="ยังไม่ได้อ่าน"></span>'}`;
             const cls = `noti${n.Is_read ? '' : ' is-unread'}`;

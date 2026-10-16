@@ -13,11 +13,13 @@ const adminNotificationRoutes = require('./routes/adminnotifications');
 const itemSearchRoutes = require('./routes/itemsearch');
 const myItemsRoutes = require('./routes/myitems');
 const notificationRoutes = require('./routes/notifications');
+const mockMailRoutes = require('./routes/mockmail');
 const itemRoutes = require('./routes/item');
 const matchRouter = require('./routes/matchitem');
 const adminApproveRouter = require('./routes/adminapprovefound');
 const claimRoutes = require('./routes/claimitem');
 const { startFoundExpiryJob } = require('./service/foundstatus');
+const { startMatchExpiryJob } = require('./service/matchingService');
 
 const app = express();
 
@@ -34,10 +36,11 @@ app.use('/api/items', itemRoutes);
 app.use('/api/items', itemSearchRoutes);     // หน้าแรกผู้ใช้: /api/items/found/recent, /api/items/found/search
 app.use('/api/items', myItemsRoutes);        // รายการของฉัน: /api/items/my
 app.use('/api/notifications', notificationRoutes); // การแจ้งเตือนของผู้ใช้: /api/notifications, /unread-count, /read-all
+app.use('/api/mail', mockMailRoutes);       // อีเมลจำลองของผู้ใช้ (ไม่ได้ส่งจริง): /api/mail, /api/mail/:matchId
 app.use('/api/match', matchRouter);
 app.use('/api/admin', adminApproveRouter);
 app.use('/api/admin', adminDashboardRoutes); // หน้าหลัก Web-Admin: /api/admin/summary
-app.use('/api/admin', adminHistoryRoutes);   // History ของ Web-Admin: /api/admin/history/lost, /history/found
+app.use('/api/admin', adminHistoryRoutes);   // History ของ Web-Admin: /api/admin/history/lost, /history/found, /history/matches
 app.use('/api/admin', adminNotificationRoutes); // กระดิ่งแจ้งเตือนของ Admin: /api/admin/notifications
 app.use('/api/claim', claimRoutes);
 
@@ -86,4 +89,6 @@ app.listen(PORT, (error) => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   // สิ่งของที่พบที่ 'รอการอนุมัติ' เกิน 30 นาที → 'ถูกปฏิเสธ' อัตโนมัติ + แจ้งเตือนผู้ใช้ (ตรวจทุก 1 นาที)
   startFoundExpiryJob();
+  // รายการจับคู่ที่ส่งให้ผู้ใช้แล้วแต่ไม่ส่งคำขอรับคืนภายใน 24 ชม. → ของหายกลับเป็น 'ไม่พบ' แล้วจับคู่ใหม่ (ตรวจทุก 5 นาที)
+  startMatchExpiryJob();
 });

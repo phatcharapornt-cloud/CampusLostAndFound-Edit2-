@@ -1,0 +1,104 @@
+/* การแสดงผลรายการจับคู่สิ่งของ (ใช้ร่วมกันในหน้า matches.html และ historymatches.html)
+   ใส่ในหน้า HTML ด้วย <link rel="stylesheet" href="match-view.css"> ต่อจาก admin-layout.css */
+
+.match-table { min-width: 940px; }
+.match-table td { vertical-align: top; }
+.col-match-id { width: 86px; }
+.col-score { width: 168px; }
+.match-id {
+    font-weight: 700;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+}
+.match-when { display: block; margin-top: 4px; font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
+
+/* ---------- กล่องข้อมูลสิ่งของ (ฝั่งที่หาย / ฝั่งที่พบ) ---------- */
+.match-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    min-width: 0;
+}
+.mi-photo {
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding: 0;
+    overflow: hidden;
+    background-color: #eef2f7;
+    cursor: zoom-in;
+    flex-shrink: 0;
+}
+.mi-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mi-photo:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.mi-nophoto {
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+    border: 1px dashed #d1d5db;
+    color: #9ca3af;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    flex-shrink: 0;
+}
+.mi-nophoto i { font-size: 16px; }
+.mi-info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.mi-kind {
+    align-self: flex-start;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 999px;
+}
+.mi-kind.is-lost  { background-color: #fff7e6; color: #b45309; }
+.mi-kind.is-found { background-color: #e8f1fd; color: #1d4ed8; }
+.mi-ids { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.mi-ids b { color: var(--navy); font-weight: 600; }
+.mi-name { font-size: 14px; font-weight: 600; color: var(--text); word-break: break-word; }
+.mi-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: #374151;
+    flex-wrap: wrap;
+}
+.mi-meta i { width: 12px; text-align: center; font-size: 11px; color: #9ca3af; }
+.same-tag {
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 0 7px;
+    border-radius: 999px;
+    background-color: var(--success-soft);
+    color: var(--success);
+}
+.mi-desc { font-size: 12.5px; color: #4b5563; line-height: 1.5; word-break: break-word; }
+.mi-when { font-size: 11.5px; color: var(--text-muted); }
+
+/* ---------- Match Score ---------- */
+.score-num {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--success);
+    font-variant-numeric: tabular-nums;
+}
+.score-num small { font-size: 14px; font-weight: 600; margin-left: 1px; }
+.score-num.is-mid { color: #b45309; }
+.score-bar {
+    height: 6px;
+    border-radius: 999px;
+    background-color: #eef0f3;
+    overflow: hidden;
+    margin: 8px 0 10px;
+}
+.score-bar span { display: block; height: 100%; border-radius: 999px; background-color: var(--success); }
+.score-bar.is-mid span { background-color: #f59e0b; }
+.score-parts { list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--text-muted); }
+.score-parts li { display: flex; justify-content: space-between; gap: 8px; }
+.score-parts b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }

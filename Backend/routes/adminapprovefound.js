@@ -10,7 +10,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const { requireAdmin } = require('../utils/admintoken');
-const { processMatchingByFoundItem } = require('../service/matchingService');
+const { processMatchingByFoundItem } = require('../service/matchingservice');
 const {
     FOUND_EXPIRE_MINUTES,
     MESSAGES,
