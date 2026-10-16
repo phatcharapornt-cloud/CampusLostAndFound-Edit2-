@@ -7,6 +7,7 @@ const db = require('./config/db');
 const authRoutes = require('./routes/auth');
 const resetPasswordRoutes = require('./routes/resetpassword');
 const adminAuthRoutes = require('./routes/adminauth');
+const adminDashboardRoutes = require('./routes/admindashboard');
 const itemRoutes = require('./routes/item');
 const matchRouter = require('./routes/matchitem');
 const adminApproveRouter = require('./routes/adminapprovefound');
@@ -25,6 +26,7 @@ app.use('/api/auth', adminAuthRoutes);     // Admin: /api/auth/admin-login, /adm
 app.use('/api/items', itemRoutes);
 app.use('/api/match', matchRouter);
 app.use('/api/admin', adminApproveRouter);
+app.use('/api/admin', adminDashboardRoutes); // หน้าหลัก Web-Admin: /api/admin/summary
 app.use('/api/claim', claimRoutes);
 
 // เปิดให้เข้าถึงไฟล์รูปภาพในโฟลเดอร์ uploads ผ่าน URL ได้
