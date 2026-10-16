@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>หน้าหลัก | Campus Lost & Found Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        :root {
+            --primary: #f26522;
+            --primary-hover: #e05413;
+            --navy: #0f2a4a;
+            --navy-light: #1d4370;
+            --text: #111827;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --bg: #f4f5f8;
+            --error: #d93025;
+            --error-bg: #fdecea;
+            --sidebar-width: 272px;
+        }
+        body {
+            min-height: 100vh;
+            background-color: var(--bg);
+            color: var(--text);
+        }
+        /* ซ่อนเนื้อหาไว้จนกว่าจะตรวจสิทธิ์ผ่าน */
+        body.is-checking .app { visibility: hidden; }
+
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ---------- แถบเมนูด้านซ้าย ---------- */
+        .sidebar {
+            width: var(--sidebar-width);
+            flex-shrink: 0;
+            background: linear-gradient(180deg, var(--navy) 0%, var(--navy-light) 100%);
+            color: #ffffff;
+            padding: 22px 14px;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 8px 22px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 16px;
+        }
+        .sidebar-brand img {
+            width: 42px;
+            height: auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 4px;
+            flex-shrink: 0;
+        }
+        .sidebar-brand strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        .sidebar-brand span {
+            font-size: 11.5px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        .nav-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            color: rgba(255, 255, 255, 0.85);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .nav-item i {
+            width: 18px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .nav-item.is-active {
+            background-color: rgba(242, 101, 34, 0.18);
+            color: #ffffff;
+            font-weight: 500;
+        }
+        .nav-item.is-active i { color: #ffb187; }
+        .nav-item.is-disabled {
+            color: rgba(255, 255, 255, 0.45);
+            cursor: default;
+        }
+        .nav-item .soon {
+            margin-left: auto;
+            font-size: 10px;
+            padding: 1px 7px;
+            border-radius: 999px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* ---------- ส่วนเนื้อหา ---------- */
+        .main {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .topbar {
+            height: 68px;
+            background-color: #ffffff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            gap: 16px;
+        }
+        .topbar h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .admin-menu {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+        .admin-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #fff1ea;
+            color: var(--primary);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+        .admin-email {
+            font-size: 13.5px;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .admin-role {
+            font-size: 11.5px;
+            color: var(--text-muted);
+        }
+        .logout-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            color: var(--text);
+            font-size: 13.5px;
+            padding: 8px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .logout-btn:hover {
+            border-color: var(--error);
+            color: var(--error);
+        }
+
+        .content {
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .page-alert {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background-color: var(--error-bg);
+            color: var(--error);
+            font-size: 13px;
+            border-radius: 10px;
+            padding: 10px 14px;
+        }
+        .page-alert.is-visible { display: flex; }
+
+        .welcome-card {
+            background: linear-gradient(120deg, #ffffff 0%, #fff6f1 100%);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 26px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        .welcome-card h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .welcome-card p {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .session-info {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            background-color: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 12px;
+            white-space: nowrap;
+        }
+        .session-info i { color: var(--primary); margin-right: 6px; }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 16px;
+        }
+        .module-card {
+            background-color: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+        }
+        .module-card .icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background-color: #fff1ea;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            margin-bottom: 14px;
+        }
+        .module-card h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .module-card p {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* ---------- จอแคบ: เมนูย้ายไปด้านบน ---------- */
+        @media (max-width: 860px) {
+            .app { flex-direction: column; }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: static;
+                padding: 14px 16px;
+            }
+            .sidebar-brand { border-bottom: none; padding: 0; margin-bottom: 10px; }
+            .nav-list { flex-direction: row; overflow-x: auto; }
+            .nav-item { white-space: nowrap; }
+            .nav-item .soon { display: none; }
+            .topbar { padding: 0 16px; }
+            .admin-info .text { display: none; }
+            .content { padding: 16px; }
+            .welcome-card { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+
+<body class="is-checking">
+    <div class="app">
+        <nav class="sidebar" aria-label="เมนูผู้ดูแลระบบ">
+            <div class="sidebar-brand">
+                <img src="logo.png" alt="">
+                <div>
+                    <strong>Campus Lost &amp; Found</strong>
+                    <span>ระบบผู้ดูแล</span>
+                </div>
+            </div>
+            <ul class="nav-list">
+                <li><a class="nav-item is-active" href="dashboard.html" aria-current="page"><i class="fa-solid fa-house"></i>หน้าหลัก</a></li>
+                <!-- เมนูที่ยังไม่ได้ทำ: เมื่อสร้างหน้าแล้วให้เปลี่ยน span เป็น <a href="ชื่อหน้า.html"> และเอา class is-disabled ออก -->
+                <li><span class="nav-item is-disabled"><i class="fa-solid fa-box-open"></i>อนุมัติสิ่งของที่พบ<span class="soon">เร็ว ๆ นี้</span></span></li>
+                <li><span class="nav-item is-disabled"><i class="fa-solid fa-link"></i>รายการจับคู่<span class="soon">เร็ว ๆ นี้</span></span></li>
+                <li><span class="nav-item is-disabled"><i class="fa-solid fa-hand-holding"></i>คำขอรับสิ่งของคืน<span class="soon">เร็ว ๆ นี้</span></span></li>
+                <li><span class="nav-item is-disabled"><i class="fa-solid fa-plus"></i>บันทึกสิ่งของที่พบ<span class="soon">เร็ว ๆ นี้</span></span></li>
+            </ul>
+        </nav>
+
+        <div class="main">
+            <header class="topbar">
+                <h1>หน้าหลัก</h1>
+                <div class="admin-menu">
+                    <div class="admin-info">
+                        <div class="avatar" id="admin-avatar" aria-hidden="true">A</div>
+                        <div class="text">
+                            <div class="admin-email" id="admin-email"></div>
+                            <div class="admin-role">ผู้ดูแลระบบ</div>
+                        </div>
+                    </div>
+                    <button type="button" class="logout-btn" id="logout-btn">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>ออกจากระบบ
+                    </button>
+                </div>
+            </header>
+
+            <main class="content">
+                <div class="page-alert" id="page-alert" role="alert">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span id="page-alert-text"></span>
+                </div>
+
+                <section class="welcome-card">
+                    <div>
+                        <h2>ยินดีต้อนรับ</h2>
+                        <p>เข้าสู่ระบบในชื่อ <strong id="welcome-email"></strong></p>
+                    </div>
+                    <div class="session-info"><i class="fa-regular fa-clock"></i>เซสชันหมดอายุเวลา <span id="session-expiry"></span> น.</div>
+                </section>
+
+                <h2 class="section-title">งานของผู้ดูแลระบบ</h2>
+                <section class="module-grid">
+                    <article class="module-card">
+                        <div class="icon"><i class="fa-solid fa-box-open"></i></div>
+                        <h3>อนุมัติสิ่งของที่พบ</h3>
+                        <p>ตรวจสอบรายการที่ผู้ใช้แจ้งพบ และยืนยันเมื่อได้รับสิ่งของที่ศูนย์</p>
+                    </article>
+                    <article class="module-card">
+                        <div class="icon"><i class="fa-solid fa-link"></i></div>
+                        <h3>รายการจับคู่</h3>
+                        <p>ตรวจคู่สิ่งของที่หายกับที่พบซึ่งระบบจับคู่ได้ ก่อนแจ้งไปยังเจ้าของ</p>
+                    </article>
+                    <article class="module-card">
+                        <div class="icon"><i class="fa-solid fa-hand-holding"></i></div>
+                        <h3>คำขอรับสิ่งของคืน</h3>
+                        <p>อนุมัติหรือปฏิเสธคำขอ และยืนยันเมื่อคืนสิ่งของให้เจ้าของแล้ว</p>
+                    </article>
+                    <article class="module-card">
+                        <div class="icon"><i class="fa-solid fa-plus"></i></div>
+                        <h3>บันทึกสิ่งของที่พบ</h3>
+                        <p>บันทึกสิ่งของที่มีผู้นำมาส่งที่ศูนย์โดยตรง</p>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="admin-session.js"></script>
+    <script>
+        // 1. ต้องเข้าสู่ระบบก่อน (ไม่มี session หรือหมดอายุ → กลับหน้า login)
+        const session = AdminSession.requireLogin();
+
+        function showPageAlert(message) {
+            document.getElementById('page-alert-text').textContent = message;
+            document.getElementById('page-alert').classList.add('is-visible');
+        }
+
+        function renderAdmin(admin, expiresAt) {
+            const email = admin.Admin_email || '';
+            document.getElementById('admin-email').textContent = email;
+            document.getElementById('welcome-email').textContent = email;
+            document.getElementById('admin-avatar').textContent = email.charAt(0) || 'A';
+            document.getElementById('session-expiry').textContent = new Date(expiresAt * 1000)
+                .toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            AdminSession.redirectToLogin('logout');
+        });
+
+        // 2. ยืนยันกับ Backend ว่า token ยังใช้ได้ (ถ้าไม่ได้ apiFetch จะพากลับหน้า login เอง)
+        async function verifySession() {
+            try {
+                const { ok, data } = await AdminSession.apiFetch('/api/auth/admin-me');
+                if (ok && data.admin) {
+                    renderAdmin(data.admin, data.expiresAt || session.expiresAt);
+                } else {
+                    showPageAlert(data.message || 'ตรวจสอบสิทธิ์ผู้ดูแลระบบไม่สำเร็จ');
+                }
+                document.body.classList.remove('is-checking');
+            } catch (error) {
+                if (error.unauthorized) return;   // กำลังพากลับหน้า login
+                // เชื่อมต่อ Backend ไม่ได้: แสดงหน้าด้วยข้อมูลที่เก็บไว้ แต่แจ้งเตือน
+                renderAdmin(session.admin || {}, session.expiresAt);
+                showPageAlert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว');
+                document.body.classList.remove('is-checking');
+            }
+        }
+
+        if (session) verifySession();
+    </script>
+</body>
+</html>
