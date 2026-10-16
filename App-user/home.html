@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>หน้าแรก | Campus Lost & Found</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="userapp.css">
+
+    <style>
+        /* ---------- ส่วนหัว ---------- */
+        .home-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .home-header img {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+            background-color: #ffffff;
+            border-radius: 14px;
+            padding: 3px;
+            box-shadow: 0 2px 8px rgba(15, 42, 74, 0.08);
+            flex-shrink: 0;
+        }
+        .home-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.3;
+            color: var(--text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .home-header p {
+            font-size: 12.5px;
+            color: var(--text-muted);
+        }
+        .home-header .text { min-width: 0; }
+
+        /* ---------- 1-2: ปุ่มแจ้งสิ่งของ ---------- */
+        .report-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .report-card {
+            border: none;
+            border-radius: 18px;
+            padding: 16px 14px;
+            text-align: left;
+            color: #ffffff;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 132px;
+            box-shadow: 0 8px 18px rgba(15, 42, 74, 0.12);
+            transition: transform 0.15s;
+        }
+        .report-card:active { transform: scale(0.98); }
+        .report-card:focus-visible { outline: 3px solid #ffb187; outline-offset: 2px; }
+        .report-card.found { background: linear-gradient(150deg, var(--navy) 0%, var(--navy-light) 100%); }
+        .report-card.lost { background: linear-gradient(150deg, #f26522 0%, #f58a4b 100%); }
+        .report-card .icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background-color: rgba(255, 255, 255, 0.16);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+        }
+        .report-card strong {
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        .report-card span {
+            font-size: 11.5px;
+            opacity: 0.85;
+            line-height: 1.4;
+        }
+
+        /* ---------- การ์ดทั่วไป ---------- */
+        .card {
+            background-color: var(--surface);
+            border-radius: 18px;
+            padding: 16px;
+            box-shadow: 0 2px 10px rgba(15, 42, 74, 0.05);
+            margin-bottom: 18px;
+        }
+        .section-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .section-title h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .section-title .hint {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .link-btn {
+            border: none;
+            background: none;
+            color: var(--primary);
+            font-size: 12.5px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        /* ---------- 3: ค้นหา ---------- */
+        .field { margin-bottom: 10px; }
+        .field label {
+            display: block;
+            font-size: 12.5px;
+            font-weight: 500;
+            color: #444444;
+            margin-bottom: 6px;
+        }
+        .select-wrap { position: relative; }
+        .select-wrap i {
+            position: absolute;
+            left: 13px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 13px;
+            pointer-events: none;
+        }
+        .select-wrap::after {
+            content: '';
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            width: 7px;
+            height: 7px;
+            border-right: 1.6px solid #9ca3af;
+            border-bottom: 1.6px solid #9ca3af;
+            transform: translateY(-70%) rotate(45deg);
+            pointer-events: none;
+        }
+        select {
+            width: 100%;
+            appearance: none;
+            -webkit-appearance: none;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 34px 10px 36px;
+            font-size: 13.5px;
+            color: #333333;
+            background-color: #ffffff;
+            outline: none;
+            text-overflow: ellipsis;
+        }
+        select:focus { border-color: var(--primary); }
+        .form-error {
+            font-size: 12px;
+            color: var(--error);
+            margin: 2px 0 8px;
+        }
+        .form-error:empty { display: none; }
+        .search-btn {
+            width: 100%;
+            height: 44px;
+            margin-top: 4px;
+            border: none;
+            border-radius: 12px;
+            background-color: var(--primary);
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .search-btn:hover { background-color: var(--primary-hover); }
+        .search-btn:disabled { opacity: 0.7; cursor: wait; }
+
+        #results-section[hidden] { display: none; }
+        #results-section { scroll-margin-top: 62px; }   /* เลื่อนมาแล้วหัวข้อไม่จมใต้ dynamic island */
+        .results-summary {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: -6px 0 10px;
+        }
+
+        /* ---------- รายการสิ่งของ ---------- */
+        .item-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .item-card {
+            background-color: var(--surface);
+            border: 1px solid #eef0f3;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .item-main {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+            color: inherit;
+        }
+        .item-main:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: 16px; }
+        .thumb {
+            width: 64px;
+            height: 64px;
+            border-radius: 12px;
+            background-color: #eef2f7;
+            color: var(--navy-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .item-info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .item-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .item-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+        }
+        .item-meta i { width: 12px; text-align: center; font-size: 11px; flex-shrink: 0; }
+        .item-meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .match-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 3px;
+        }
+        .pill {
+            font-size: 10.5px;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .pill.score { background-color: var(--primary); color: #ffffff; }
+        .pill.score.partial { background-color: var(--primary-soft); color: var(--primary); }
+        .pill.hit { background-color: var(--success-soft); color: var(--success); }
+        .pill.miss { background-color: #f3f4f6; color: #9ca3af; text-decoration: line-through; }
+        .item-chevron {
+            color: #c4c8cf;
+            font-size: 12px;
+            align-self: center;
+            transition: transform 0.2s;
+        }
+        .item-card.is-open .item-chevron { transform: rotate(90deg); }
+        .item-detail {
+            display: none;
+            padding: 0 14px 14px 88px;
+            font-size: 12.5px;
+            color: #444444;
+            line-height: 1.55;
+        }
+        .item-card.is-open .item-detail { display: block; }
+        .item-detail .desc { margin-bottom: 8px; word-break: break-word; }
+        .item-detail .note {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            background-color: var(--bg);
+            border-radius: 10px;
+            padding: 8px 10px;
+        }
+        .item-detail .note button {
+            border: none;
+            background: none;
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 11.5px;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        /* สถานะว่าง / โหลด / ผิดพลาด */
+        .state {
+            text-align: center;
+            padding: 22px 12px;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .state i {
+            font-size: 26px;
+            color: #c4c8cf;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .state.is-error { color: var(--error); }
+        .state button {
+            margin-top: 10px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 6px 14px;
+            font-size: 12.5px;
+            cursor: pointer;
+            color: var(--text);
+        }
+        .skeleton {
+            height: 88px;
+            border-radius: 16px;
+            background: linear-gradient(90deg, #eef0f3 25%, #f6f7f9 50%, #eef0f3 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite;
+        }
+        @keyframes shimmer { to { background-position: -200% 0; } }
+
+        @media (max-width: 430px) {
+            #results-section { scroll-margin-top: calc(10px + env(safe-area-inset-top)); }
+        }
+        @media (max-width: 360px) {
+            .report-card { min-height: 120px; padding: 14px 12px; }
+            .item-detail { padding-left: 14px; }
+        }
+    </style>
+</head>
+
+<body class="is-checking">
+    <div class="phone">
+        <div class="dynamic-island"></div>
+
+        <div class="phone-scroll" id="scroll">
+            <header class="home-header">
+                <img src="logo.png" alt="Campus Finder">
+                <div class="text">
+                    <h1>สวัสดี, <span id="user-name"></span></h1>
+                    <p>ทำของหายหรือเจอของใครไหมวันนี้?</p>
+                </div>
+            </header>
+
+            <!-- 1-2: แจ้งสิ่งของที่พบ / แจ้งสิ่งของที่หาย -->
+            <div class="report-grid">
+                <button type="button" class="report-card found" data-goto="reportFound">
+                    <div class="icon"><i class="fa-solid fa-hand-holding-heart"></i></div>
+                    <strong>แจ้งสิ่งของที่พบ</strong>
+                    <span>เจอของตกหล่น แจ้งเพื่อส่งคืนเจ้าของ</span>
+                </button>
+                <button type="button" class="report-card lost" data-goto="reportLost">
+                    <div class="icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+                    <strong>แจ้งสิ่งของที่หาย</strong>
+                    <span>ให้ระบบช่วยจับคู่กับของที่มีคนพบ</span>
+                </button>
+            </div>
+
+            <!-- 3: ค้นหาสิ่งของที่พบ -->
+            <section class="card" aria-labelledby="search-title">
+                <div class="section-title">
+                    <h2 id="search-title">ค้นหาสิ่งของที่พบ</h2>
+                </div>
+                <form id="search-form" novalidate>
+                    <div class="field">
+                        <label for="Category_ID">หมวดหมู่</label>
+                        <div class="select-wrap">
+                            <i class="fa-solid fa-tag"></i>
+                            <select id="Category_ID" name="Category_ID">
+                                <option value="">ทุกหมวดหมู่</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="Location_ID">สถานที่</label>
+                        <div class="select-wrap">
+                            <i class="fa-solid fa-location-dot"></i>
+                            <select id="Location_ID" name="Location_ID">
+                                <option value="">ทุกสถานที่</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-error" id="search-error" role="alert"></div>
+                    <button type="submit" class="search-btn" id="search-btn"><i class="fa-solid fa-magnifying-glass"></i>ค้นหา</button>
+                </form>
+            </section>
+
+            <!-- ผลการค้นหา (แสดงหลังกดค้นหา) -->
+            <section id="results-section" aria-labelledby="results-title" hidden>
+                <div class="section-title">
+                    <h2 id="results-title">ผลการค้นหา</h2>
+                    <button type="button" class="link-btn" id="clear-search">ล้างการค้นหา</button>
+                </div>
+                <p class="results-summary" id="results-summary"></p>
+                <ul class="item-list" id="results-list"></ul>
+                <div style="height:18px"></div>
+            </section>
+
+            <!-- 4: สิ่งของที่พบเมื่อเร็ว ๆ นี้ -->
+            <section aria-labelledby="recent-title">
+                <div class="section-title">
+                    <h2 id="recent-title">พบเมื่อเร็ว ๆ นี้</h2>
+                    <span class="hint">แตะเพื่อดูรายละเอียด</span>
+                </div>
+                <ul class="item-list" id="recent-list"></ul>
+            </section>
+        </div>
+
+        <nav class="bottom-nav" id="bottom-nav"></nav>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <script src="userapp.js"></script>
+    <script>
+        const RECENT_LIMIT = 10;
+        const esc = UserApp.escapeHtml;
+        const user = UserApp.init('home');
+
+        // ---------- การ์ดสิ่งของ 1 รายการ ----------
+        function itemHtml(item, withMatch) {
+            const photo = UserApp.photoUrl(item.Found_photo);
+            const thumb = photo
+                ? `<img src="${esc(photo)}" alt="" loading="lazy">`
+                : '<i class="fa-solid fa-box"></i>';
+
+            let matchRow = '';
+            if (withMatch) {
+                const full = item.matchScore === 100;
+                const chips = [];
+                if (item.searched.category) chips.push(`<span class="pill ${item.matched.category ? 'hit' : 'miss'}">${item.matched.category ? '✓ ' : ''}หมวดหมู่</span>`);
+                if (item.searched.location) chips.push(`<span class="pill ${item.matched.location ? 'hit' : 'miss'}">${item.matched.location ? '✓ ' : ''}สถานที่</span>`);
+                matchRow = `<div class="match-row"><span class="pill score${full ? '' : ' partial'}">ตรงกัน ${item.matchScore}%</span>${chips.join('')}</div>`;
+            }
+
+            return `
+                <li class="item-card">
+                    <button type="button" class="item-main" aria-expanded="false">
+                        <div class="thumb">${thumb}</div>
+                        <div class="item-info">
+                            <div class="item-name">${esc(item.FoundItem_name)}</div>
+                            <div class="item-meta"><i class="fa-solid fa-tag"></i><span>${esc(item.Category_name || '-')}</span></div>
+                            <div class="item-meta"><i class="fa-solid fa-location-dot"></i><span>${esc(item.Location_name || '-')}</span></div>
+                            <div class="item-meta" title="วันเวลาที่พบ"><i class="fa-regular fa-clock"></i><span>${esc(UserApp.formatFoundDate(item.Found_date, item.Found_time))}</span></div>
+                            ${matchRow}
+                        </div>
+                        <i class="fa-solid fa-chevron-right item-chevron" aria-hidden="true"></i>
+                    </button>
+                    <div class="item-detail">
+                        <p class="desc">${esc(item.Found_description || 'ไม่มีรายละเอียดเพิ่มเติม')}</p>
+                        <div class="note">ถ้าเป็นของคุณ <button type="button" data-goto="reportLost">แจ้งสิ่งของที่หาย</button> ระบบจะจับคู่และแจ้งเตือนให้มารับคืนที่ศูนย์</div>
+                    </div>
+                </li>`;
+        }
+
+        // ผูก event ให้รายการที่เพิ่งวาด: แตะเพื่อเปิด/ปิดรายละเอียด, รูปเสียให้แสดงไอคอนแทน
+        function bindItems(listEl) {
+            listEl.querySelectorAll('.item-main').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const card = btn.closest('.item-card');
+                    const open = card.classList.toggle('is-open');
+                    btn.setAttribute('aria-expanded', String(open));
+                });
+            });
+            listEl.querySelectorAll('.thumb img').forEach((img) => {
+                img.addEventListener('error', () => { img.parentElement.innerHTML = '<i class="fa-solid fa-box"></i>'; });
+            });
+            listEl.querySelectorAll('[data-goto]').forEach((btn) => btn.addEventListener('click', () => UserApp.goTo(btn.dataset.goto)));
+        }
+
+        function stateHtml(icon, message, retryId) {
+            return `<li class="state${retryId ? ' is-error' : ''}"><i class="${icon}"></i>${message}${retryId ? `<br><button type="button" id="${retryId}">ลองใหม่</button>` : ''}</li>`;
+        }
+
+        // ---------- 4: สิ่งของที่พบล่าสุด ----------
+        async function loadRecent() {
+            const list = document.getElementById('recent-list');
+            list.innerHTML = '<li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li>';
+            try {
+                const { ok, data } = await UserApp.apiGet(`/api/items/found/recent?limit=${RECENT_LIMIT}`);
+                if (!ok) throw new Error(data.message);
+                list.innerHTML = data.items.length
+                    ? data.items.map((item) => itemHtml(item, false)).join('')
+                    : stateHtml('fa-regular fa-folder-open', 'ยังไม่มีสิ่งของที่พบในระบบ');
+                bindItems(list);
+            } catch (error) {
+                list.innerHTML = stateHtml('fa-solid fa-plug-circle-exclamation', 'โหลดรายการไม่สำเร็จ กรุณาตรวจสอบว่าเปิด Backend แล้ว', 'retry-recent');
+                document.getElementById('retry-recent').addEventListener('click', loadRecent);
+            }
+        }
+
+        // ---------- 3: ตัวเลือกหมวดหมู่/สถานที่ ----------
+        async function loadOptions() {
+            const fill = (selectId, rows, idKey, nameKey) => {
+                const select = document.getElementById(selectId);
+                select.insertAdjacentHTML('beforeend', rows.map((row) => `<option value="${row[idKey]}">${esc(row[nameKey])}</option>`).join(''));
+            };
+            try {
+                const [cats, locs] = await Promise.all([
+                    UserApp.apiGet('/api/items/categories'),
+                    UserApp.apiGet('/api/items/locations'),
+                ]);
+                if (cats.ok) fill('Category_ID', cats.data.categories, 'Category_ID', 'Category_name');
+                if (locs.ok) fill('Location_ID', locs.data.locations, 'Location_ID', 'Location_name');
+                if (!cats.ok || !locs.ok) throw new Error('options');
+            } catch {
+                document.getElementById('search-error').textContent = 'โหลดตัวเลือกหมวดหมู่/สถานที่ไม่สำเร็จ กรุณารีเฟรชหน้า';
+            }
+        }
+
+        // ---------- 3: ค้นหา ----------
+        const searchForm = document.getElementById('search-form');
+        const searchBtn = document.getElementById('search-btn');
+        const searchError = document.getElementById('search-error');
+        const resultsSection = document.getElementById('results-section');
+        const resultsList = document.getElementById('results-list');
+        const SEARCH_LABEL = searchBtn.innerHTML;
+
+        function setSearching(on) {
+            searchBtn.disabled = on;
+            searchBtn.innerHTML = on ? '<i class="fa-solid fa-spinner fa-spin"></i>กำลังค้นหา...' : SEARCH_LABEL;
+        }
+
+        searchForm.addEventListener('change', () => { searchError.textContent = ''; });
+
+        searchForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const categorySelect = document.getElementById('Category_ID');
+            const locationSelect = document.getElementById('Location_ID');
+            const categoryId = categorySelect.value;
+            const locationId = locationSelect.value;
+
+            if (!categoryId && !locationId) {
+                searchError.textContent = 'กรุณาเลือกหมวดหมู่หรือสถานที่อย่างน้อย 1 อย่าง';
+                return;
+            }
+            searchError.textContent = '';
+            setSearching(true);
+
+            const query = new URLSearchParams();
+            if (categoryId) query.set('Category_ID', categoryId);
+            if (locationId) query.set('Location_ID', locationId);
+
+            try {
+                const { ok, data } = await UserApp.apiGet(`/api/items/found/search?${query}`);
+                if (!ok) {
+                    searchError.textContent = data.message || 'ค้นหาไม่สำเร็จ กรุณาลองใหม่';
+                    return;
+                }
+
+                const searched = { category: Boolean(categoryId), location: Boolean(locationId) };
+                const conditions = [
+                    categoryId && `หมวดหมู่ "${categorySelect.selectedOptions[0].text}"`,
+                    locationId && `สถานที่ "${locationSelect.selectedOptions[0].text}"`,
+                ].filter(Boolean).join(' และ ');
+
+                document.getElementById('results-summary').textContent = data.total
+                    ? `พบ ${data.total} รายการ จาก${conditions} เรียงจากตรงมากไปน้อย`
+                    : '';
+                resultsList.innerHTML = data.total
+                    ? data.items.map((item) => itemHtml({ ...item, searched }, true)).join('')
+                    : stateHtml('fa-regular fa-face-frown', `ไม่พบสิ่งของที่ตรงกับ${esc(conditions)}<br>ลองเปลี่ยนเงื่อนไข หรือแจ้งสิ่งของที่หายไว้ ระบบจะแจ้งเตือนเมื่อมีคนพบ`);
+                bindItems(resultsList);
+                resultsSection.hidden = false;
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch {
+                searchError.textContent = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว';
+            } finally {
+                setSearching(false);
+            }
+        });
+
+        document.getElementById('clear-search').addEventListener('click', () => {
+            searchForm.reset();
+            resultsSection.hidden = true;
+            resultsList.innerHTML = '';
+            document.getElementById('scroll').scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // ---------- เริ่มต้นหน้า ----------
+        if (user) {
+            document.getElementById('user-name').textContent = user.FName || user.Student_ID;
+            document.querySelectorAll('.report-grid [data-goto]').forEach((btn) => {
+                btn.addEventListener('click', () => UserApp.goTo(btn.dataset.goto));
+            });
+            loadOptions();
+            loadRecent();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+/* โครงหน้าที่ใช้ร่วมกันในหน้าหลังเข้าสู่ระบบของ App-user: กรอบมือถือ + แถบเมนูด้านล่าง + toast
+   ใส่ในหน้า HTML ด้วย <link rel="stylesheet" href="userapp.css"> */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Prompt', sans-serif;
+}
+:root {
+    --primary: #f26522;
+    --primary-hover: #e05413;
+    --primary-soft: #fff1ea;
+    --navy: #0f2a4a;
+    --navy-light: #1d4370;
+    --text: #111111;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --bg: #f4f5f8;
+    --surface: #ffffff;
+    --success: #1f9d55;
+    --success-soft: #e8f6ee;
+    --error: #d93025;
+    --error-soft: #fdecea;
+    --nav-height: 84px;
+}
+body {
+    background-color: var(--bg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+/* ยังไม่แสดงหน้าจนกว่าจะตรวจการเข้าสู่ระบบเสร็จ */
+body.is-checking .phone { visibility: hidden; }
+
+/* ---------- กรอบจำลองหน้าจอมือถือ (เหมือนหน้า login/register) ---------- */
+.phone {
+    width: 100%;
+    max-width: 390px;
+    height: 800px;
+    background-color: #f7f8fa;
+    border-radius: 61px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+    border: 8px solid #2b2b2b;
+    position: relative;
+}
+/* แถบด้านบน (พื้นที่ status bar): เนื้อหาที่เลื่อนขึ้นไปจะจางหายใต้แถบนี้ ไม่ทับ dynamic island */
+.phone::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 58px;
+    background: linear-gradient(#f7f8fa 72%, rgba(247, 248, 250, 0));
+    z-index: 4;
+    pointer-events: none;
+}
+.dynamic-island {
+    width: 110px;
+    height: 28px;
+    background-color: #000000;
+    border-radius: 20px;
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+}
+/* พื้นที่เนื้อหา เลื่อนขึ้นลงได้ (เว้นด้านล่างให้แถบเมนู) */
+.phone-scroll {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding: 64px 18px calc(var(--nav-height) + 20px);
+}
+.phone-scroll::-webkit-scrollbar { display: none; }
+
+/* ---------- แถบเมนูด้านล่าง ---------- */
+.bottom-nav {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--nav-height);
+    background-color: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    padding: 8px 18px 22px;   /* เว้นด้านล่างให้พ้นขอบโค้งของกรอบ */
+    z-index: 5;
+}
+.nav-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: none;
+    background: none;
+    color: #9ca3af;
+    font-size: 11.5px;
+    text-decoration: none;
+    cursor: pointer;
+    border-radius: 12px;
+}
+.nav-tab i { font-size: 19px; }
+.nav-tab.is-active {
+    color: var(--primary);
+    font-weight: 600;
+}
+.nav-tab:focus-visible { outline: 2px solid var(--primary); }
+
+/* ---------- ข้อความแจ้งสั้น ๆ (toast) ---------- */
+.toast {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--nav-height) + 14px);
+    transform: translate(-50%, 12px);
+    max-width: calc(100% - 40px);
+    background-color: rgba(17, 24, 39, 0.92);
+    color: #ffffff;
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 7;
+    text-align: center;
+}
+.toast.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+/* ---------- เปิดบนมือถือจริง: เต็มจอ ไม่มีกรอบ ---------- */
+@media (max-width: 430px) {
+    body { align-items: stretch; }
+    .phone {
+        max-width: none;
+        height: 100vh;
+        height: 100dvh;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .dynamic-island { display: none; }
+    .phone::before { height: env(safe-area-inset-top); background: #f7f8fa; }
+    .phone-scroll { padding-top: calc(18px + env(safe-area-inset-top)); }
+    .bottom-nav {
+        height: calc(68px + env(safe-area-inset-bottom));
+        padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    }
+    .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
+}

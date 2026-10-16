@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const resetPasswordRoutes = require('./routes/resetpassword');
 const adminAuthRoutes = require('./routes/adminauth');
 const adminDashboardRoutes = require('./routes/admindashboard');
+const itemSearchRoutes = require('./routes/itemsearch');
 const itemRoutes = require('./routes/item');
 const matchRouter = require('./routes/matchitem');
 const adminApproveRouter = require('./routes/adminapprovefound');
@@ -24,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/auth', resetPasswordRoutes); // ลืมรหัสผ่าน: /api/auth/request-reset, /verify-otp, /reset-password
 app.use('/api/auth', adminAuthRoutes);     // Admin: /api/auth/admin-login, /admin-me
 app.use('/api/items', itemRoutes);
+app.use('/api/items', itemSearchRoutes);     // หน้าแรกผู้ใช้: /api/items/found/recent, /api/items/found/search
 app.use('/api/match', matchRouter);
 app.use('/api/admin', adminApproveRouter);
 app.use('/api/admin', adminDashboardRoutes); // หน้าหลัก Web-Admin: /api/admin/summary
