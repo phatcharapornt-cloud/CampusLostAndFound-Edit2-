@@ -400,15 +400,30 @@
                 : SUBMIT_LABEL;
         }
 
-        // มาจากหน้าสมัครสมาชิก (register.html ส่ง ?registered=1&sid=รหัสนักศึกษา มา): เติมรหัสให้และแจ้งว่าสมัครสำเร็จ
+        // มาจากหน้าสมัครสมาชิก (?registered=1&sid=...) หรือหน้าตั้งรหัสผ่านใหม่ (?reset=1&sid=...):
+        // เติมรหัสนักศึกษาให้ และแจ้งว่าทำรายการสำเร็จ
         const params = new URLSearchParams(window.location.search);
-        if (params.get('registered') === '1') {
+        const successMessages = {
+            registered: 'สมัครใช้งานสำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านที่ตั้งไว้',
+            reset: 'เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่',
+        };
+        const successKey = Object.keys(successMessages).find((key) => params.get(key) === '1');
+        if (successKey) {
             const sid = (params.get('sid') || '').replace(/\D/g, '').slice(0, 8);
             if (sid) fields.Student_ID.value = sid;
-            showFormAlert('สมัครใช้งานสำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านที่ตั้งไว้', 'success');
+            showFormAlert(successMessages[successKey], 'success');
             (sid ? fields.Password : fields.Student_ID).focus();
             history.replaceState(null, '', window.location.pathname);
         }
+
+        // ลิงก์ "ลืมรหัสผ่าน?": ถ้ากรอกรหัสนักศึกษาไว้แล้ว ส่งไปเติมให้ในหน้าขอรีเซ็ตรหัสผ่าน
+        document.querySelector('.forgot-password').addEventListener('click', (event) => {
+            const sid = fields.Student_ID.value.trim();
+            if (STUDENT_ID_PATTERN.test(sid)) {
+                event.preventDefault();
+                window.location.href = `resetpass.html?sid=${encodeURIComponent(sid)}`;
+            }
+        });
 
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
