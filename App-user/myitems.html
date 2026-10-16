@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>รายการของฉัน | Campus Lost & Found</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="userapp.css">
+
+    <style>
+        [hidden] { display: none !important; }
+
+        /* ---------- ส่วนหัว ---------- */
+        .page-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .page-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.3;
+            color: var(--text);
+        }
+        .page-header p {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .icon-btn:disabled i { animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ---------- แท็บ 3 กลุ่ม ---------- */
+        .tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            padding: 4px;
+            background-color: #eceef2;
+            border-radius: 14px;
+            margin-bottom: 10px;
+        }
+        .tab {
+            border: none;
+            background: none;
+            border-radius: 10px;
+            padding: 8px 4px;
+            font-size: 13px;
+            color: #4b5563;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .tab .count {
+            min-width: 20px;
+            padding: 0 6px;
+            border-radius: 999px;
+            background-color: rgba(0, 0, 0, 0.06);
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 18px;
+        }
+        .tab[aria-selected="true"] {
+            background-color: #ffffff;
+            color: var(--primary);
+            font-weight: 600;
+            box-shadow: 0 1px 4px rgba(15, 42, 74, 0.1);
+        }
+        .tab[aria-selected="true"] .count { background-color: var(--primary); color: #ffffff; }
+        .tab:focus-visible { outline: 2px solid var(--primary); }
+        .tab-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: 0 2px 12px;
+        }
+
+        /* ---------- การ์ดรายการ ---------- */
+        .item-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .item-card {
+            background-color: var(--surface);
+            border: 1px solid #eef0f3;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(15, 42, 74, 0.04);
+        }
+        .item-main {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+            color: inherit;
+        }
+        .item-main:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: 16px; }
+        .thumb {
+            width: 72px;
+            height: 72px;
+            border-radius: 12px;
+            background-color: #eef2f7;
+            color: var(--navy-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .item-info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .item-id {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--navy-light);
+            letter-spacing: 0.01em;
+            font-variant-numeric: tabular-nums;
+        }
+        .item-id .sep { color: #c4c8cf; margin: 0 4px; font-weight: 400; }
+        .item-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .item-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+        }
+        .item-meta i { width: 12px; text-align: center; font-size: 11px; flex-shrink: 0; }
+        .item-meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .status-row { margin-top: 4px; }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 2px 9px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: currentColor;
+        }
+        .badge.s-wait  { background-color: #fff7e6; color: #b45309; }
+        .badge.s-info  { background-color: #e8f1fd; color: #1d4ed8; }
+        .badge.s-ok    { background-color: var(--success-soft); color: var(--success); }
+        .badge.s-bad   { background-color: var(--error-soft); color: var(--error); }
+        .badge.s-muted { background-color: #f3f4f6; color: #6b7280; }
+        .item-chevron {
+            color: #c4c8cf;
+            font-size: 12px;
+            align-self: center;
+            transition: transform 0.2s;
+        }
+        .item-card.is-open .item-chevron { transform: rotate(90deg); }
+
+        .item-detail {
+            display: none;
+            padding: 0 14px 14px;
+            font-size: 12.5px;
+            color: #444444;
+            line-height: 1.55;
+        }
+        .item-card.is-open .item-detail { display: block; }
+        .status-hint {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            border-radius: 10px;
+            padding: 8px 10px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            background-color: var(--bg);
+            color: #374151;
+        }
+        .status-hint i { margin-top: 3px; font-size: 12px; }
+        .status-hint.s-wait  { background-color: #fffaf0; }
+        .status-hint.s-wait i { color: #b45309; }
+        .status-hint.s-info  { background-color: #f3f7fe; }
+        .status-hint.s-info i { color: #1d4ed8; }
+        .status-hint.s-ok    { background-color: #f1faf5; }
+        .status-hint.s-ok i { color: var(--success); }
+        .status-hint.s-bad   { background-color: #fff6f5; }
+        .status-hint.s-bad i { color: var(--error); }
+        .detail-list {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 4px 12px;
+        }
+        .detail-list dt { color: var(--text-muted); white-space: nowrap; }
+        .detail-list dd { word-break: break-word; }
+
+        /* สถานะว่าง / โหลด / ผิดพลาด */
+        .state {
+            text-align: center;
+            padding: 28px 16px;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.6;
+            background-color: var(--surface);
+            border-radius: 16px;
+        }
+        .state > i {
+            font-size: 28px;
+            color: #c4c8cf;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .state strong { display: block; color: var(--text); font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+        .state.is-error > i { color: var(--error); }
+        .state-btn {
+            margin-top: 12px;
+            border: none;
+            border-radius: 12px;
+            padding: 9px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            background-color: var(--primary);
+            color: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .state-btn.secondary { background-color: #ffffff; color: var(--text); border: 1px solid var(--border); }
+        .skeleton {
+            height: 98px;
+            border-radius: 16px;
+            background: linear-gradient(90deg, #eef0f3 25%, #f6f7f9 50%, #eef0f3 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite;
+        }
+        @keyframes shimmer { to { background-position: -200% 0; } }
+
+        @media (max-width: 360px) {
+            .tab { font-size: 12px; gap: 4px; }
+            .thumb { width: 60px; height: 60px; }
+        }
+    </style>
+</head>
+
+<body class="is-checking">
+    <div class="phone">
+        <div class="dynamic-island"></div>
+
+        <div class="phone-scroll" id="scroll">
+            <header class="page-header">
+                <div>
+                    <h1>รายการของฉัน</h1>
+                    <p>สิ่งของที่คุณแจ้งไว้ และคำขอรับสิ่งของคืน</p>
+                </div>
+                <button type="button" class="icon-btn" id="refresh-btn" aria-label="รีเฟรชรายการ"><i class="fa-solid fa-rotate-right"></i></button>
+            </header>
+
+            <div class="tabs" role="tablist" aria-label="ประเภทรายการ">
+                <button type="button" class="tab" role="tab" id="tab-lost" data-tab="lost" aria-controls="item-list" aria-selected="true">ของที่หาย<span class="count" data-count="lost">–</span></button>
+                <button type="button" class="tab" role="tab" id="tab-found" data-tab="found" aria-controls="item-list" aria-selected="false">ของที่พบ<span class="count" data-count="found">–</span></button>
+                <button type="button" class="tab" role="tab" id="tab-claims" data-tab="claims" aria-controls="item-list" aria-selected="false">ขอรับคืน<span class="count" data-count="claims">–</span></button>
+            </div>
+            <p class="tab-hint" id="tab-hint"></p>
+
+            <ul class="item-list" id="item-list" role="tabpanel" aria-labelledby="tab-lost"></ul>
+        </div>
+
+        <nav class="bottom-nav" id="bottom-nav"></nav>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <script src="userapp.js"></script>
+    <script>
+        const user = UserApp.init('myitems');
+        const esc = UserApp.escapeHtml;
+        const $ = (id) => document.getElementById(id);
+
+        // สถานะ → สีของป้าย (s-wait ส้ม, s-info ฟ้า, s-ok เขียว, s-bad แดง, s-muted เทา) + คำอธิบายเมื่อแตะดูรายละเอียด
+        const STATUS = {
+            lost: {
+                'ไม่พบ':                { css: 's-wait',  icon: 'fa-magnifying-glass', hint: 'ระบบกำลังค้นหา และจะแจ้งเตือนเมื่อพบสิ่งของที่ตรงกัน' },
+                'พบ':                   { css: 's-info',  icon: 'fa-bell',             hint: 'พบสิ่งของที่คาดว่าเป็นของคุณแล้ว กรุณาตรวจสอบการแจ้งเตือนและส่งคำขอรับคืนภายใน 24 ชั่วโมง' },
+                'ได้รับสิ่งของคืนแล้ว':   { css: 's-ok',    icon: 'fa-circle-check',     hint: 'คุณได้รับสิ่งของคืนเรียบร้อยแล้ว' },
+                'ยกเลิกรายการ':          { css: 's-muted', icon: 'fa-ban',              hint: 'รายการนี้ถูกยกเลิกแล้ว ระบบจะไม่ค้นหาให้อีก' },
+            },
+            found: {
+                'รอการอนุมัติ':          { css: 's-wait',  icon: 'fa-hourglass-half',   hint: 'กรุณานำสิ่งของไปส่งที่ศูนย์ เพื่อให้เจ้าหน้าที่ตรวจสอบและอนุมัติ' },
+                'อนุมัติแล้ว':           { css: 's-info',  icon: 'fa-box-open',         hint: 'เจ้าหน้าที่รับสิ่งของไว้แล้ว กำลังรอเจ้าของมารับคืน' },
+                'ถูกปฏิเสธ':             { css: 's-bad',   icon: 'fa-circle-xmark',     hint: 'เจ้าหน้าที่ไม่อนุมัติรายการนี้' },
+                'คืนสิ่งของแล้ว':         { css: 's-ok',    icon: 'fa-heart',            hint: 'สิ่งของถูกส่งคืนเจ้าของแล้ว ขอบคุณที่ช่วยเหลือ' },
+            },
+            claims: {
+                'รอการอนุมัติ':          { css: 's-wait',  icon: 'fa-hourglass-half',   hint: 'ส่งคำขอแล้ว รอเจ้าหน้าที่ตรวจสอบ' },
+                'อนุมัติ':               { css: 's-info',  icon: 'fa-location-dot',     hint: 'คำขอได้รับอนุมัติแล้ว กรุณามารับสิ่งของที่ศูนย์' },
+                'ปฏิเสธ':                { css: 's-bad',   icon: 'fa-circle-xmark',     hint: 'คำขอนี้ไม่ได้รับการอนุมัติ' },
+                'คืนสิ่งของแล้ว':         { css: 's-ok',    icon: 'fa-circle-check',     hint: 'รับสิ่งของคืนเรียบร้อยแล้ว' },
+            },
+        };
+
+        // แปลงข้อมูลแต่ละประเภทให้อยู่ในรูปแบบเดียวกันก่อนวาดการ์ด
+        const TABS = {
+            lost: {
+                hint: 'สิ่งของที่คุณแจ้งว่าหาย',
+                toCard: (r) => ({
+                    key: `L${r.Lost_ID}`,
+                    idHtml: `รหัสสิ่งของที่หาย #${esc(r.Lost_ID)}`,
+                    name: r.LostItem_name, photo: r.Lost_photo,
+                    category: r.Category_name, location: r.Location_name, status: r.Lost_status,
+                    details: [
+                        ['หายเมื่อ', UserApp.formatFoundDate(r.Lost_date, r.Lost_time) || '-'],
+                        ['รายละเอียด', r.Lost_description || '-'],
+                    ],
+                }),
+                empty: { icon: 'fa-regular fa-face-smile', title: 'ยังไม่มีรายการสิ่งของที่หาย', text: 'ถ้าทำของหาย แจ้งไว้ได้เลย ระบบจะช่วยจับคู่กับของที่มีคนพบ', button: ['reportLost', 'fa-solid fa-plus', 'แจ้งสิ่งของที่หาย'] },
+            },
+            found: {
+                hint: 'สิ่งของที่คุณแจ้งว่าพบ (รวมรายการที่เจ้าหน้าที่บันทึกให้)',
+                toCard: (r) => ({
+                    key: `F${r.Found_ID}`,
+                    idHtml: `รหัสสิ่งของที่พบ #${esc(r.Found_ID)}`,
+                    name: r.FoundItem_name, photo: r.Found_photo,
+                    category: r.Category_name, location: r.Location_name, status: r.Found_status,
+                    details: [
+                        ['พบเมื่อ', UserApp.formatFoundDate(r.Found_date, r.Found_time) || '-'],
+                        ['รายละเอียด', r.Found_description || '-'],
+                    ],
+                }),
+                empty: { icon: 'fa-regular fa-hand', title: 'ยังไม่มีรายการสิ่งของที่พบ', text: 'เจอของตกหล่น แจ้งไว้เพื่อช่วยส่งคืนเจ้าของ', button: ['reportFound', 'fa-solid fa-plus', 'แจ้งสิ่งของที่พบ'] },
+            },
+            claims: {
+                hint: 'คำขอรับสิ่งของคืนที่คุณส่งไว้ (แสดงข้อมูลสิ่งของที่พบที่ขอรับคืน)',
+                toCard: (r) => ({
+                    key: `C${r.Claim_ID}`,
+                    idHtml: `คำขอ #${esc(r.Claim_ID)}<span class="sep">·</span>รหัสสิ่งของที่พบ #${esc(r.Found_ID)}`,
+                    name: r.FoundItem_name || 'ไม่พบข้อมูลสิ่งของ', photo: r.Found_photo,
+                    category: r.Category_name, location: r.Location_name, status: r.Claim_status,
+                    details: [
+                        ['ขอรับคืนเมื่อ', UserApp.formatFoundDate(r.Claim_date, null) || '-'],
+                        ['ของที่คุณแจ้งหาย', r.Lost_ID ? `#${r.Lost_ID} ${r.LostItem_name || ''}`.trim() : '-'],
+                        ['พบเมื่อ', UserApp.formatFoundDate(r.Found_date, r.Found_time) || '-'],
+                        ['รายละเอียด', r.Found_description || '-'],
+                    ],
+                }),
+                empty: { icon: 'fa-regular fa-envelope-open', title: 'ยังไม่มีคำขอรับสิ่งของคืน', text: 'เมื่อระบบพบสิ่งของที่ตรงกับของที่คุณแจ้งหาย คุณจะได้รับการแจ้งเตือนเพื่อส่งคำขอรับคืน' },
+            },
+        };
+
+        let data = null;                                   // ผลจาก API ล่าสุด
+        let activeTab = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'lost';
+        const openCards = new Set();                       // จำการ์ดที่เปิดไว้ (รีเฟรชแล้วยังเปิดอยู่)
+
+        // ---------- วาดการ์ด ----------
+        function cardHtml(type, card) {
+            const status = STATUS[type][card.status] || { css: 's-muted', icon: 'fa-circle-info', hint: '' };
+            const photo = UserApp.photoUrl(card.photo);
+            const thumb = photo ? `<img src="${esc(photo)}" alt="" loading="lazy">` : '<i class="fa-solid fa-box"></i>';
+            const open = openCards.has(card.key);
+            return `
+                <li class="item-card${open ? ' is-open' : ''}" data-key="${esc(card.key)}">
+                    <button type="button" class="item-main" aria-expanded="${open}">
+                        <div class="thumb">${thumb}</div>
+                        <div class="item-info">
+                            <div class="item-id">${card.idHtml}</div>
+                            <div class="item-name">${esc(card.name)}</div>
+                            <div class="item-meta"><i class="fa-solid fa-tag"></i><span>${esc(card.category || '-')}</span></div>
+                            <div class="item-meta"><i class="fa-solid fa-location-dot"></i><span>${esc(card.location || '-')}</span></div>
+                            <div class="status-row"><span class="badge ${status.css}">${esc(card.status)}</span></div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right item-chevron" aria-hidden="true"></i>
+                    </button>
+                    <div class="item-detail">
+                        ${status.hint ? `<p class="status-hint ${status.css}"><i class="fa-solid ${status.icon}"></i><span>${esc(status.hint)}</span></p>` : ''}
+                        <dl class="detail-list">
+                            ${card.details.map(([label, value]) => `<dt>${esc(label)}</dt><dd>${esc(value)}</dd>`).join('')}
+                        </dl>
+                    </div>
+                </li>`;
+        }
+
+        function stateHtml({ icon, title, text, button }, isError) {
+            const btn = button
+                ? `<br><button type="button" class="state-btn${isError ? ' secondary' : ''}" ${button[0] ? `data-goto="${button[0]}"` : 'id="retry-btn"'}><i class="${button[1]}"></i>${esc(button[2])}</button>`
+                : '';
+            return `<li class="state${isError ? ' is-error' : ''}"><i class="${icon}"></i><strong>${esc(title)}</strong>${esc(text)}${btn}</li>`;
+        }
+
+        function render() {
+            document.querySelectorAll('.tab').forEach((tab) => {
+                const selected = tab.dataset.tab === activeTab;
+                tab.setAttribute('aria-selected', String(selected));
+                tab.tabIndex = selected ? 0 : -1;
+            });
+            const list = $('item-list');
+            list.setAttribute('aria-labelledby', `tab-${activeTab}`);
+            $('tab-hint').textContent = TABS[activeTab].hint;
+            if (!data) return;
+
+            const rows = data[activeTab] || [];
+            list.innerHTML = rows.length
+                ? rows.map((row) => cardHtml(activeTab, TABS[activeTab].toCard(row))).join('')
+                : stateHtml(TABS[activeTab].empty);
+
+            list.querySelectorAll('.item-main').forEach((btn) => btn.addEventListener('click', () => {
+                const card = btn.closest('.item-card');
+                const open = card.classList.toggle('is-open');
+                btn.setAttribute('aria-expanded', String(open));
+                if (open) openCards.add(card.dataset.key); else openCards.delete(card.dataset.key);
+            }));
+            list.querySelectorAll('.thumb img').forEach((img) => {
+                img.addEventListener('error', () => { img.parentElement.innerHTML = '<i class="fa-solid fa-box"></i>'; });
+            });
+            list.querySelectorAll('[data-goto]').forEach((btn) => btn.addEventListener('click', () => UserApp.goTo(btn.dataset.goto)));
+        }
+
+        function setCounts(counts) {
+            document.querySelectorAll('[data-count]').forEach((el) => {
+                el.textContent = counts ? String(counts[el.dataset.count] ?? 0) : '–';
+            });
+        }
+
+        // ---------- โหลดข้อมูล ----------
+        async function load() {
+            const list = $('item-list');
+            const refreshBtn = $('refresh-btn');
+            refreshBtn.disabled = true;
+            if (!data) list.innerHTML = '<li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li>';
+            try {
+                const { ok, status, data: res } = await UserApp.apiGet(`/api/items/my?User_ID=${encodeURIComponent(user.User_ID)}`);
+                if (status === 404 && res.code === 'USER_NOT_FOUND') {
+                    UserApp.toast(res.message);
+                    setTimeout(UserApp.logout, 2000);
+                    return;
+                }
+                if (!ok) throw new Error(res.message || 'load');
+                data = res;
+                setCounts(res.counts);
+                render();
+            } catch {
+                data = null;
+                setCounts(null);
+                list.innerHTML = stateHtml({
+                    icon: 'fa-solid fa-plug-circle-exclamation',
+                    title: 'โหลดรายการไม่สำเร็จ',
+                    text: 'กรุณาตรวจสอบว่าเปิด Backend แล้ว',
+                    button: [null, 'fa-solid fa-rotate-right', 'ลองใหม่'],
+                }, true);
+                $('retry-btn').addEventListener('click', load);
+            } finally {
+                refreshBtn.disabled = false;
+            }
+        }
+
+        // ---------- แท็บ ----------
+        function selectTab(tab, focus) {
+            if (!TABS[tab]) return;
+            activeTab = tab;
+            history.replaceState(null, '', `#${tab}`);
+            render();
+            if (focus) $(`tab-${tab}`).focus();
+        }
+        document.querySelectorAll('.tab').forEach((tab) => {
+            tab.addEventListener('click', () => selectTab(tab.dataset.tab));
+            // ปุ่มลูกศรซ้าย/ขวาเลื่อนแท็บ (การใช้งานด้วยคีย์บอร์ด)
+            tab.addEventListener('keydown', (event) => {
+                const order = Object.keys(TABS);
+                const index = order.indexOf(activeTab);
+                if (event.key === 'ArrowRight') selectTab(order[(index + 1) % order.length], true);
+                if (event.key === 'ArrowLeft') selectTab(order[(index + order.length - 1) % order.length], true);
+            });
+        });
+        window.addEventListener('hashchange', () => selectTab(location.hash.slice(1)));
+        $('refresh-btn').addEventListener('click', load);
+
+        // กลับมาที่แอป/แท็บนี้อีกครั้ง → โหลดสถานะล่าสุด
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && data) load();
+        });
+
+        // ---------- เริ่มต้นหน้า ----------
+        if (user) {
+            render();
+            load();
+        }
+    </script>
+</body>
+</html>

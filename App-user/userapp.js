@@ -24,10 +24,11 @@ const UserApp = (() => {
 
     const PAGES = {
         home:        { label: 'หน้าแรก',          icon: 'fa-solid fa-house',            href: 'home.html',        ready: true },
-        myitems:     { label: 'รายการของฉัน',     icon: 'fa-solid fa-list-ul',          href: 'myitems.html',     ready: false },
+        myitems:     { label: 'รายการของฉัน',     icon: 'fa-solid fa-list-ul',          href: 'myitems.html',     ready: true },
         profile:     { label: 'โปรไฟล์',          icon: 'fa-regular fa-user',           href: 'profile.html',     ready: false },
         reportFound: { label: 'แจ้งสิ่งของที่พบ',   icon: 'fa-solid fa-hand-holding-heart', href: 'reportfound.html', ready: false },
         reportLost:  { label: 'แจ้งสิ่งของที่หาย',  icon: 'fa-solid fa-magnifying-glass',  href: 'reportlost.html',  ready: true },
+        notifications: { label: 'การแจ้งเตือน',    icon: 'fa-regular fa-bell',           href: 'notifications.html', ready: true },
     };
     const BOTTOM_NAV = ['home', 'myitems', 'profile'];
 
@@ -106,15 +107,17 @@ const UserApp = (() => {
     }
 
     // ส่งข้อมูลแบบ JSON (ถ้าเชื่อมต่อเซิร์ฟเวอร์ไม่ได้ จะ throw error ให้หน้าที่เรียกจัดการเอง)
-    async function apiPost(path, body) {
+    async function apiSend(method, path, body) {
         const response = await fetch(`${API_BASE_URL}${path}`, {
-            method: 'POST',
+            method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         });
         const data = await response.json().catch(() => ({}));
         return { ok: response.ok, status: response.status, data };
     }
+    const apiPost = (path, body) => apiSend('POST', path, body);
+    const apiPut = (path, body) => apiSend('PUT', path, body);
 
     // รูปที่เก็บใน Backend (เช่น /uploads/found_123.png) → URL เต็ม
     function photoUrl(path) {
@@ -137,5 +140,5 @@ const UserApp = (() => {
         return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: '2-digit' }) }) + time;
     }
 
-    return { API_BASE_URL, PAGES, init, getUser, logout, goTo, toast, apiGet, apiPost, photoUrl, formatFoundDate, escapeHtml };
+    return { API_BASE_URL, PAGES, init, getUser, logout, goTo, toast, apiGet, apiPost, apiPut, photoUrl, formatFoundDate, escapeHtml };
 })();

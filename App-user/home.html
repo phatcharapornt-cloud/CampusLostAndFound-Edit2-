@@ -39,7 +39,53 @@
             font-size: 12.5px;
             color: var(--text-muted);
         }
-        .home-header .text { min-width: 0; }
+        .home-header .text { min-width: 0; flex: 1; }
+
+        /* ไอคอนการแจ้งเตือน (มุมบนขวา) + ตัวเลขที่ยังไม่ได้อ่าน */
+        .bell-btn {
+            position: relative;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            color: var(--navy);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            text-decoration: none;
+            box-shadow: 0 2px 8px rgba(15, 42, 74, 0.08);
+        }
+        .bell-btn:hover { color: var(--primary); }
+        .bell-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .bell-btn.has-unread i { animation: ring 1.2s ease-in-out 0.4s 1; transform-origin: 50% 10%; }
+        @keyframes ring {
+            0%, 100% { transform: rotate(0); }
+            15% { transform: rotate(14deg); }
+            30% { transform: rotate(-12deg); }
+            45% { transform: rotate(8deg); }
+            60% { transform: rotate(-5deg); }
+            75% { transform: rotate(2deg); }
+        }
+        .bell-badge {
+            position: absolute;
+            top: -5px;
+            right: -7px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background-color: var(--error);
+            color: #ffffff;
+            font-size: 10.5px;
+            font-weight: 600;
+            line-height: 18px;
+            text-align: center;
+            border: 2px solid #f7f8fa;
+            box-sizing: content-box;
+        }
+        .bell-badge[hidden] { display: none; }
 
         /* ---------- 1-2: ปุ่มแจ้งสิ่งของ ---------- */
         .report-grid {
@@ -411,6 +457,10 @@
                     <h1>สวัสดี, <span id="user-name"></span></h1>
                     <p>ทำของหายหรือเจอของใครไหมวันนี้?</p>
                 </div>
+                <a class="bell-btn" id="bell-btn" href="notifications.html" aria-label="การแจ้งเตือน">
+                    <i class="fa-regular fa-bell" aria-hidden="true"></i>
+                    <span class="bell-badge" id="bell-badge" hidden></span>
+                </a>
             </header>
 
             <!-- 1-2: แจ้งสิ่งของที่พบ / แจ้งสิ่งของที่หาย -->
@@ -668,6 +718,28 @@
             document.getElementById('scroll').scrollTo({ top: 0, behavior: 'smooth' });
         });
 
+        // ---------- ไอคอนการแจ้งเตือน: ตัวเลขที่ยังไม่ได้อ่าน ----------
+        const UNREAD_REFRESH_MS = 60000;   // อัปเดตตัวเลขทุก 1 นาทีระหว่างเปิดหน้านี้
+        let lastUnread = 0;
+        async function loadUnread() {
+            const bell = document.getElementById('bell-btn');
+            const badge = document.getElementById('bell-badge');
+            try {
+                const { ok, data } = await UserApp.apiGet(`/api/notifications/unread-count?User_ID=${encodeURIComponent(user.User_ID)}`);
+                if (!ok) throw new Error(data.message);
+                const unread = Number(data.unread) || 0;
+                badge.textContent = unread > 99 ? '99+' : String(unread);
+                badge.hidden = unread === 0;
+                bell.setAttribute('aria-label', unread ? `การแจ้งเตือน ยังไม่ได้อ่าน ${unread} รายการ` : 'การแจ้งเตือน');
+                // กระดิ่งสั่นเมื่อมีการแจ้งเตือนใหม่เพิ่มขึ้น
+                bell.classList.remove('has-unread');
+                if (unread > lastUnread) requestAnimationFrame(() => bell.classList.add('has-unread'));
+                lastUnread = unread;
+            } catch {
+                badge.hidden = true;   // เชื่อมต่อไม่ได้: ซ่อนตัวเลขไว้ กระดิ่งยังกดเข้าไปดูได้
+            }
+        }
+
         // ---------- เริ่มต้นหน้า ----------
         if (user) {
             document.getElementById('user-name').textContent = user.FName || user.Student_ID;
@@ -676,6 +748,11 @@
             });
             loadOptions();
             loadRecent();
+            loadUnread();
+            setInterval(() => { if (document.visibilityState === 'visible') loadUnread(); }, UNREAD_REFRESH_MS);
+            // กลับมาหน้านี้ (กดย้อนกลับ / สลับแอป) → อัปเดตตัวเลขทันที
+            window.addEventListener('pageshow', (event) => { if (event.persisted) loadUnread(); });
+            document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadUnread(); });
         }
     </script>
 </body>

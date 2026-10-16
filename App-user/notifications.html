@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>การแจ้งเตือน | Campus Lost & Found</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="userapp.css">
+
+    <style>
+        [hidden] { display: none !important; }
+        /* หน้านี้ไม่มีแถบเมนูด้านล่าง */
+        .phone-scroll { padding-bottom: 28px; }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            color: var(--text);
+            font-size: 15px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+        .back-btn:focus-visible { outline: 2px solid var(--primary); }
+        .page-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.3;
+            color: var(--text);
+        }
+        .page-header p {
+            font-size: 12.5px;
+            color: var(--text-muted);
+        }
+
+        .group-title {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin: 16px 4px 8px;
+        }
+        .group-title:first-child { margin-top: 0; }
+        .noti-list {
+            list-style: none;
+            background-color: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(15, 42, 74, 0.05);
+        }
+        .noti-list li + li { border-top: 1px solid #f0f1f4; }
+        .noti {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 13px 14px;
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+        }
+        a.noti:hover { background-color: #fafbfc; }
+        a.noti:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+        .noti.is-unread { background-color: #fff8f4; }
+        .noti-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+            background-color: #eef2f7;
+            color: var(--navy-light);
+        }
+        .noti-icon.t-match { background-color: var(--primary-soft); color: var(--primary); }
+        .noti-icon.t-claim { background-color: var(--success-soft); color: var(--success); }
+        .noti-icon.t-lost  { background-color: #fff7e6; color: #b45309; }
+        .noti-icon.t-found { background-color: #e8f1fd; color: #1d4ed8; }
+        .noti-body { flex: 1; min-width: 0; }
+        .noti-text {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #374151;
+            word-break: break-word;
+        }
+        .noti.is-unread .noti-text { color: var(--text); font-weight: 500; }
+        .noti-time {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            margin-top: 3px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .noti-time .go { color: var(--primary); }
+        .unread-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            flex-shrink: 0;
+            margin-top: 6px;
+        }
+
+        .footnote {
+            text-align: center;
+            font-size: 11.5px;
+            color: var(--text-muted);
+            margin-top: 14px;
+        }
+        .state {
+            text-align: center;
+            padding: 40px 18px;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.6;
+            background-color: var(--surface);
+            border-radius: 16px;
+        }
+        .state > i { font-size: 30px; color: #c4c8cf; display: block; margin-bottom: 10px; }
+        .state strong { display: block; color: var(--text); font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+        .state.is-error > i { color: var(--error); }
+        .state button {
+            margin-top: 12px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 8px 16px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .skeleton {
+            height: 64px;
+            border-radius: 14px;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #eef0f3 25%, #f6f7f9 50%, #eef0f3 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite;
+        }
+        @keyframes shimmer { to { background-position: -200% 0; } }
+    </style>
+</head>
+
+<body class="is-checking">
+    <div class="phone">
+        <div class="dynamic-island"></div>
+
+        <div class="phone-scroll" id="scroll">
+            <header class="page-header">
+                <a class="back-btn" href="home.html" aria-label="กลับหน้าแรก"><i class="fa-solid fa-chevron-left"></i></a>
+                <div>
+                    <h1>การแจ้งเตือน</h1>
+                    <p id="summary">&nbsp;</p>
+                </div>
+            </header>
+
+            <div id="content" aria-live="polite">
+                <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+            </div>
+        </div>
+
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <script src="userapp.js"></script>
+    <script>
+        const user = UserApp.init('notifications');
+        const esc = UserApp.escapeHtml;
+        const $ = (id) => document.getElementById(id);
+
+        // ประเภทของการแจ้งเตือน (ดูจากรหัสที่ผูกไว้) → ไอคอน + หน้าที่จะพาไปเมื่อแตะ
+        function notiType(n) {
+            if (n.Claim_ID) return { css: 't-claim', icon: 'fa-solid fa-hand-holding', href: 'myitems.html#claims' };
+            if (n.Match_ID) return { css: 't-match', icon: 'fa-solid fa-wand-magic-sparkles', href: 'myitems.html#lost' };
+            if (n.Lost_ID)  return { css: 't-lost',  icon: 'fa-solid fa-magnifying-glass', href: 'myitems.html#lost' };
+            if (n.Found_ID) return { css: 't-found', icon: 'fa-solid fa-box-open', href: 'myitems.html#found' };
+            return { css: '', icon: 'fa-regular fa-bell', href: '' };
+        }
+
+        // 'YYYY-MM-DD HH:MM:SS' (เวลาของเซิร์ฟเวอร์) → Date ตามเวลาเครื่อง
+        function parseTime(text) {
+            const [d, t = '00:00:00'] = String(text || '').split(' ');
+            const [y, m, day] = d.split('-').map(Number);
+            const [h, mi, s] = t.split(':').map(Number);
+            return new Date(y, (m || 1) - 1, day || 1, h || 0, mi || 0, s || 0);
+        }
+        function startOfDay(date) { const d = new Date(date); d.setHours(0, 0, 0, 0); return d; }
+        function dayDiff(date) { return Math.round((startOfDay(new Date()) - startOfDay(date)) / 86400000); }
+
+        function timeAgo(date) {
+            const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
+            const hhmm = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+            if (minutes < 1) return 'เมื่อสักครู่';
+            if (minutes < 60) return `${minutes} นาทีที่แล้ว`;
+            if (dayDiff(date) === 0) return `${Math.floor(minutes / 60)} ชั่วโมงที่แล้ว`;
+            if (dayDiff(date) === 1) return `เมื่อวาน ${hhmm} น.`;
+            const sameYear = date.getFullYear() === new Date().getFullYear();
+            return `${date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: '2-digit' }) })} ${hhmm} น.`;
+        }
+        function groupLabel(date) {
+            const diff = dayDiff(date);
+            if (diff <= 0) return 'วันนี้';
+            if (diff === 1) return 'เมื่อวาน';
+            return 'ก่อนหน้านี้';
+        }
+
+        function notiHtml(n) {
+            const type = notiType(n);
+            const date = parseTime(n.Notice_at);
+            const inner = `
+                <span class="noti-icon ${type.css}"><i class="${type.icon}" aria-hidden="true"></i></span>
+                <div class="noti-body">
+                    <div class="noti-text">${esc(n.Message)}</div>
+                    <div class="noti-time"><span>${esc(timeAgo(date))}</span>${type.href ? '<span class="go">· ดูรายการ</span>' : ''}</div>
+                </div>
+                ${n.Is_read ? '' : '<span class="unread-dot" aria-label="ยังไม่ได้อ่าน"></span>'}`;
+            const cls = `noti${n.Is_read ? '' : ' is-unread'}`;
+            return `<li>${type.href ? `<a class="${cls}" href="${type.href}">${inner}</a>` : `<div class="${cls}">${inner}</div>`}</li>`;
+        }
+
+        function render(data) {
+            const list = data.notifications;
+            $('summary').textContent = data.unread ? `ยังไม่ได้อ่าน ${data.unread} รายการ` : 'อ่านครบทุกรายการแล้ว';
+            if (list.length === 0) {
+                $('summary').textContent = ' ';
+                $('content').innerHTML = `<div class="state"><i class="fa-regular fa-bell-slash"></i><strong>ยังไม่มีการแจ้งเตือน</strong>เมื่อแจ้งสิ่งของ หรือระบบพบสิ่งของที่ตรงกับของที่คุณแจ้งหาย จะมีการแจ้งเตือนที่นี่</div>`;
+                return;
+            }
+            // แบ่งกลุ่ม วันนี้ / เมื่อวาน / ก่อนหน้านี้ (รายการเรียงใหม่สุดก่อนอยู่แล้ว)
+            const groups = [];
+            for (const n of list) {
+                const label = groupLabel(parseTime(n.Notice_at));
+                if (!groups.length || groups[groups.length - 1].label !== label) groups.push({ label, items: [] });
+                groups[groups.length - 1].items.push(n);
+            }
+            $('content').innerHTML = groups.map((g) => `
+                <h2 class="group-title">${esc(g.label)}</h2>
+                <ul class="noti-list">${g.items.map(notiHtml).join('')}</ul>`).join('')
+                + (data.total > list.length ? `<p class="footnote">แสดง ${list.length} รายการล่าสุด จากทั้งหมด ${data.total} รายการ</p>` : '');
+        }
+
+        async function load() {
+            try {
+                const { ok, status, data } = await UserApp.apiGet(`/api/notifications?User_ID=${encodeURIComponent(user.User_ID)}`);
+                if (status === 404 && data.code === 'USER_NOT_FOUND') {
+                    UserApp.toast(data.message);
+                    setTimeout(UserApp.logout, 2000);
+                    return;
+                }
+                if (!ok) throw new Error(data.message);
+                render(data);
+                // เปิดดูแล้ว = อ่านแล้ว (ในหน้านี้ยังเน้นรายการใหม่ไว้ให้เห็น จนกว่าจะออกจากหน้า)
+                if (data.unread > 0) {
+                    UserApp.apiPut('/api/notifications/read-all', { User_ID: user.User_ID }).catch(() => { /* ครั้งหน้าค่อยลองใหม่ */ });
+                }
+            } catch {
+                $('summary').textContent = ' ';
+                $('content').innerHTML = `<div class="state is-error"><i class="fa-solid fa-plug-circle-exclamation"></i><strong>โหลดการแจ้งเตือนไม่สำเร็จ</strong>กรุณาตรวจสอบว่าเปิด Backend แล้ว<br><button type="button" id="retry-btn">ลองใหม่</button></div>`;
+                $('retry-btn').addEventListener('click', load);
+            }
+        }
+
+        if (user) load();
+    </script>
+</body>
+</html>

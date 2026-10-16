@@ -10,6 +10,8 @@ const adminAuthRoutes = require('./routes/adminauth');
 const adminDashboardRoutes = require('./routes/admindashboard');
 const adminHistoryRoutes = require('./routes/adminhistory');
 const itemSearchRoutes = require('./routes/itemsearch');
+const myItemsRoutes = require('./routes/myitems');
+const notificationRoutes = require('./routes/notifications');
 const itemRoutes = require('./routes/item');
 const matchRouter = require('./routes/matchitem');
 const adminApproveRouter = require('./routes/adminapprovefound');
@@ -28,6 +30,8 @@ app.use('/api/auth', resetPasswordRoutes); // ลืมรหัสผ่าน:
 app.use('/api/auth', adminAuthRoutes);     // Admin: /api/auth/admin-login, /admin-me
 app.use('/api/items', itemRoutes);
 app.use('/api/items', itemSearchRoutes);     // หน้าแรกผู้ใช้: /api/items/found/recent, /api/items/found/search
+app.use('/api/items', myItemsRoutes);        // รายการของฉัน: /api/items/my
+app.use('/api/notifications', notificationRoutes); // การแจ้งเตือนของผู้ใช้: /api/notifications, /unread-count, /read-all
 app.use('/api/match', matchRouter);
 app.use('/api/admin', adminApproveRouter);
 app.use('/api/admin', adminDashboardRoutes); // หน้าหลัก Web-Admin: /api/admin/summary
