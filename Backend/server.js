@@ -48,6 +48,11 @@ app.get('/api/test-categories', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, (error) => {
+  // Express 5 เรียกฟังก์ชันนี้แม้เปิดเซิร์ฟเวอร์ไม่สำเร็จ (เช่น มีเซิร์ฟเวอร์อีกตัวใช้ PORT นี้อยู่) จึงต้องเช็ก error ก่อน
+  if (error) {
+    console.error(`❌ เปิดเซิร์ฟเวอร์ไม่สำเร็จ: ${error.code === 'EADDRINUSE' ? `PORT ${PORT} ถูกใช้งานอยู่ (อาจเปิด Backend ซ้อนไว้อีกหน้าต่าง)` : error.message}`);
+    process.exit(1);
+  }
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
