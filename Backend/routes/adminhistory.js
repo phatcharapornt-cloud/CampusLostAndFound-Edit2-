@@ -27,7 +27,7 @@ function escapeLike(text) {
 //   q        = ค้นหาจากรหัสสิ่งของ (Lost_ID), รหัสนักศึกษา, ชื่อสิ่งของ หรือรายละเอียด
 //   page     = หน้าที่ต้องการ (เริ่มที่ 1), pageSize = จำนวนต่อหน้า (สูงสุด 100)
 // 200 = { items: [...], total, page, pageSize, totalPages, statusCounts: { 'ไม่พบ': n, ... } }
-//   เรียงจากรายการที่แจ้งล่าสุดก่อน (Lost_ID มากไปน้อย)
+//   เรียงตามรหัสสิ่งของ (Lost_ID) จากน้อยไปมาก
 router.get('/history/lost', requireAdmin, async (req, res) => {
     const status = typeof req.query.status === 'string' ? req.query.status.trim() : '';
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
@@ -96,7 +96,7 @@ router.get('/history/lost', requireAdmin, async (req, res) => {
                 l.Lost_status
              ${FROM}
              ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-             ORDER BY l.Lost_ID DESC
+             ORDER BY l.Lost_ID ASC
              LIMIT ? OFFSET ?`,
             [...params, pageSize, (page - 1) * pageSize]
         );
