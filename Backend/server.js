@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const resetPasswordRoutes = require('./routes/resetpassword');
 const adminAuthRoutes = require('./routes/adminauth');
 const adminDashboardRoutes = require('./routes/admindashboard');
+const adminHistoryRoutes = require('./routes/adminhistory');
 const itemSearchRoutes = require('./routes/itemsearch');
 const itemRoutes = require('./routes/item');
 const matchRouter = require('./routes/matchitem');
@@ -18,7 +19,8 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+// เพิ่มขนาดสูงสุดของข้อมูลที่รับได้ (ค่าเริ่มต้น 100kb เล็กเกินไปสำหรับรูปภาพที่ส่งมาเป็น base64)
+app.use(express.json({ limit: '8mb' }));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -29,6 +31,7 @@ app.use('/api/items', itemSearchRoutes);     // หน้าแรกผู้�
 app.use('/api/match', matchRouter);
 app.use('/api/admin', adminApproveRouter);
 app.use('/api/admin', adminDashboardRoutes); // หน้าหลัก Web-Admin: /api/admin/summary
+app.use('/api/admin', adminHistoryRoutes);   // History ของ Web-Admin: /api/admin/history/lost
 app.use('/api/claim', claimRoutes);
 
 // เปิดให้เข้าถึงไฟล์รูปภาพในโฟลเดอร์ uploads ผ่าน URL ได้
@@ -53,6 +56,17 @@ app.get('/api/test-categories', async (req, res) => {
       message: error.message
     });
   }
+});
+
+// ข้อมูลที่ส่งมาใหญ่เกินไป หรือ JSON ผิดรูปแบบ → ตอบเป็น JSON ภาษาไทยแทนหน้า error ของ Express
+app.use((error, req, res, next) => {
+  if (error.type === 'entity.too.large') {
+    return res.status(413).json({ success: false, message: 'ข้อมูลหรือไฟล์รูปภาพมีขนาดใหญ่เกินไป' });
+  }
+  if (error.type === 'entity.parse.failed') {
+    return res.status(400).json({ success: false, message: 'รูปแบบข้อมูลที่ส่งมาไม่ถูกต้อง' });
+  }
+  next(error);
 });
 
 const PORT = process.env.PORT || 5000;
