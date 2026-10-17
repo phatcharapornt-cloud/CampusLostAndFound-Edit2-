@@ -30,7 +30,7 @@ const MatchView = (() => {
         const name = isLost ? item.LostItem_name : item.FoundItem_name;
         const desc = isLost ? item.Lost_description : item.Found_description;
         const photo = photoUrl(isLost ? item.Lost_photo : item.Found_photo);
-        const when = isLost ? `หายเมื่อ ${formatDate(item.Lost_date, item.Lost_time)}` : `พบเมื่อ ${formatDate(item.Found_date, item.Found_time)}`;
+        const when = isLost ? `หายเมื่อ ${formatDate(item.Lost_date, item.Lost_time)}${item.Lost_time ? '' : ' (ไม่ระบุเวลา)'}` :`พบเมื่อ ${formatDate(item.Found_date, item.Found_time)}`;
         const sameCategory = other && other.Category_ID === item.Category_ID;
         const sameLocation = other && other.Location_ID === item.Location_ID;
         const photoHtml = photo

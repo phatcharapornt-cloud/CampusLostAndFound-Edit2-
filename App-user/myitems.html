@@ -476,7 +476,7 @@
                     name: r.LostItem_name, photo: r.Lost_photo,
                     category: r.Category_name, location: r.Location_name, status: r.Lost_status,
                     details: [
-                        ['หายเมื่อ', UserApp.formatFoundDate(r.Lost_date, r.Lost_time) || '-'],
+                        ['หายเมื่อ', r.Lost_date ? `${UserApp.formatFoundDate(r.Lost_date, r.Lost_time)}${r.Lost_time ? '' : ' (ไม่ระบุเวลา)'}` : '-'],
                         ['รายละเอียด', r.Lost_description || '-'],
                     ],
                     actionHtml: lostActionHtml(r),

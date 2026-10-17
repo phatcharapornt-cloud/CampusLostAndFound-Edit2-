@@ -402,7 +402,7 @@
             if (!dateText) return '-';
             const [y, m, d] = dateText.split('-').map(Number);
             const date = new Date(y, m - 1, d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
-            return timeText ? `${date} เวลา ${timeText} น.` : date;
+            return timeText ? `${date} เวลา ${timeText} น.` : `${date} (ไม่ระบุเวลา)`;
         }
         function leftText(seconds) {
             const h = Math.floor(seconds / 3600);

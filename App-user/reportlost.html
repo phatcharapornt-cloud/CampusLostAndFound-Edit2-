@@ -589,7 +589,7 @@
                                 <div class="field-error" id="Lost_date-error"></div>
                             </div>
                             <div class="field" data-field="Lost_time">
-                                <label class="field-label" for="Lost_time"><span>เวลา<span class="req">*</span></span></label>
+                                <label class="field-label" for="Lost_time"><span>เวลา <span class="optional">(ไม่บังคับ)</span></span></label>
                                 <input type="time" id="Lost_time" name="Lost_time">
                                 <div class="field-error" id="Lost_time-error"></div>
                             </div>
@@ -598,7 +598,7 @@
                             <button type="button" class="chip-btn" data-days-ago="0">วันนี้</button>
                             <button type="button" class="chip-btn" data-days-ago="1">เมื่อวาน</button>
                         </div>
-                        <p class="hint">ถ้าจำเวลาไม่ได้แน่ชัด ใส่เวลาโดยประมาณได้</p>
+                        <p class="hint">ถ้าจำเวลาไม่ได้ เว้นว่างไว้ได้ หรือใส่เวลาโดยประมาณ</p>
                     </section>
 
                     <section class="card" aria-labelledby="sec-detail">
@@ -746,8 +746,8 @@
             else if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < '2000-01-01') errors.Lost_date = 'รูปแบบวันที่ไม่ถูกต้อง';
             else if (date > today) errors.Lost_date = 'วันที่ต้องไม่เกินวันนี้';
 
-            if (!time) errors.Lost_time = 'กรุณาเลือกเวลา';
-            else if (date === today && time > `${pad(now.getHours())}:${pad(now.getMinutes())}`) errors.Lost_time = 'เวลาต้องไม่เกินเวลาปัจจุบัน';
+            // เวลาไม่บังคับ: ถ้ากรอก ต้องไม่เกินเวลาปัจจุบัน (กรณีเลือกวันนี้)
+            if (time && date === today && time > `${pad(now.getHours())}:${pad(now.getMinutes())}`) errors.Lost_time = 'เวลาต้องไม่เกินเวลาปัจจุบัน';
 
             if (!desc) errors.Lost_description = 'กรุณากรอกรายละเอียดเพิ่มเติม';
             else if (desc.length > DESC_MAX) errors.Lost_description = `รายละเอียดเพิ่มเติมต้องไม่เกิน ${DESC_MAX} ตัวอักษร`;
@@ -984,7 +984,7 @@
             $('sum-name').textContent = body.LostItem_name;
             $('sum-category').textContent = selectedText(fields.Category_ID);
             $('sum-location').textContent = selectedText(fields.Location_ID);
-            $('sum-when').textContent = `หายเมื่อ ${UserApp.formatFoundDate(body.Lost_date, body.Lost_time)}`;
+            $('sum-when').textContent = `หายเมื่อ ${UserApp.formatFoundDate(body.Lost_date, body.Lost_time)}${body.Lost_time ? '' : ' (ไม่ระบุเวลา)'}`;
             const thumb = $('sum-thumb');
             thumb.innerHTML = '<i class="fa-solid fa-box"></i>';
             if (photoDataUrl) {

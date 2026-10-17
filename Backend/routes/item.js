@@ -22,8 +22,9 @@ function toPositiveId(value) {
 }
 
 // 1. API แจ้งสิ่งของที่หาย (POST /api/items/lostitem) ใช้กับหน้า App-user/reportlost.html
-// body (JSON): { User_ID, LostItem_name, Category_ID, Location_ID, Lost_date: 'YYYY-MM-DD', Lost_time: 'HH:MM',
+// body (JSON): { User_ID, LostItem_name, Category_ID, Location_ID, Lost_date: 'YYYY-MM-DD', Lost_time?: 'HH:MM' (ไม่บังคับ),
 //                Lost_description, Lost_photo?: 'data:image/jpeg;base64,...' (ไม่บังคับ) }
+//   ไม่กรอกเวลา → Lost_time เป็น NULL (หน้าเว็บแสดงเป็น "ไม่ระบุเวลา")
 // 201 = บันทึกลงตาราง LostItem (สถานะ 'ไม่พบ') + บันทึกการแจ้งเตือนลงตาราง Notification แล้ว
 // 400 = ข้อมูลไม่ถูกต้อง { message, errors: { ชื่อฟิลด์: ข้อความ } }, 404 = ไม่พบบัญชีผู้ใช้
 router.post('/lostitem', async (req, res) => {
@@ -87,7 +88,7 @@ router.post('/lostitem', async (req, res) => {
                 values.Location_ID,
                 values.LostItem_name,
                 values.Lost_date,
-                values.Lost_time,
+                values.Lost_time || null,
                 values.Lost_description,
                 photoPath
             ]

@@ -259,7 +259,7 @@ function validateRequiredText(text, label, maxLength) {
     return null;
 }
 
-// ตรวจข้อมูลการแจ้งสิ่งของที่หาย (รูปภาพไม่บังคับ ตรวจไฟล์รูปแยกใน utils/imageupload.js)
+// ตรวจข้อมูลการแจ้งสิ่งของที่หาย (เวลาและรูปภาพไม่บังคับ ตรวจไฟล์รูปแยกใน utils/imageupload.js)
 // คืนค่า { values, errors } เหมือนฟังก์ชันอื่นในไฟล์นี้
 function validateLostItemReport(body, now = new Date()) {
     const values = {
@@ -282,8 +282,9 @@ function validateLostItemReport(body, now = new Date()) {
             Category_ID: values.Category_ID ? null : 'กรุณาเลือกหมวดหมู่ของสิ่งของ',
             Location_ID: values.Location_ID ? null : 'กรุณาเลือกสถานที่ที่คาดว่าทำของหาย',
             Lost_date: dateError,
+            // เวลาไม่บังคับ (คอลัมน์ Lost_time เป็น NULL ได้) ถ้ากรอกมาต้องถูกรูปแบบและไม่เกินเวลาปัจจุบัน
             // ถ้าวันที่ผิด ตรวจแค่รูปแบบเวลา ไม่เทียบกับเวลาปัจจุบัน
-            Lost_time: validateItemTime(values.Lost_time, dateError ? null : values.Lost_date, now),
+            Lost_time: values.Lost_time ? validateItemTime(values.Lost_time, dateError ? null : values.Lost_date, now) : null,
             Lost_description: validateRequiredText(values.Lost_description, 'รายละเอียดเพิ่มเติม', ITEM_DESCRIPTION_MAX_LENGTH),
         }),
     };
