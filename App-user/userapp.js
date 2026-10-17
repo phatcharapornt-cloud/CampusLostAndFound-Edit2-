@@ -119,6 +119,7 @@ const UserApp = (() => {
     }
     const apiPost = (path, body) => apiSend('POST', path, body);
     const apiPut = (path, body) => apiSend('PUT', path, body);
+    const apiDelete = (path, body) => apiSend('DELETE', path, body);
 
     // รูปที่เก็บใน Backend (เช่น /uploads/found_123.png) → URL เต็ม
     function photoUrl(path) {
@@ -141,5 +142,5 @@ const UserApp = (() => {
         return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: '2-digit' }) }) + time;
     }
 
-    return { API_BASE_URL, PAGES, init, getUser, logout, goTo, toast, apiGet, apiPost, apiPut, photoUrl, formatFoundDate, escapeHtml };
+    return { API_BASE_URL, PAGES, init, getUser, logout, goTo, toast, apiGet, apiPost, apiPut, apiDelete, photoUrl, formatFoundDate, escapeHtml };
 })();

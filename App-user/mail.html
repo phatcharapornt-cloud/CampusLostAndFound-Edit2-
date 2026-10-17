@@ -503,6 +503,9 @@
                     <div class="deadline ${claim.css}" id="claim-state"><i class="${claim.icon}"></i> ${esc(claim.text)}${ref}</div>
                     <a class="cta is-secondary" href="myitems.html#claims"><i class="fa-solid fa-list-ul"></i>ดูการขอรับสิ่งของคืน</a>`;
             }
+            if (mail.match.lost.Lost_status === 'ยกเลิกรายการ') {
+                return '<div class="deadline is-closed"><i class="fa-solid fa-ban"></i> คุณได้ยกเลิกรายการสิ่งของที่หายนี้แล้ว จึงไม่สามารถขอรับสิ่งของคืนผ่านอีเมลนี้ได้ หากต้องการขอรับสิ่งของชิ้นนี้ ให้ติดต่อที่ส่วนกลาง</div>';
+            }
             return `<div class="deadline is-closed"><i class="fa-solid fa-lock"></i> เกินเวลา ${mail.Claim_window_hours} ชั่วโมงโดยไม่ได้กดขอรับสิ่งของคืน ถือว่าท่านปฏิเสธการขอรับสิ่งของคืน หากต้องการขอรับสิ่งของชิ้นนี้ ให้ติดต่อที่ส่วนกลาง (ระบบได้เริ่มค้นหาสิ่งของให้คุณใหม่แล้ว)</div>`;
         }
 

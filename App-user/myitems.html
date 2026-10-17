@@ -234,6 +234,94 @@
         .detail-list dt { color: var(--text-muted); white-space: nowrap; }
         .detail-list dd { word-break: break-word; }
 
+        /* ---------- ยกเลิกรายการสิ่งของที่หาย ---------- */
+        .detail-actions { margin-top: 12px; }
+        .cancel-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid #f5c2bd;
+            background-color: #ffffff;
+            color: var(--error);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .cancel-btn:hover { background-color: var(--error-soft); }
+        .cancel-btn:focus-visible { outline: 2px solid var(--error); outline-offset: 2px; }
+        .cancel-note {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            font-size: 11.5px;
+            color: var(--text-muted);
+        }
+        .cancel-note i { margin-top: 3px; }
+
+        .sheet-backdrop {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(17, 24, 39, 0.45);
+            z-index: 8;
+            display: flex;
+            align-items: flex-end;
+        }
+        .sheet {
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: 22px 22px 0 0;
+            padding: 22px 18px 30px;
+            box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.12);
+            text-align: center;
+        }
+        .sheet .sheet-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            background-color: var(--error-soft);
+            color: var(--error);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .sheet h2 { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+        .sheet .sheet-item {
+            display: inline-block;
+            max-width: 100%;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            background-color: var(--bg);
+            border-radius: 10px;
+            padding: 4px 10px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .sheet p { font-size: 13px; color: #4b5563; line-height: 1.6; }
+        .sheet-buttons { display: flex; gap: 10px; margin-top: 18px; }
+        .sheet-buttons button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .sheet-buttons button:disabled { opacity: 0.7; cursor: default; }
+        .sheet-buttons .stay { border: 1px solid var(--border); background-color: #ffffff; color: var(--text); }
+        .sheet-buttons .leave { border: none; background-color: var(--error); color: #ffffff; }
+        .sheet-buttons .leave:hover:not(:disabled) { background-color: #b9271d; }
+
         /* สถานะว่าง / โหลด / ผิดพลาด */
         .state {
             text-align: center;
@@ -307,6 +395,21 @@
         </div>
 
         <nav class="bottom-nav" id="bottom-nav"></nav>
+
+        <!-- ยืนยันก่อนยกเลิกรายการสิ่งของที่หาย -->
+        <div class="sheet-backdrop" id="cancel-sheet" hidden>
+            <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cancel-title" aria-describedby="cancel-text">
+                <div class="sheet-icon"><i class="fa-solid fa-ban" aria-hidden="true"></i></div>
+                <h2 id="cancel-title">ยกเลิกรายการนี้?</h2>
+                <div class="sheet-item" id="cancel-item"></div>
+                <p id="cancel-text"></p>
+                <div class="sheet-buttons">
+                    <button type="button" class="stay" id="cancel-no">ไม่ยกเลิก</button>
+                    <button type="button" class="leave" id="cancel-yes">ยกเลิกรายการ</button>
+                </div>
+            </div>
+        </div>
+
         <div class="toast" id="toast" role="status" aria-live="polite"></div>
     </div>
 
@@ -338,6 +441,22 @@
             },
         };
 
+        // ยกเลิกรายการสิ่งของที่หายได้เมื่อสถานะ 'ไม่พบ' หรือ 'พบ' และยังไม่มีคำขอรับคืนที่กำลังดำเนินการ
+        // (เงื่อนไขเดียวกับ Backend: DELETE /api/items/lostitem/:lostId)
+        const CANCELLABLE = ['ไม่พบ', 'พบ'];
+        const OPEN_CLAIM = ['รอการอนุมัติ', 'อนุมัติ'];
+        function openClaimOf(lostId) {
+            return ((data && data.claims) || []).find((c) => c.Lost_ID === lostId && OPEN_CLAIM.includes(c.Claim_status));
+        }
+        function lostActionHtml(r) {
+            if (!CANCELLABLE.includes(r.Lost_status)) return '';
+            const claim = openClaimOf(r.Lost_ID);
+            if (claim) {
+                return `<p class="cancel-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>มีคำขอรับสิ่งของคืน #${esc(claim.Claim_ID)} ที่กำลังดำเนินการ จึงยกเลิกรายการนี้ไม่ได้ หากต้องการยกเลิก กรุณาติดต่อที่ส่วนกลาง</span></p>`;
+            }
+            return `<button type="button" class="cancel-btn" data-cancel="${esc(r.Lost_ID)}"><i class="fa-solid fa-ban" aria-hidden="true"></i>ยกเลิกรายการ</button>`;
+        }
+
         // แปลงข้อมูลแต่ละประเภทให้อยู่ในรูปแบบเดียวกันก่อนวาดการ์ด
         const TABS = {
             lost: {
@@ -351,6 +470,7 @@
                         ['หายเมื่อ', UserApp.formatFoundDate(r.Lost_date, r.Lost_time) || '-'],
                         ['รายละเอียด', r.Lost_description || '-'],
                     ],
+                    actionHtml: lostActionHtml(r),
                 }),
                 empty: { icon: 'fa-regular fa-face-smile', title: 'ยังไม่มีรายการสิ่งของที่หาย', text: 'ถ้าทำของหาย แจ้งไว้ได้เลย ระบบจะช่วยจับคู่กับของที่มีคนพบ', button: ['reportLost', 'fa-solid fa-plus', 'แจ้งสิ่งของที่หาย'] },
             },
@@ -414,6 +534,7 @@
                         <dl class="detail-list">
                             ${card.details.map(([label, value]) => `<dt>${esc(label)}</dt><dd>${esc(value)}</dd>`).join('')}
                         </dl>
+                        ${card.actionHtml ? `<div class="detail-actions">${card.actionHtml}</div>` : ''}
                     </div>
                 </li>`;
         }
@@ -451,7 +572,59 @@
                 img.addEventListener('error', () => { img.parentElement.innerHTML = '<i class="fa-solid fa-box"></i>'; });
             });
             list.querySelectorAll('[data-goto]').forEach((btn) => btn.addEventListener('click', () => UserApp.goTo(btn.dataset.goto)));
+            list.querySelectorAll('[data-cancel]').forEach((btn) => btn.addEventListener('click', () => openCancelSheet(Number(btn.dataset.cancel))));
         }
+
+        // ---------- ยกเลิกรายการสิ่งของที่หาย (ยืนยันก่อน) ----------
+        let cancelTarget = null;   // { Lost_ID, LostItem_name, Lost_status }
+        let cancelSaving = false;
+        function openCancelSheet(lostId) {
+            const item = ((data && data.lost) || []).find((r) => r.Lost_ID === lostId);
+            if (!item) return;
+            cancelTarget = item;
+            $('cancel-item').textContent = `#${item.Lost_ID} ${item.LostItem_name}`;
+            $('cancel-text').textContent = 'ระบบจะหยุดค้นหาสิ่งของชิ้นนี้ให้ และไม่สามารถเปิดรายการกลับมาได้อีก'
+                + (item.Lost_status === 'พบ' ? ' รายการจับคู่ที่ส่งมาทางอีเมลจะถูกปิดด้วย' : '');
+            $('cancel-sheet').hidden = false;
+            $('cancel-no').focus();
+        }
+        function closeCancelSheet() {
+            if (cancelSaving) return;
+            $('cancel-sheet').hidden = true;
+            const opener = cancelTarget && document.querySelector(`[data-cancel="${cancelTarget.Lost_ID}"]`);
+            cancelTarget = null;
+            if (opener) opener.focus();
+        }
+        $('cancel-no').addEventListener('click', closeCancelSheet);
+        $('cancel-sheet').addEventListener('click', (event) => { if (event.target === $('cancel-sheet')) closeCancelSheet(); });
+        document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('cancel-sheet').hidden) closeCancelSheet(); });
+        $('cancel-yes').addEventListener('click', async () => {
+            if (cancelSaving || !cancelTarget) return;
+            cancelSaving = true;
+            const yes = $('cancel-yes');
+            const label = yes.innerHTML;
+            yes.disabled = true;
+            $('cancel-no').disabled = true;
+            yes.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังยกเลิก...';
+            let done = false;
+            try {
+                const { ok, data: res } = await UserApp.apiDelete(`/api/items/lostitem/${encodeURIComponent(cancelTarget.Lost_ID)}`, { User_ID: user.User_ID });
+                UserApp.toast(res.message || (ok ? 'ยกเลิกรายการเรียบร้อยแล้ว' : 'ยกเลิกรายการไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'));
+                done = true;   // สำเร็จ หรือสถานะเปลี่ยนไปแล้ว (เช่น มีคำขอรับคืนเข้ามา) → โหลดสถานะล่าสุด
+            } catch {
+                UserApp.toast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว');
+            } finally {
+                cancelSaving = false;
+                yes.disabled = false;
+                $('cancel-no').disabled = false;
+                yes.innerHTML = label;
+            }
+            if (done) {
+                $('cancel-sheet').hidden = true;
+                cancelTarget = null;
+                await load();
+            }
+        });
 
         function setCounts(counts) {
             document.querySelectorAll('[data-count]').forEach((el) => {
