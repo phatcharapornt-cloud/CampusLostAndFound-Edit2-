@@ -25,7 +25,7 @@ const UserApp = (() => {
     const PAGES = {
         home:        { label: 'หน้าแรก',          icon: 'fa-solid fa-house',            href: 'home.html',        ready: true },
         myitems:     { label: 'รายการของฉัน',     icon: 'fa-solid fa-list-ul',          href: 'myitems.html',     ready: true },
-        profile:     { label: 'โปรไฟล์',          icon: 'fa-regular fa-user',           href: 'profile.html',     ready: false },
+        profile:     { label: 'โปรไฟล์',          icon: 'fa-regular fa-user',           href: 'profile.html',     ready: true },
         reportFound: { label: 'แจ้งสิ่งของที่พบ',   icon: 'fa-solid fa-hand-holding-heart', href: 'reportfound.html', ready: true },
         reportLost:  { label: 'แจ้งสิ่งของที่หาย',  icon: 'fa-solid fa-magnifying-glass',  href: 'reportlost.html',  ready: true },
         notifications: { label: 'การแจ้งเตือน',    icon: 'fa-regular fa-bell',           href: 'notifications.html', ready: true },

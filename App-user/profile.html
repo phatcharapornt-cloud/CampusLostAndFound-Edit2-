@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>โปรไฟล์ | Campus Lost & Found</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="userapp.css">
+
+    <!--
+        หน้าโปรไฟล์ของผู้ใช้งาน: ชื่อ-นามสกุล, รหัสนักศึกษา, อีเมล และปุ่มออกจากระบบ
+        ข้อมูลจาก Backend: GET /api/profile?User_ID=..
+        (แสดงข้อมูลที่บันทึกไว้ตอนเข้าสู่ระบบก่อน แล้วอัปเดตจาก Backend เพื่อให้เป็นข้อมูลล่าสุด)
+    -->
+    <style>
+        [hidden] { display: none !important; }
+
+        .page-header { margin-bottom: 16px; }
+        .page-header h1 { font-size: 20px; font-weight: 600; line-height: 1.3; color: var(--text); }
+
+        /* ---------- การ์ดชื่อผู้ใช้ ---------- */
+        .profile-card {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+            border-radius: 20px;
+            padding: 24px 18px 22px;
+            color: #ffffff;
+            text-align: center;
+            box-shadow: 0 8px 22px rgba(15, 42, 74, 0.18);
+        }
+        .avatar {
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            margin: 0 auto 12px;
+            background-color: #ffffff;
+            color: var(--primary);
+            font-size: 30px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.18);
+        }
+        .profile-name { font-size: 19px; font-weight: 600; line-height: 1.35; word-break: break-word; }
+        .profile-role {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            font-size: 12px;
+            padding: 3px 12px;
+            border-radius: 999px;
+            background-color: rgba(255, 255, 255, 0.14);
+        }
+
+        /* ---------- ข้อมูลบัญชี ---------- */
+        .section-title { font-size: 12.5px; font-weight: 600; color: var(--text-muted); margin: 20px 4px 8px; }
+        .info-list {
+            list-style: none;
+            background-color: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(15, 42, 74, 0.05);
+        }
+        .info-list li { display: flex; align-items: center; gap: 12px; padding: 14px; }
+        .info-list li + li { border-top: 1px solid #f0f1f4; }
+        .info-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background-color: var(--primary-soft);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+        .info-body { min-width: 0; flex: 1; }
+        .info-label { font-size: 12px; color: var(--text-muted); }
+        .info-value { font-size: 14.5px; font-weight: 500; color: var(--text); word-break: break-all; }
+        .info-value.is-mono { font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
+
+        .sync-note { font-size: 11.5px; color: var(--text-muted); text-align: center; margin-top: 10px; }
+        .sync-note.is-warn { color: #b45309; }
+
+        /* ---------- ออกจากระบบ ---------- */
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            margin-top: 22px;
+            padding: 13px;
+            border-radius: 14px;
+            border: 1px solid #f5c2bd;
+            background-color: #ffffff;
+            color: var(--error);
+            font-family: inherit;
+            font-size: 14.5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .logout-btn:hover { background-color: var(--error-soft); }
+        .logout-btn:focus-visible { outline: 2px solid var(--error); outline-offset: 2px; }
+
+        .sheet-backdrop {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(17, 24, 39, 0.45);
+            z-index: 8;
+            display: flex;
+            align-items: flex-end;
+        }
+        .sheet {
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: 22px 22px 0 0;
+            padding: 22px 18px 30px;
+            box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.12);
+            text-align: center;
+        }
+        .sheet .sheet-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            background-color: var(--error-soft);
+            color: var(--error);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .sheet h2 { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+        .sheet p { font-size: 13px; color: #4b5563; line-height: 1.6; }
+        .sheet-buttons { display: flex; gap: 10px; margin-top: 18px; }
+        .sheet-buttons button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .sheet-buttons .stay { border: 1px solid var(--border); background-color: #ffffff; color: var(--text); }
+        .sheet-buttons .leave { border: none; background-color: var(--error); color: #ffffff; }
+        .sheet-buttons .leave:hover { background-color: #b9271d; }
+    </style>
+</head>
+
+<body class="is-checking">
+    <div class="phone">
+        <div class="dynamic-island"></div>
+
+        <div class="phone-scroll" id="scroll">
+            <header class="page-header">
+                <h1>โปรไฟล์</h1>
+            </header>
+
+            <section class="profile-card" aria-label="ข้อมูลผู้ใช้งาน">
+                <div class="avatar" id="avatar" aria-hidden="true"></div>
+                <div class="profile-name" id="profile-name"></div>
+                <span class="profile-role"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i>นักศึกษา</span>
+            </section>
+
+            <h2 class="section-title">ข้อมูลบัญชี</h2>
+            <ul class="info-list">
+                <li>
+                    <span class="info-icon"><i class="fa-regular fa-user" aria-hidden="true"></i></span>
+                    <div class="info-body">
+                        <div class="info-label">ชื่อผู้ใช้งาน</div>
+                        <div class="info-value" id="info-name">-</div>
+                    </div>
+                </li>
+                <li>
+                    <span class="info-icon"><i class="fa-regular fa-id-card" aria-hidden="true"></i></span>
+                    <div class="info-body">
+                        <div class="info-label">รหัสนักศึกษา</div>
+                        <div class="info-value is-mono" id="info-student">-</div>
+                    </div>
+                </li>
+                <li>
+                    <span class="info-icon"><i class="fa-regular fa-envelope" aria-hidden="true"></i></span>
+                    <div class="info-body">
+                        <div class="info-label">อีเมล</div>
+                        <div class="info-value" id="info-email">-</div>
+                    </div>
+                </li>
+            </ul>
+            <p class="sync-note" id="sync-note" aria-live="polite"></p>
+
+            <button type="button" class="logout-btn" id="logout-btn"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>ออกจากระบบ</button>
+        </div>
+
+        <nav class="bottom-nav" id="bottom-nav"></nav>
+
+        <div class="sheet-backdrop" id="logout-sheet" hidden>
+            <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="logout-title">
+                <div class="sheet-icon"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></div>
+                <h2 id="logout-title">ออกจากระบบ?</h2>
+                <p>คุณต้องเข้าสู่ระบบด้วยรหัสนักศึกษาและรหัสผ่านอีกครั้งเมื่อต้องการใช้งาน</p>
+                <div class="sheet-buttons">
+                    <button type="button" class="stay" id="logout-cancel">ยกเลิก</button>
+                    <button type="button" class="leave" id="logout-confirm">ออกจากระบบ</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <script src="userapp.js"></script>
+    <script>
+        const user = UserApp.init('profile');
+        const $ = (id) => document.getElementById(id);
+
+        function fullName(u) {
+            return `${u.FName || ''} ${u.LName || ''}`.trim();
+        }
+        function render(u) {
+            const name = fullName(u) || '-';
+            $('profile-name').textContent = name;
+            $('avatar').textContent = (u.FName || u.Student_ID || '?').trim().charAt(0).toUpperCase();
+            $('info-name').textContent = name;
+            $('info-student').textContent = u.Student_ID || '-';
+            $('info-email').textContent = u.Email || '-';
+        }
+
+        // แสดงข้อมูลที่บันทึกไว้ตอนเข้าสู่ระบบก่อน แล้วดึงข้อมูลล่าสุดจาก Backend
+        async function load() {
+            render(user);
+            try {
+                const { ok, status, data } = await UserApp.apiGet(`/api/profile?User_ID=${encodeURIComponent(user.User_ID)}`);
+                if (status === 404 && data.code === 'USER_NOT_FOUND') {
+                    UserApp.toast(data.message);
+                    setTimeout(UserApp.logout, 2000);
+                    return;
+                }
+                if (!ok) throw new Error(data.message);
+                render(data.user);
+                $('sync-note').textContent = '';
+                // เก็บข้อมูลล่าสุดไว้ในเครื่อง (หน้าอื่นใช้ชื่อจากที่นี่)
+                try {
+                    localStorage.setItem('currentUser', JSON.stringify({ ...user, ...data.user }));
+                } catch { /* ไม่เป็นไร */ }
+            } catch {
+                const note = $('sync-note');
+                note.textContent = 'แสดงข้อมูลที่บันทึกไว้ในเครื่อง (เชื่อมต่อ Backend ไม่ได้)';
+                note.classList.add('is-warn');
+            }
+        }
+
+        // ---------- ออกจากระบบ (ยืนยันก่อน) ----------
+        function openSheet() {
+            $('logout-sheet').hidden = false;
+            $('logout-cancel').focus();
+        }
+        function closeSheet() {
+            $('logout-sheet').hidden = true;
+            $('logout-btn').focus();
+        }
+        $('logout-btn').addEventListener('click', openSheet);
+        $('logout-cancel').addEventListener('click', closeSheet);
+        $('logout-sheet').addEventListener('click', (e) => { if (e.target === $('logout-sheet')) closeSheet(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('logout-sheet').hidden) closeSheet(); });
+        $('logout-confirm').addEventListener('click', () => UserApp.logout());
+
+        if (user) load();
+    </script>
+</body>
+</html>

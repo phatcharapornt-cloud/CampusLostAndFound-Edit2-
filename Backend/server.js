@@ -14,6 +14,7 @@ const itemSearchRoutes = require('./routes/itemsearch');
 const myItemsRoutes = require('./routes/myitems');
 const notificationRoutes = require('./routes/notifications');
 const mockMailRoutes = require('./routes/mockmail');
+const profileRoutes = require('./routes/profile');
 const itemRoutes = require('./routes/item');
 const matchRouter = require('./routes/matchitem');
 const adminApproveRouter = require('./routes/adminapprovefound');
@@ -37,6 +38,7 @@ app.use('/api/items', itemSearchRoutes);     // หน้าแรกผู้�
 app.use('/api/items', myItemsRoutes);        // รายการของฉัน: /api/items/my
 app.use('/api/notifications', notificationRoutes); // การแจ้งเตือนของผู้ใช้: /api/notifications, /unread-count, /read-all
 app.use('/api/mail', mockMailRoutes);       // อีเมลจำลองของผู้ใช้ (ไม่ได้ส่งจริง): /api/mail, /api/mail/:matchId
+app.use('/api/profile', profileRoutes);      // โปรไฟล์ผู้ใช้: /api/profile?User_ID=
 app.use('/api/match', matchRouter);
 app.use('/api/admin', adminApproveRouter);
 app.use('/api/admin', adminDashboardRoutes); // หน้าหลัก Web-Admin: /api/admin/summary
