@@ -75,20 +75,30 @@ function formatScore(score) {
 }
 
 // บันทึกคู่ใหม่ (ถ้าคู่นี้ยังไม่เคยถูกจับคู่ในสถานะใดก็ตาม) + แจ้งเตือน Admin ทุกคน คืนค่า Match_ID หรือ null
+// ตรวจก่อนว่าคู่นี้มีแล้วหรือยัง (ไม่ให้เลข Match_ID ข้ามจากการ INSERT ที่ไม่สำเร็จ)
+// ถ้ามี 2 งานบันทึกคู่เดียวกันพร้อมกัน UNIQUE KEY uq_match_pair ในฐานข้อมูลจะกันไม่ให้ซ้ำ (ER_DUP_ENTRY → ข้าม)
 async function saveMatchIfNew(lost, found, score) {
     if (lost.User_ID === found.User_ID) return null;   // ผู้ใช้คนเดียวกัน ห้ามจับคู่
+    const [[existing]] = await db.query(
+        'SELECT Match_ID FROM MatchItem WHERE Lost_ID = ? AND Found_ID = ?',
+        [lost.Lost_ID, found.Found_ID]
+    );
+    if (existing) return null;
+
     const conn = await db.getConnection();
     try {
         await conn.beginTransaction();
-        const [result] = await conn.query(
-            `INSERT INTO MatchItem (Lost_ID, Found_ID, Match_score, Match_date, Match_time)
-             SELECT ?, ?, ?, CURRENT_DATE, CURRENT_TIME FROM DUAL
-             WHERE NOT EXISTS (SELECT 1 FROM MatchItem WHERE Lost_ID = ? AND Found_ID = ?)`,
-            [lost.Lost_ID, found.Found_ID, score.toFixed(2), lost.Lost_ID, found.Found_ID]
-        );
-        if (result.affectedRows === 0) {
+        let result;
+        try {
+            [result] = await conn.query(
+                `INSERT INTO MatchItem (Lost_ID, Found_ID, Match_score, Match_date, Match_time)
+                 VALUES (?, ?, ?, CURRENT_DATE, CURRENT_TIME)`,
+                [lost.Lost_ID, found.Found_ID, score.toFixed(2)]
+            );
+        } catch (error) {
+            if (error.code !== 'ER_DUP_ENTRY') throw error;
             await conn.rollback();
-            return null;
+            return null;   // อีกงานบันทึกคู่นี้ไปก่อนแล้ว
         }
         const matchId = result.insertId;
         await notifyAllAdmins(

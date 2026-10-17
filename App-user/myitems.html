@@ -457,6 +457,15 @@
             return `<button type="button" class="cancel-btn" data-cancel="${esc(r.Lost_ID)}"><i class="fa-solid fa-ban" aria-hidden="true"></i>ยกเลิกรายการ</button>`;
         }
 
+        // สถานะ 'พบ' ที่ส่งคำขอรับคืนไปแล้ว: บอกสถานะของคำขอแทนข้อความ "กดขอรับสิ่งของคืนภายใน 24 ชั่วโมง"
+        function lostHint(r) {
+            const claim = r.Lost_status === 'พบ' && openClaimOf(r.Lost_ID);
+            if (!claim) return null;
+            return claim.Claim_status === 'อนุมัติ'
+                ? `คำขอรับสิ่งของคืน #${claim.Claim_ID} ได้รับอนุมัติแล้ว กรุณามารับสิ่งของคืนที่ส่วนกลาง`
+                : `ส่งคำขอรับสิ่งของคืน #${claim.Claim_ID} แล้ว รอเจ้าหน้าที่ตรวจสอบ`;
+        }
+
         // แปลงข้อมูลแต่ละประเภทให้อยู่ในรูปแบบเดียวกันก่อนวาดการ์ด
         const TABS = {
             lost: {
@@ -471,6 +480,7 @@
                         ['รายละเอียด', r.Lost_description || '-'],
                     ],
                     actionHtml: lostActionHtml(r),
+                    hint: lostHint(r),
                 }),
                 empty: { icon: 'fa-regular fa-face-smile', title: 'ยังไม่มีรายการสิ่งของที่หาย', text: 'ถ้าทำของหาย แจ้งไว้ได้เลย ระบบจะช่วยจับคู่กับของที่มีคนพบ', button: ['reportLost', 'fa-solid fa-plus', 'แจ้งสิ่งของที่หาย'] },
             },
@@ -512,7 +522,8 @@
 
         // ---------- วาดการ์ด ----------
         function cardHtml(type, card) {
-            const status = STATUS[type][card.status] || { css: 's-muted', icon: 'fa-circle-info', hint: '' };
+            const base = STATUS[type][card.status] || { css: 's-muted', icon: 'fa-circle-info', hint: '' };
+            const status = card.hint ? { ...base, hint: card.hint } : base;
             const photo = UserApp.photoUrl(card.photo);
             const thumb = photo ? `<img src="${esc(photo)}" alt="" loading="lazy">` : '<i class="fa-solid fa-box"></i>';
             const open = openCards.has(card.key);

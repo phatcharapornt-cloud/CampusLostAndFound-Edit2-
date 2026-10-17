@@ -23,13 +23,13 @@ CREATE TABLE IF NOT EXISTS Admin (
 -- 3.ตารางข้อมูลหมวดหมู่ของสิ่งของ (Category)
 CREATE TABLE IF NOT EXISTS Category (
     Category_ID INT AUTO_INCREMENT PRIMARY KEY,
-    Category_name VARCHAR(100) NOT NULL
+    Category_name VARCHAR(100) NOT NULL UNIQUE
 ) ENGINE=InnoDB;
 
 -- 4.ตารางข้อมูลสถานที่ (Location)
 CREATE TABLE IF NOT EXISTS Location (
     Location_ID INT AUTO_INCREMENT PRIMARY KEY,
-    Location_name VARCHAR(100) NOT NULL
+    Location_name VARCHAR(100) NOT NULL UNIQUE
 ) ENGINE=InnoDB;
 
 -- 5.ตารางข้อมูลการขอเปลี่ยนรหัสผ่าน (ResetPassword)
@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS MatchItem (
    Match_status ENUM('ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน','ปฏิเสธการส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน','ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน', 'ผู้ใช้งานยืนยันการขอรับสิ่งของคืน', 'ผู้ใช้ยกเลิกรายการสิ่งของที่หาย') DEFAULT NULL,
     Match_date DATE NOT NULL default (CURRENT_DATE),
     Match_time TIME NOT NULL default (CURRENT_TIME),
+    UNIQUE KEY uq_match_pair (Lost_ID, Found_ID),   -- สิ่งของที่หายกับสิ่งของที่พบคู่เดียวกัน จับคู่ได้ครั้งเดียว
     FOREIGN KEY (Lost_ID) REFERENCES LostItem(Lost_ID) ON DELETE CASCADE,
     FOREIGN KEY (Found_ID) REFERENCES FoundItem(Found_ID) ON DELETE CASCADE
 ) ENGINE=InnoDB;

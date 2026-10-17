@@ -1,7 +1,8 @@
 USE campus_lost_and_found;
+-- ใช้ INSERT IGNORE: รันไฟล์นี้ซ้ำได้ ชื่อที่มีอยู่แล้วจะถูกข้าม (ไม่เกิดข้อมูลซ้ำ)
 
 -- 1. เพิ่มข้อมูลหมวดหมู่ของสิ่งของ (Category)
-INSERT INTO Category (Category_name) VALUES
+INSERT IGNORE INTO Category (Category_name) VALUES
   ('บัตรนักศึกษา/บุคลากร'),
   ('กระเป๋าสตางค์'),
   ('บัตรประชาชน/บัตรเดบิต-เครดิต'),
@@ -28,7 +29,7 @@ INSERT INTO Category (Category_name) VALUES
   ('อื่นๆ');
 
 -- 2. เพิ่มข้อมูลสถานที่ (Location)
-INSERT INTO Location (Location_name) VALUES
+INSERT IGNORE INTO Location (Location_name) VALUES
   ('อาคารจุฬาภรณวลัยลักษณ์ 1'),
   ('อาคารจุฬาภรณวลัยลักษณ์ 2'),
   ('อาคารพระจอมเกล้า'),
