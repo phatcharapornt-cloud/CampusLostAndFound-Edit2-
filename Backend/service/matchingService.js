@@ -12,6 +12,7 @@
 // และแจ้งเตือน Admin ทุกคนว่า "พบรายการจับคู่สิ่งของรายการใหม่" (Admin ดูได้ที่หน้า "รายการจับคู่สิ่งของ")
 const db = require('../config/db');
 const { withItemName } = require('../utils/notimessage');
+const { notifyAllAdmins } = require('../utils/adminnotify');
 
 // ข้อความแจ้งเตือนผู้ใช้งาน
 const MESSAGES = {
@@ -90,14 +91,10 @@ async function saveMatchIfNew(lost, found, score) {
             return null;
         }
         const matchId = result.insertId;
-        await conn.query(
-            'INSERT INTO Notification (Admin_ID, Lost_ID, Found_ID, Match_ID, Message) SELECT Admin_ID, ?, ?, ?, ? FROM Admin',
-            [
-                lost.Lost_ID,
-                found.Found_ID,
-                matchId,
-                `พบรายการจับคู่สิ่งของรายการใหม่ (Match Score ${formatScore(score)}%) สิ่งของที่หาย #${lost.Lost_ID} กับสิ่งของที่พบ #${found.Found_ID}`
-            ]
+        await notifyAllAdmins(
+            conn,
+            { Lost_ID: lost.Lost_ID, Found_ID: found.Found_ID, Match_ID: matchId },
+            `พบรายการจับคู่สิ่งของรายการใหม่ (Match Score ${formatScore(score)}%) สิ่งของที่หาย #${lost.Lost_ID} กับสิ่งของที่พบ #${found.Found_ID}`
         );
         await conn.commit();
         console.log(`[Auto Match] Inserted MatchItem #${matchId}: Lost_ID ${lost.Lost_ID} <-> Found_ID ${found.Found_ID} (Score: ${score.toFixed(2)}%)`);

@@ -19,6 +19,7 @@ const router = express.Router();
 const db = require('../config/db');
 const { requireAdmin } = require('../utils/admintoken');
 const { withItemName } = require('../utils/notimessage');
+const { notifyAllAdmins } = require('../utils/adminnotify');
 const { CLAIM_WINDOW_HOURS, checkAndProcessExpiredMatches, processMatchingByLostItem } = require('../service/matchingService');
 const { CLAIM_FROM, CLAIM_COLUMNS, shapeClaimRow } = require('../service/claimquery');
 
@@ -117,9 +118,10 @@ router.post('/request', async (req, res) => {
             'INSERT INTO Notification (User_ID, Lost_ID, Found_ID, Match_ID, Claim_ID, Message) VALUES (?, ?, ?, ?, ?, ?)',
             [userId, match.Lost_ID, match.Found_ID, matchId, claimId, MESSAGES.requested(match.FoundItem_name)]
         );
-        await conn.query(
-            'INSERT INTO Notification (Admin_ID, Lost_ID, Found_ID, Match_ID, Claim_ID, Message) SELECT Admin_ID, ?, ?, ?, ?, ? FROM Admin',
-            [match.Lost_ID, match.Found_ID, matchId, claimId, MESSAGES.adminNew(match.FoundItem_name)]
+        await notifyAllAdmins(
+            conn,
+            { Lost_ID: match.Lost_ID, Found_ID: match.Found_ID, Match_ID: matchId, Claim_ID: claimId },
+            MESSAGES.adminNew(match.FoundItem_name)
         );
         await conn.commit();
     } catch (error) {

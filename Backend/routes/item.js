@@ -8,6 +8,7 @@ const { validateLostItemReport, validateFoundItemReport, validateAdminFoundItemR
 const { requireAdmin } = require('../utils/admintoken');
 const { FOUND_EXPIRE_MINUTES, MESSAGES: FOUND_MESSAGES } = require('../service/foundstatus');
 const { parseImageDataUrl, saveImage, removeUpload } = require('../utils/imageupload');
+const { notifyAllAdmins } = require('../utils/adminnotify');
 
 // 1. API แจ้งสิ่งของที่หาย (POST /api/items/lostitem) ใช้กับหน้า App-user/reportlost.html
 // body (JSON): { User_ID, LostItem_name, Category_ID, Location_ID, Lost_date: 'YYYY-MM-DD', Lost_time: 'HH:MM',
@@ -199,10 +200,7 @@ router.post('/founditem/user', async (req, res) => {
         );
 
         // แจ้งเตือน Admin ทุกคน (ตาราง Notification ผูกกับ Admin_ID ทีละคน)
-        await connection.query(
-            'INSERT INTO Notification (Admin_ID, Found_ID, Message) SELECT Admin_ID, ?, ? FROM Admin',
-            [newFoundId, FOUND_MESSAGES.adminNew(values.FoundItem_name)]
-        );
+        await notifyAllAdmins(connection, { Found_ID: newFoundId }, FOUND_MESSAGES.adminNew(values.FoundItem_name));
 
         // เวลาที่ต้องนำสิ่งของมาส่งภายใน (นับจากเวลาที่แจ้ง ตามเวลาของฐานข้อมูล)
         const [[deadline]] = await connection.query(
