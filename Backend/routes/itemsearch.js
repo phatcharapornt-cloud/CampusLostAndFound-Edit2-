@@ -8,7 +8,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 
-// น้ำหนักคะแนนเดียวกับระบบจับคู่อัตโนมัติ (service/matchingService.js): หมวดหมู่ 30, สถานที่ 25, ชื่อสิ่งของ 30
+// น้ำหนักคะแนนสำหรับเรียงผลการค้นหา: หมวดหมู่ 30, สถานที่ 25, คำค้น 30
+// (แยกจากเกณฑ์ Match Score ของระบบจับคู่อัตโนมัติใน service/matchingService.js)
 const CATEGORY_WEIGHT = 30;
 const LOCATION_WEIGHT = 25;
 const KEYWORD_WEIGHT = 30;
