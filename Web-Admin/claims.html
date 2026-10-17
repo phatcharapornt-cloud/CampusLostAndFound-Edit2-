@@ -628,7 +628,7 @@
                 <div class="page-head">
                     <div>
                         <div class="crumb"><a href="dashboard.html">หน้าหลัก</a> / คำขอรับสิ่งของคืน</div>
-                        <p>คำขอที่ผู้ใช้งานกด "ขอรับสิ่งของคืน" จากอีเมลแจ้งรายการจับคู่ · อนุมัติแล้วปุ่ม "คืนสิ่งของแล้ว" จะกดได้เมื่อเจ้าของมารับสิ่งของ
+                        <p>คำขอที่ผู้ใช้งานกด "ขอรับสิ่งของคืน" จากอีเมลแจ้งรายการจับคู่ · อนุมัติแล้วปุ่ม "คืนสิ่งของแล้ว" จะกดได้เมื่อเจ้าของมารับสิ่งของ (ยังปฏิเสธได้จนกว่าจะคืนสิ่งของ)
                             (คำขอที่ปฏิเสธหรือคืนแล้วดูได้ที่ <a href="historyclaims.html">History › รายการการขอรับสิ่งของคืน</a>)</p>
                     </div>
                     <div class="actions">
@@ -716,12 +716,12 @@
             approve: {
                 title: (c) => `อนุมัติคำขอรับสิ่งของคืน #${c.Claim_ID}?`,
                 effects: () => `<li>แจ้งเตือนผู้ใช้งาน <b>"รายการคำขอของท่านได้รับการอนุมัติแล้ว ให้มารับสิ่งของคืน"</b></li>
-                                <li>สถานะคำขอเป็น <b>"อนุมัติ"</b> และปุ่ม <b>"คืนสิ่งของแล้ว"</b> จะกดได้</li>`,
+                                <li>สถานะคำขอเป็น <b>"อนุมัติ"</b> และปุ่ม <b>"คืนสิ่งของแล้ว"</b> จะกดได้ (ยังกดปฏิเสธภายหลังได้ ถ้ายังไม่ได้คืนสิ่งของ)</li>`,
                 button: ['confirm-approve', '<i class="fa-solid fa-check"></i> อนุมัติคำขอ'],
                 done: (c) => `อนุมัติคำขอ #${c.Claim_ID} แล้ว · กด "คืนสิ่งของแล้ว" เมื่อเจ้าของมารับสิ่งของ`,
             },
             reject: {
-                title: (c) => `ปฏิเสธคำขอรับสิ่งของคืน #${c.Claim_ID}?`,
+                title: (c) => c.Claim_status === 'อนุมัติ' ? `ปฏิเสธคำขอรับสิ่งของคืน #${c.Claim_ID} (อนุมัติไปแล้ว)?` : `ปฏิเสธคำขอรับสิ่งของคืน #${c.Claim_ID}?`,
                 effects: () => `<li>แจ้งเตือนผู้ใช้งาน <b>"รายการคำขอของท่านถูกปฏิเสธ สามารถมาติดต่อได้ที่ส่วนกลาง"</b></li>
                                 <li>สถานะคำขอเป็น <b>"ปฏิเสธ"</b> และออกจากหน้านี้ (ดูได้ที่ History)</li>
                                 <li>สิ่งของที่หายกลับเป็น <b>"ไม่พบ"</b> แล้วระบบจับคู่ใหม่ (ไม่จับกับสิ่งของที่พบชิ้นเดิม)</li>`,
@@ -767,7 +767,7 @@
                         </span>
                         <div class="action-group">
                             <button type="button" class="approve-btn" data-action="approve"${approved ? ' disabled' : ''}><i class="fa-solid fa-check"></i>อนุมัติ</button>
-                            <button type="button" class="reject-btn" data-action="reject"${approved ? ' disabled' : ''}><i class="fa-solid fa-xmark"></i>ปฏิเสธ</button>
+                            <button type="button" class="reject-btn" data-action="reject"><i class="fa-solid fa-xmark"></i>ปฏิเสธ</button>
                             <button type="button" class="returned-btn" data-action="returned"${approved ? '' : ' disabled title="กดได้หลังอนุมัติคำขอแล้ว"'}><i class="fa-solid fa-box-open"></i>คืนสิ่งของแล้ว</button>
                             ${approved ? '' : '<span class="returned-hint">กดได้หลังอนุมัติ</span>'}
                         </div>

@@ -9,7 +9,8 @@
 // ฝั่ง Admin (Web-Admin/claims.html) ต้องเข้าสู่ระบบ Admin: header Authorization: Bearer <token>
 //   GET /api/claim/pending              คำขอที่ยังต้องจัดการ: 'รอการอนุมัติ' และ 'อนุมัติ' (รอเจ้าของมารับ)
 //   PUT /api/claim/approve/:claimId     'รอการอนุมัติ' → 'อนุมัติ' แจ้งผู้ใช้ "...ได้รับการอนุมัติแล้ว ให้มารับสิ่งของคืน"
-//   PUT /api/claim/reject/:claimId      'รอการอนุมัติ' → 'ปฏิเสธ'  แจ้งผู้ใช้ "...ถูกปฏิเสธ สามารถมาติดต่อได้ที่ส่วนกลาง"
+//   PUT /api/claim/reject/:claimId      'รอการอนุมัติ' หรือ 'อนุมัติ' → 'ปฏิเสธ' (ปฏิเสธได้แม้อนุมัติไปแล้ว ถ้ายังไม่ได้คืนสิ่งของ)
+//                                       แจ้งผู้ใช้ "...ถูกปฏิเสธ สามารถมาติดต่อได้ที่ส่วนกลาง"
 //                                       สิ่งของที่หายกลับเป็น 'ไม่พบ' แล้วจับคู่ใหม่ (ไม่จับกับสิ่งของที่พบคู่เดิม)
 //   PUT /api/claim/returned/:claimId    'อนุมัติ' → 'คืนสิ่งของแล้ว' (กดได้หลังอนุมัติเท่านั้น)
 //                                       สิ่งของที่หาย 'ได้รับสิ่งของคืนแล้ว', สิ่งของที่พบ 'คืนสิ่งของแล้ว' แจ้งทั้งเจ้าของและผู้แจ้งพบ
@@ -167,8 +168,9 @@ router.get('/pending', requireAdmin, async (req, res) => {
     }
 });
 
-// ล็อกคำขอ + ข้อมูลที่ต้องใช้ แล้วตรวจสถานะที่ต้องการ คืน { claim } หรือ { status, body }
+// ล็อกคำขอ + ข้อมูลที่ต้องใช้ แล้วตรวจสถานะที่ต้องการ (1 สถานะ หรือรายการของสถานะ) คืน { claim } หรือ { status, body }
 async function lockClaim(conn, claimId, expectedStatus) {
+    const allowed = Array.isArray(expectedStatus) ? expectedStatus : [expectedStatus];
     const [[claim]] = await conn.query(
         `SELECT c.Claim_ID, c.Claim_status, c.User_ID, c.Match_ID, c.Lost_ID, c.Found_ID,
                 l.LostItem_name, l.Lost_status, f.FoundItem_name, f.Found_status, f.User_ID AS Finder_User_ID
@@ -180,7 +182,7 @@ async function lockClaim(conn, claimId, expectedStatus) {
         [claimId]
     );
     if (!claim) return { status: 404, body: { success: false, message: 'ไม่พบคำขอรับสิ่งของคืนนี้' } };
-    if (claim.Claim_status !== expectedStatus) {
+    if (!allowed.includes(claim.Claim_status)) {
         return {
             status: 409,
             body: { success: false, code: 'WRONG_STATUS', Claim_status: claim.Claim_status, message: `คำขอนี้อยู่ในสถานะ "${claim.Claim_status}" ไม่สามารถทำรายการนี้ได้` },
@@ -245,10 +247,10 @@ router.put('/approve/:claimId', requireAdmin, adminAction('รอการอน
 }));
 
 // ============================================================
-// 4. Admin ปฏิเสธคำขอ (PUT /api/claim/reject/:claimId)
+// 4. Admin ปฏิเสธคำขอ (PUT /api/claim/reject/:claimId) ได้ทั้งคำขอที่รออนุมัติ และที่อนุมัติแล้วแต่ยังไม่ได้คืนสิ่งของ
 //    สิ่งของที่หายกลับเป็น 'ไม่พบ' แล้วจับคู่ใหม่ (คู่เดิมมีอยู่แล้วใน MatchItem จึงไม่ถูกจับซ้ำ)
 // ============================================================
-router.put('/reject/:claimId', requireAdmin, adminAction('รอการอนุมัติ', async (conn, claim, adminId) => {
+router.put('/reject/:claimId', requireAdmin, adminAction(['รอการอนุมัติ', 'อนุมัติ'], async (conn, claim, adminId) => {
     await conn.query("UPDATE Claim SET Claim_status = 'ปฏิเสธ', Admin_ID = ?, Claimcheck_at = NOW() WHERE Claim_ID = ?", [adminId, claim.Claim_ID]);
     await conn.query("UPDATE LostItem SET Lost_status = 'ไม่พบ' WHERE Lost_ID = ? AND Lost_status = 'พบ'", [claim.Lost_ID]);
     const message = MESSAGES.rejected(claim.FoundItem_name);
