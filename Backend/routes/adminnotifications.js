@@ -31,7 +31,7 @@ router.get('/notifications', requireAdmin, async (req, res) => {
                      WHEN n.Found_ID IS NOT NULL THEN 'approve-found'
                      ELSE NULL END AS Target,
                 CASE WHEN n.Match_ID IS NOT NULL
-                         THEN (m.Match_status IS NULL AND ml.Lost_status = 'ไม่พบ' AND mf.Found_status = 'อนุมัติแล้ว')
+                         THEN (m.Match_status IS NULL AND ml.Lost_status = 'ไม่พบ' AND mf.Found_status = 'อนุมัติแล้ว' AND ml.User_ID <> mf.User_ID)
                      WHEN n.Found_ID IS NOT NULL
                          THEN (f.Found_status = 'รอการอนุมัติ')
                      ELSE 0 END AS Needs_action

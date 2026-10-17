@@ -1,6 +1,7 @@
 // ระบบจับคู่สิ่งของที่หาย (LostItem) กับสิ่งของที่พบ (FoundItem)
 //
 // จับคู่เฉพาะ: สิ่งของที่พบ 'อนุมัติแล้ว' กับ สิ่งของที่หาย 'ไม่พบ'
+//   และต้องเป็นคนละคนกัน (รหัสนักศึกษาของผู้แจ้งหายกับผู้แจ้งพบห้ามตรงกัน = User_ID ต่างกัน)
 //   - Admin อนุมัติสิ่งของที่พบ / บันทึกสิ่งของที่พบเอง → processMatchingByFoundItem(Found_ID)
 //   - ผู้ใช้แจ้งสิ่งของที่หาย                           → processMatchingByLostItem(Lost_ID)
 // คำนวณ Match Score ใหม่ทุกครั้ง (เต็ม 100): หมวดหมู่ 30 + สถานที่ 25 + ชื่อสิ่งของ 30 + รายละเอียด 15
@@ -61,6 +62,7 @@ function formatScore(score) {
 
 // บันทึกคู่ใหม่ (ถ้าคู่นี้ยังไม่เคยถูกจับคู่ในสถานะใดก็ตาม) + แจ้งเตือน Admin ทุกคน คืนค่า Match_ID หรือ null
 async function saveMatchIfNew(lost, found, score) {
+    if (lost.User_ID === found.User_ID) return null;   // ผู้ใช้คนเดียวกัน ห้ามจับคู่
     const conn = await db.getConnection();
     try {
         await conn.beginTransaction();
@@ -102,7 +104,11 @@ async function processMatchingByLostItem(lostId) {
         if (lostItems.length === 0) return [];
         const lost = lostItems[0];
 
-        const [foundItems] = await db.query("SELECT * FROM FoundItem WHERE Found_status = 'อนุมัติแล้ว'");
+        // ไม่จับคู่กับสิ่งของที่ผู้ใช้คนเดียวกันเป็นผู้แจ้งพบ (รหัสนักศึกษาตรงกัน)
+        const [foundItems] = await db.query(
+            "SELECT * FROM FoundItem WHERE Found_status = 'อนุมัติแล้ว' AND User_ID <> ?",
+            [lost.User_ID]
+        );
         const created = [];
         for (const found of foundItems) {
             const { total } = computeMatchScore(lost, found);
@@ -128,7 +134,11 @@ async function processMatchingByFoundItem(foundId) {
         if (foundItems.length === 0) return [];
         const found = foundItems[0];
 
-        const [lostItems] = await db.query("SELECT * FROM LostItem WHERE Lost_status = 'ไม่พบ'");
+        // ไม่จับคู่กับสิ่งของที่หายของผู้ใช้คนเดียวกับผู้แจ้งพบ (รหัสนักศึกษาตรงกัน)
+        const [lostItems] = await db.query(
+            "SELECT * FROM LostItem WHERE Lost_status = 'ไม่พบ' AND User_ID <> ?",
+            [found.User_ID]
+        );
         const created = [];
         for (const lost of lostItems) {
             const { total } = computeMatchScore(lost, found);
@@ -192,9 +202,27 @@ async function rematchAllLostItems() {
     }
 }
 
-// เปิดเซิร์ฟเวอร์: ตรวจรายการที่หมดเวลา 24 ชม. + จับคู่ใหม่ทั้งหมด 1 ครั้ง แล้วตรวจการหมดเวลาทุก 5 นาที
+// 4. ลบรายการจับคู่ที่ยังรอ Admin ตรวจสอบ ซึ่งผู้แจ้งหายกับผู้แจ้งพบเป็นคนเดียวกัน (เกิดก่อนมีเงื่อนไขนี้)
+// ยังไม่เคยแจ้งผู้ใช้ จึงลบได้เลย (การแจ้งเตือน Admin ของคู่นั้นถูกลบตามด้วย ON DELETE CASCADE)
+async function removeSameUserPendingMatches() {
+    try {
+        const [result] = await db.query(
+            `DELETE m FROM MatchItem m
+             JOIN LostItem l  ON m.Lost_ID = l.Lost_ID
+             JOIN FoundItem f ON m.Found_ID = f.Found_ID
+             WHERE m.Match_status IS NULL AND l.User_ID = f.User_ID`
+        );
+        if (result.affectedRows > 0) console.log(`[Match] ลบรายการจับคู่ที่ผู้แจ้งหายกับผู้แจ้งพบเป็นคนเดียวกัน ${result.affectedRows} รายการ`);
+        return result.affectedRows;
+    } catch (error) {
+        console.error('Error in removeSameUserPendingMatches:', error);
+        return 0;
+    }
+}
+
+// เปิดเซิร์ฟเวอร์: ลบคู่ที่ผิดเงื่อนไข + ตรวจรายการที่หมดเวลา 24 ชม. + จับคู่ใหม่ทั้งหมด 1 ครั้ง แล้วตรวจการหมดเวลาทุก 5 นาที
 function startMatchExpiryJob() {
-    checkAndProcessExpiredMatches().then(rematchAllLostItems);
+    removeSameUserPendingMatches().then(checkAndProcessExpiredMatches).then(rematchAllLostItems);
     return setInterval(checkAndProcessExpiredMatches, EXPIRY_CHECK_INTERVAL_MS);
 }
 
@@ -211,5 +239,6 @@ module.exports = {
     startMatchExpiryJob,
     processMatchingByLostItem,
     processMatchingByFoundItem,
-    rematchAllLostItems
+    rematchAllLostItems,
+    removeSameUserPendingMatches
 };

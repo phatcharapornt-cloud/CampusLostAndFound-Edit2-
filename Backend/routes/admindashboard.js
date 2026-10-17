@@ -21,7 +21,8 @@ const SUMMARY_QUERY = `
            JOIN FoundItem f ON m.Found_ID = f.Found_ID
           WHERE m.Match_status IS NULL
             AND l.Lost_status = 'ไม่พบ'
-            AND f.Found_status = 'อนุมัติแล้ว') AS pendingMatches,
+            AND f.Found_status = 'อนุมัติแล้ว'
+            AND l.User_ID <> f.User_ID) AS pendingMatches,
 
         (SELECT COUNT(*) FROM Claim WHERE Claim_status = 'รอการอนุมัติ') AS pendingClaims,
         (SELECT COUNT(*) FROM Claim WHERE Claim_status = 'อนุมัติ') AS awaitingReturn,

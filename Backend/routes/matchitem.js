@@ -59,6 +59,7 @@ router.get('/pending', requireAdmin, async (req, res) => {
         const [rows] = await db.query(
             `SELECT ${MATCH_COLUMNS} ${MATCH_FROM}
              WHERE m.Match_status IS NULL AND l.Lost_status = 'ไม่พบ' AND f.Found_status = 'อนุมัติแล้ว'
+               AND l.User_ID <> f.User_ID
              ORDER BY m.Match_ID ASC`
         );
         const items = rows.map(shapeMatchRow);
@@ -73,7 +74,7 @@ router.get('/pending', requireAdmin, async (req, res) => {
 async function lockPendingMatch(conn, matchId) {
     const [[match]] = await conn.query(
         `SELECT m.Match_ID, m.Match_score, m.Match_status, m.Lost_ID, m.Found_ID,
-                l.User_ID AS Lost_User_ID, l.LostItem_name, l.Lost_status, f.Found_status
+                l.User_ID AS Lost_User_ID, l.LostItem_name, l.Lost_status, f.Found_status, f.User_ID AS Found_User_ID
          FROM MatchItem m
          JOIN LostItem l ON m.Lost_ID = l.Lost_ID
          JOIN FoundItem f ON m.Found_ID = f.Found_ID
@@ -87,6 +88,9 @@ async function lockPendingMatch(conn, matchId) {
     }
     if (match.Lost_status !== 'ไม่พบ') {
         return { status: 409, body: { success: false, code: 'LOST_NOT_AVAILABLE', message: `สิ่งของที่หาย #${match.Lost_ID} ไม่ได้อยู่ในสถานะ "ไม่พบ" แล้ว (สถานะ: ${match.Lost_status})` } };
+    }
+    if (match.Lost_User_ID === match.Found_User_ID) {
+        return { status: 409, body: { success: false, code: 'SAME_USER', message: 'ผู้แจ้งสิ่งของที่หายกับผู้แจ้งสิ่งของที่พบเป็นคนเดียวกัน (รหัสนักศึกษาตรงกัน) ไม่สามารถจับคู่ได้' } };
     }
     if (match.Found_status !== 'อนุมัติแล้ว') {
         return { status: 409, body: { success: false, code: 'FOUND_NOT_AVAILABLE', message: `สิ่งของที่พบ #${match.Found_ID} ไม่ได้อยู่ในสถานะ "อนุมัติแล้ว" แล้ว (สถานะ: ${match.Found_status})` } };
