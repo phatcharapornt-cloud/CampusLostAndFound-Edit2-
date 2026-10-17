@@ -4,14 +4,19 @@
 //   - Admin อนุมัติสิ่งของที่พบ / บันทึกสิ่งของที่พบเอง → processMatchingByFoundItem(Found_ID)
 //   - ผู้ใช้แจ้งสิ่งของที่หาย                           → processMatchingByLostItem(Lost_ID)
 // คำนวณ Match Score ใหม่ทุกครั้ง (เต็ม 100): หมวดหมู่ 30 + สถานที่ 25 + ชื่อสิ่งของ 30 + รายละเอียด 15
-// ถ้า Match Score >= 80 และคู่นี้ยังไม่เคยถูกจับคู่ → บันทึกลง MatchItem (Match_status = NULL = รอ Admin ตรวจสอบ)
+// ถ้า Match Score มากกว่า 70 และคู่นี้ยังไม่เคยถูกจับคู่ → บันทึกลง MatchItem (Match_status = NULL = รอ Admin ตรวจสอบ)
 // และแจ้งเตือน Admin ทุกคนว่า "พบรายการจับคู่สิ่งของรายการใหม่" (Admin ดูได้ที่หน้า "รายการจับคู่สิ่งของ")
 const db = require('../config/db');
 
-const MATCH_THRESHOLD = 80;
+const MATCH_THRESHOLD = 70;             // จับคู่เมื่อ Match Score "มากกว่า" ค่านี้ (70 พอดีไม่นับ)
 const WEIGHTS = { category: 30, location: 25, name: 30, description: 15 };
 const CLAIM_WINDOW_HOURS = 24;          // ผู้ใช้ต้องส่งคำขอรับคืนภายในกี่ชั่วโมงหลังได้รับการแจ้งเตือน
 const EXPIRY_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
+// คะแนนผ่านเกณฑ์จับคู่หรือไม่
+function passesThreshold(total) {
+    return total > MATCH_THRESHOLD;
+}
 
 // ตัดคำ (รองรับภาษาไทยที่เขียนติดกัน เช่น "กระเป๋าสตางค์สีดำ" → กระเป๋า / สตางค์ / สี / ดำ)
 const segmenter = typeof Intl !== 'undefined' && Intl.Segmenter ? new Intl.Segmenter('th', { granularity: 'word' }) : null;
@@ -101,7 +106,7 @@ async function processMatchingByLostItem(lostId) {
         const created = [];
         for (const found of foundItems) {
             const { total } = computeMatchScore(lost, found);
-            if (total >= MATCH_THRESHOLD) {
+            if (passesThreshold(total)) {
                 const matchId = await saveMatchIfNew(lost, found, total);
                 if (matchId) created.push(matchId);
             }
@@ -127,7 +132,7 @@ async function processMatchingByFoundItem(foundId) {
         const created = [];
         for (const lost of lostItems) {
             const { total } = computeMatchScore(lost, found);
-            if (total >= MATCH_THRESHOLD) {
+            if (passesThreshold(total)) {
                 const matchId = await saveMatchIfNew(lost, found, total);
                 if (matchId) created.push(matchId);
             }
@@ -171,14 +176,31 @@ async function checkAndProcessExpiredMatches() {
     }
 }
 
-// ตรวจรายการที่หมดเวลา 24 ชม. อัตโนมัติทุก 5 นาที (เรียกครั้งเดียวตอนเปิดเซิร์ฟเวอร์)
+// 3. จับคู่สิ่งของที่หาย 'ไม่พบ' ทุกรายการใหม่อีกครั้ง (เรียกตอนเปิดเซิร์ฟเวอร์)
+// ใช้เมื่อเปลี่ยนเกณฑ์/สูตรคะแนน: คู่เดิมที่เคยได้คะแนนไม่ถึงเกณฑ์จะถูกจับคู่ทันที
+// คู่ที่เคยบันทึกแล้ว (รวมคู่ที่ Admin ปฏิเสธ) จะไม่ถูกสร้างซ้ำ
+async function rematchAllLostItems() {
+    try {
+        const [lostItems] = await db.query("SELECT Lost_ID FROM LostItem WHERE Lost_status = 'ไม่พบ' ORDER BY Lost_ID");
+        const created = [];
+        for (const { Lost_ID } of lostItems) created.push(...await processMatchingByLostItem(Lost_ID));
+        if (created.length > 0) console.log(`[Match] จับคู่ใหม่ตอนเปิดเซิร์ฟเวอร์ ${created.length} รายการ (Match_ID ${created.join(', ')})`);
+        return created;
+    } catch (error) {
+        console.error('Error in rematchAllLostItems:', error);
+        return [];
+    }
+}
+
+// เปิดเซิร์ฟเวอร์: ตรวจรายการที่หมดเวลา 24 ชม. + จับคู่ใหม่ทั้งหมด 1 ครั้ง แล้วตรวจการหมดเวลาทุก 5 นาที
 function startMatchExpiryJob() {
-    checkAndProcessExpiredMatches();
+    checkAndProcessExpiredMatches().then(rematchAllLostItems);
     return setInterval(checkAndProcessExpiredMatches, EXPIRY_CHECK_INTERVAL_MS);
 }
 
 module.exports = {
     MATCH_THRESHOLD,
+    passesThreshold,
     WEIGHTS,
     CLAIM_WINDOW_HOURS,
     tokenize,
@@ -188,5 +210,6 @@ module.exports = {
     checkAndProcessExpiredMatches,
     startMatchExpiryJob,
     processMatchingByLostItem,
-    processMatchingByFoundItem
+    processMatchingByFoundItem,
+    rematchAllLostItems
 };

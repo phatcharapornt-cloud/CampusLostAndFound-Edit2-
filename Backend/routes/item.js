@@ -245,7 +245,7 @@ router.post('/founditem/user', async (req, res) => {
 // body (JSON): { Student_ID, FoundItem_name, Category_ID, Location_ID, Found_date: 'YYYY-MM-DD', Found_time: 'HH:MM',
 //                Found_description, Found_photo: 'data:image/jpeg;base64,...' (บังคับ) }   ← เหมือนผู้ใช้แจ้งเอง + รหัสนักศึกษา
 // 201 = บันทึกลง FoundItem สถานะ 'อนุมัติแล้ว' ทันที (Admin_ID = ผู้บันทึก) + แจ้งเตือนนักศึกษาผู้นำของมาส่ง
-//       แล้วเริ่มจับคู่กับสิ่งของที่หายทันที (ถ้า Match Score >= 80 จะแจ้งเตือน Admin "พบรายการจับคู่สิ่งของรายการใหม่")
+//       แล้วเริ่มจับคู่กับสิ่งของที่หายทันที (ถ้า Match Score มากกว่า 70 จะแจ้งเตือน Admin "พบรายการจับคู่สิ่งของรายการใหม่")
 // 400 = ข้อมูลไม่ถูกต้อง { message, errors: { ชื่อฟิลด์: ข้อความ } }, 404 (code STUDENT_NOT_FOUND) = ไม่พบรหัสนักศึกษาในระบบ
 router.post('/founditem/admin', requireAdmin, async (req, res) => {
     const { values, errors } = validateAdminFoundItemRecord(req.body || {});

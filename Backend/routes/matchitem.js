@@ -1,7 +1,7 @@
 // API หน้า "รายการจับคู่สิ่งของ" ของ Web-Admin (Web-Admin/matches.html)
 // ต้องเข้าสู่ระบบ Admin ก่อน: ส่ง header Authorization: Bearer <token>
 // เปิดใช้ใน server.js ที่ path /api/match:
-//   GET  /api/match/pending            คู่ที่รอ Admin ตรวจสอบ (Match Score >= 80, ของหาย 'ไม่พบ', ของที่พบ 'อนุมัติแล้ว')
+//   GET  /api/match/pending            คู่ที่รอ Admin ตรวจสอบ (Match Score มากกว่า 70, ของหาย 'ไม่พบ', ของที่พบ 'อนุมัติแล้ว')
 //   PUT  /api/match/approve/:matchId   อนุมัติ → แจ้งเตือนผู้ใช้ (+ อีเมลจำลอง ดูได้ใน App-user/mail.html), ของหาย → 'พบ',
 //                                      Match_status → 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน'
 //   PUT  /api/match/reject/:matchId    ปฏิเสธ → ไม่แจ้งผู้ใช้, Match_status → 'ปฏิเสธการส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน'

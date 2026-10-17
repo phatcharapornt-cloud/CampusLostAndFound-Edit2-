@@ -898,7 +898,7 @@
             const note = $('ok-match');
             note.classList.toggle('has-match', count > 0);
             note.innerHTML = count > 0
-                ? `<i class="fa-solid fa-link"></i>พบรายการจับคู่ที่ Match Score ตั้งแต่ 80% ขึ้นไป ${count} รายการ · <a href="matches.html">ไปที่รายการจับคู่สิ่งของ</a>`
+                ? `<i class="fa-solid fa-link"></i>พบรายการจับคู่ที่ Match Score มากกว่า 70% ${count} รายการ · <a href="matches.html">ไปที่รายการจับคู่สิ่งของ</a>`
                 : '<i class="fa-solid fa-magnifying-glass"></i>ยังไม่พบสิ่งของที่หายที่ตรงกัน ระบบจะจับคู่ให้อัตโนมัติเมื่อมีผู้แจ้งของหายเข้ามา';
             $('history-link').href = `historyfound.html?q=${encodeURIComponent(data.Found_ID)}`;
             $('form-view').hidden = true;
