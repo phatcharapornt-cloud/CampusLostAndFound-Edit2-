@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>คำขอรับสิ่งของคืน | Campus Lost & Found Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin-layout.css">
+
+    <style>
+        [hidden] { display: none !important; }
+
+        .page-head {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .page-head .crumb {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+        .page-head .crumb a { color: var(--text-muted); text-decoration: none; }
+        .page-head .crumb a:hover { color: var(--primary); }
+        .page-head p {
+            font-size: 13.5px;
+            color: var(--text-muted);
+        }
+        .refresh-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            border: 1px solid var(--border);
+            background-color: var(--surface);
+            color: var(--text);
+            font-size: 13px;
+            padding: 8px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .refresh-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .refresh-btn:disabled { opacity: 0.6; cursor: wait; }
+
+        /* ---------- แถบค้นหา + กรองสถานะ ---------- */
+        .panel {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+        .toolbar {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+        .toolbar-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 240px;
+            max-width: 460px;
+        }
+        .search-box i {
+            position: absolute;
+            left: 13px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 13px;
+            pointer-events: none;
+        }
+        .search-box input {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 9px 34px 9px 36px;
+            font-size: 13.5px;
+            outline: none;
+            background-color: #ffffff;
+        }
+        .search-box input:focus { border-color: var(--primary); }
+        .search-box .clear {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 26px;
+            height: 26px;
+            border: none;
+            border-radius: 50%;
+            background: none;
+            color: #9ca3af;
+            cursor: pointer;
+        }
+        .search-box .clear:hover { background-color: var(--bg); color: var(--text); }
+        .toggle-names {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+            user-select: none;
+        }
+        .toggle-names input { accent-color: var(--primary); width: 16px; height: 16px; }
+        .status-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .status-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            color: #374151;
+            font-size: 13px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .status-tab .count {
+            min-width: 22px;
+            padding: 0 6px;
+            border-radius: 999px;
+            background-color: var(--bg);
+            font-size: 11.5px;
+            font-weight: 600;
+            text-align: center;
+        }
+        .status-tab:hover { border-color: #f8c9b0; }
+        .status-tab[aria-pressed="true"] {
+            border-color: var(--primary);
+            background-color: var(--primary-soft);
+            color: var(--primary);
+            font-weight: 500;
+        }
+        .status-tab[aria-pressed="true"] .count { background-color: var(--primary); color: #ffffff; }
+
+        /* ---------- ตาราง ---------- */
+        .table-wrap { overflow-x: auto; }
+        table {
+            width: 100%;
+            min-width: 1080px;
+            border-collapse: collapse;
+            font-size: 13.5px;
+        }
+        thead th {
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            background-color: #fafbfc;
+            padding: 11px 14px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        thead th small { display: block; font-weight: 400; font-size: 11px; color: #9ca3af; }
+        tbody td {
+            padding: 14px;
+            border-bottom: 1px solid #f0f1f4;
+            vertical-align: top;
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover td { background-color: #fcfcfd; }
+        .col-id { width: 92px; }
+        .col-student { width: 120px; }
+        .col-ref { width: 170px; }
+        .col-photo { width: 92px; }
+        .col-status { width: 160px; }
+        .lost-id {
+            font-weight: 600;
+            color: var(--navy);
+            font-variant-numeric: tabular-nums;
+        }
+        .student-id { font-variant-numeric: tabular-nums; }
+
+        /* รหัสหมวดหมู่/สถานที่: กดเพื่อแสดงชื่อ */
+        .id-chip {
+            display: inline-flex;
+            align-items: flex-start;
+            gap: 6px;
+            max-width: 100%;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            color: var(--text);
+            font-size: 13px;
+            line-height: 1.4;
+            padding: 4px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+        }
+        .id-chip:hover { border-color: var(--primary); }
+        .id-chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+        .id-chip i { color: #9ca3af; font-size: 11px; margin-top: 4px; }
+        .id-chip .num { font-weight: 600; font-variant-numeric: tabular-nums; }
+        .id-chip .name {
+            color: var(--navy-light);
+            border-left: 1px solid var(--border);
+            padding-left: 6px;
+        }
+        .id-chip[aria-expanded="true"] {
+            border-color: #f8c9b0;
+            background-color: var(--primary-soft);
+        }
+        .id-chip[aria-expanded="true"] i { color: var(--primary); }
+
+        .desc .item-name {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 2px;
+            word-break: break-word;
+        }
+        .desc .text {
+            color: #374151;
+            line-height: 1.55;
+            word-break: break-word;
+        }
+        .desc .when {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .photo-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            padding: 0;
+            overflow: hidden;
+            background-color: #eef2f7;
+            cursor: zoom-in;
+            display: block;
+        }
+        .photo-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .photo-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .no-photo {
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
+            border: 1px dashed #d1d5db;
+            color: #9ca3af;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            text-align: center;
+            line-height: 1.2;
+        }
+        .no-photo i { font-size: 15px; }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .badge::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: currentColor;
+        }
+        .badge.s-notfound { background-color: #fff7e6; color: #b45309; }
+        .badge.s-found    { background-color: #e8f1fd; color: #1d4ed8; }
+        .badge.s-returned { background-color: var(--success-soft); color: var(--success); }
+        .badge.s-cancel   { background-color: #f3f4f6; color: #6b7280; }
+
+        /* สถานะว่าง / โหลด */
+        .state {
+            text-align: center;
+            padding: 48px 16px;
+            color: var(--text-muted);
+            font-size: 13.5px;
+        }
+        .state i { display: block; font-size: 28px; color: #c4c8cf; margin-bottom: 10px; }
+        .skeleton-row td div {
+            height: 14px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #eef0f3 25%, #f6f7f9 50%, #eef0f3 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite;
+        }
+        @keyframes shimmer { to { background-position: -200% 0; } }
+
+        /* ---------- แบ่งหน้า ---------- */
+        .pager {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 12px 18px;
+            border-top: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .pager-buttons { display: flex; gap: 6px; align-items: center; }
+        .pager-buttons button {
+            min-width: 34px;
+            height: 34px;
+            padding: 0 10px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text);
+            cursor: pointer;
+        }
+        .pager-buttons button:disabled { opacity: 0.45; cursor: default; }
+        .pager-buttons button[aria-current="page"] {
+            border-color: var(--primary);
+            background-color: var(--primary);
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .pager-buttons .gap { padding: 0 2px; }
+
+        /* ---------- ดูรูปขนาดใหญ่ ---------- */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            background-color: rgba(15, 23, 42, 0.82);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            gap: 12px;
+        }
+        .lightbox img {
+            max-width: min(900px, 100%);
+            max-height: calc(100vh - 140px);
+            border-radius: 12px;
+            background-color: #ffffff;
+            object-fit: contain;
+        }
+        .lightbox .caption { color: #ffffff; font-size: 14px; text-align: center; }
+        .lightbox .close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.14);
+            color: #ffffff;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .lightbox .close:hover { background-color: rgba(255, 255, 255, 0.24); }
+
+        /* ---------- เฉพาะหน้าอนุมัติสิ่งของที่พบ ---------- */
+        .page-head .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .updated-at { font-size: 12.5px; color: var(--text-muted); }
+        .page-head p a { color: var(--primary); text-decoration: none; }
+        .page-head p a:hover { text-decoration: underline; }
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+        .panel-head h2 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .panel-head h2 .count {
+            min-width: 24px;
+            padding: 0 8px;
+            border-radius: 999px;
+            background-color: var(--primary);
+            color: #ffffff;
+            font-size: 12px;
+            line-height: 22px;
+            text-align: center;
+        }
+        .panel-head p { font-size: 12.5px; color: var(--text-muted); }
+        .col-actions { width: 150px; }
+        .timer {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background-color: #fff7e6;
+            color: #b45309;
+            font-variant-numeric: tabular-nums;
+        }
+        .timer.is-urgent { background-color: var(--error-soft); color: var(--error); }
+        .action-group { display: flex; flex-direction: column; gap: 8px; }
+        .approve-btn, .reject-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            height: 36px;
+            padding: 0 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .approve-btn { border: none; background-color: var(--success); color: #ffffff; }
+        .approve-btn:hover { background-color: #17844a; }
+        .reject-btn { border: 1px solid #f5c2bd; background-color: #ffffff; color: var(--error); }
+        .reject-btn:hover { background-color: var(--error-soft); }
+        .approve-btn:disabled, .reject-btn:disabled { opacity: 0.55; cursor: wait; }
+        .approve-btn:focus-visible, .reject-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        tbody tr.is-leaving td { opacity: 0; transition: opacity 0.35s; }
+        tbody tr.is-focus td { background-color: #fff3ea; transition: background-color 0.6s; }
+        .state .ok { color: var(--success); }
+
+        /* กล่องยืนยันการปฏิเสธ */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 40;
+            background-color: rgba(15, 23, 42, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal {
+            width: 100%;
+            max-width: 420px;
+            background-color: var(--surface);
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+        }
+        .modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 12px; }
+        .modal .item {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            background-color: var(--bg);
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 12px;
+        }
+        .modal .item img { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; background-color: #eef2f7; flex-shrink: 0; }
+        .modal .item strong { display: block; font-size: 14px; word-break: break-word; }
+        .modal .item span { font-size: 12px; color: var(--text-muted); }
+        .modal p { font-size: 13px; color: #374151; line-height: 1.6; margin-bottom: 18px; }
+        .modal .buttons { display: flex; justify-content: flex-end; gap: 10px; }
+        .modal .cancel-btn {
+            height: 38px;
+            padding: 0 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background-color: #ffffff;
+            font-size: 13.5px;
+            cursor: pointer;
+        }
+        .modal .confirm-reject {
+            height: 38px;
+            padding: 0 16px;
+            border-radius: 10px;
+            border: none;
+            background-color: var(--error);
+            color: #ffffff;
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .modal .confirm-reject:disabled { opacity: 0.6; cursor: wait; }
+
+        /* ข้อความแจ้งสั้น ๆ */
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 28px;
+            transform: translate(-50%, 16px);
+            max-width: calc(100% - 32px);
+            background-color: rgba(17, 24, 39, 0.92);
+            color: #ffffff;
+            font-size: 13.5px;
+            padding: 11px 18px;
+            border-radius: 12px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+        .toast.is-success i { color: #6ee7a8; }
+        .toast.is-error i { color: #fca5a5; }
+
+        /* ---------- เฉพาะหน้าคำขอรับสิ่งของคืน ---------- */
+        .claim-table { min-width: 980px; }
+        .col-claim-id { width: 104px; }
+        .col-claimant { width: 150px; }
+        .col-claim-actions { width: 176px; }
+        .claim-id { font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
+        .claimant b { display: block; font-variant-numeric: tabular-nums; color: var(--navy); }
+        .claimant span { font-size: 12.5px; color: var(--text-muted); }
+        .claim-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .claim-pair .match-item { background-color: #fafbfc; border: 1px solid #f0f1f4; border-radius: 12px; padding: 10px; }
+        .claim-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 14px;
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .claim-meta b { color: var(--text); font-weight: 600; }
+        .claim-meta .score b { color: var(--success); }
+        .status-line {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 999px;
+            margin-bottom: 10px;
+        }
+        .status-line.is-pending  { background-color: #fff7e6; color: #b45309; }
+        .status-line.is-approved { background-color: #e8f1fd; color: #1d4ed8; }
+        .returned-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            width: 100%;
+            height: 36px;
+            border-radius: 10px;
+            border: none;
+            background-color: var(--navy);
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .returned-btn:hover:not(:disabled) { background-color: var(--navy-light); }
+        .returned-btn:disabled, .approve-btn:disabled, .reject-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .returned-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .returned-hint { display: block; font-size: 11px; color: var(--text-muted); text-align: center; margin-top: -2px; }
+        .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+        .modal .claimant-line { font-size: 13px; margin-bottom: 10px; color: #374151; }
+        .modal .confirm-returned {
+            height: 38px;
+            padding: 0 16px;
+            border-radius: 10px;
+            border: none;
+            background-color: var(--navy);
+            color: #ffffff;
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .modal .confirm-returned:disabled { opacity: 0.6; cursor: wait; }
+        @media (max-width: 1240px) {
+            .claim-pair { grid-template-columns: 1fr; }
+        }
+        .modal { max-width: 520px; }
+        .modal .pair { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; margin-bottom: 12px; }
+        .modal .pair .side { background-color: var(--bg); border-radius: 12px; padding: 10px; min-width: 0; }
+        .modal .pair .side span { display: block; font-size: 11.5px; color: var(--text-muted); }
+        .modal .pair .side strong { display: block; font-size: 13.5px; word-break: break-word; }
+        .modal .pair .arrow { color: #9ca3af; }
+        .modal .score-line { font-size: 13px; margin-bottom: 10px; }
+        .modal .score-line b { color: var(--success); }
+        .modal ul.effects { margin: 0 0 18px 18px; font-size: 13px; color: #374151; line-height: 1.7; }
+        .modal .confirm-approve {
+            height: 38px;
+            padding: 0 16px;
+            border-radius: 10px;
+            border: none;
+            background-color: var(--success);
+            color: #ffffff;
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .modal .confirm-approve:disabled { opacity: 0.6; cursor: wait; }
+
+        @media (max-width: 640px) {
+            .toolbar { padding: 14px; }
+            .search-box { min-width: 0; max-width: none; flex-basis: 100%; }
+            .pager { padding: 12px 14px; }
+        }
+    </style>
+    <link rel="stylesheet" href="match-view.css">
+</head>
+
+<body class="is-checking">
+    <div class="admin-app">
+        <aside class="admin-sidebar" id="admin-sidebar"></aside>
+        <div class="admin-main">
+            <header class="admin-topbar" id="admin-topbar"></header>
+            <main class="admin-content">
+                <div class="page-head">
+                    <div>
+                        <div class="crumb"><a href="dashboard.html">หน้าหลัก</a> / คำขอรับสิ่งของคืน</div>
+                        <p>คำขอที่ผู้ใช้งานกด "ขอรับสิ่งของคืน" จากอีเมลแจ้งรายการจับคู่ · อนุมัติแล้วปุ่ม "คืนสิ่งของแล้ว" จะกดได้เมื่อเจ้าของมารับสิ่งของ
+                            (คำขอที่ปฏิเสธหรือคืนแล้วดูได้ที่ <a href="historyclaims.html">History › รายการการขอรับสิ่งของคืน</a>)</p>
+                    </div>
+                    <div class="actions">
+                        <span class="updated-at" id="updated-at"></span>
+                        <button type="button" class="refresh-btn" id="refresh-btn"><i class="fa-solid fa-rotate-right"></i>รีเฟรช</button>
+                    </div>
+                </div>
+
+                <div class="page-alert" id="page-alert" role="alert"><i class="fa-solid fa-circle-exclamation"></i><span></span></div>
+
+                <section class="panel" aria-labelledby="panel-title">
+                    <div class="panel-head">
+                        <h2 id="panel-title">คำขอรับสิ่งของคืนที่ต้องดำเนินการ <span class="count" id="pending-count">–</span></h2>
+                        <div class="filter-tabs" role="group" aria-label="กรองตามสถานะ">
+                            <button type="button" class="status-tab" data-filter="" aria-pressed="true">ทั้งหมด <span class="count" data-count="all">0</span></button>
+                            <button type="button" class="status-tab" data-filter="รอการอนุมัติ" aria-pressed="false">รอการอนุมัติ <span class="count" data-count="pending">0</span></button>
+                            <button type="button" class="status-tab" data-filter="อนุมัติ" aria-pressed="false">อนุมัติแล้ว รอรับคืน <span class="count" data-count="approved">0</span></button>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="match-table claim-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-claim-id">รหัสคำขอ</th>
+                                    <th class="col-claimant">รหัสนักศึกษา</th>
+                                    <th>รายละเอียดคำขอรับสิ่งของคืน</th>
+                                    <th class="col-claim-actions">การกระทำ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rows"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+    <div class="admin-backdrop" id="admin-backdrop"></div>
+
+    <!-- ยืนยันการอนุมัติ / ปฏิเสธ / คืนสิ่งของแล้ว -->
+    <div class="modal-backdrop" id="confirm-modal" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+            <h2 id="confirm-title"></h2>
+            <div class="claimant-line" id="c-claimant"></div>
+            <div class="pair">
+                <div class="side"><span>สิ่งของที่หาย <b id="c-lost-id"></b></span><strong id="c-lost-name"></strong></div>
+                <i class="fa-solid fa-arrows-left-right arrow" aria-hidden="true"></i>
+                <div class="side"><span>สิ่งของที่พบ <b id="c-found-id"></b></span><strong id="c-found-name"></strong></div>
+            </div>
+            <ul class="effects" id="c-effects"></ul>
+            <div class="buttons">
+                <button type="button" class="cancel-btn" id="confirm-cancel">ยกเลิก</button>
+                <button type="button" id="confirm-ok"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ดูรูปขนาดใหญ่ -->
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="รูปภาพสิ่งของ" hidden>
+        <button type="button" class="close" id="lightbox-close" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button>
+        <img id="lightbox-img" alt="">
+        <div class="caption" id="lightbox-caption"></div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"><i></i><span></span></div>
+
+    <script src="admin-session.js"></script>
+    <script src="admin-layout.js"></script>
+    <script src="match-view.js"></script>
+    <script>
+        // หน้า "คำขอรับสิ่งของคืน": API GET /api/claim/pending, PUT /api/claim/approve|reject|returned/:claimId
+        const session = AdminLayout.init('claims');
+        const esc = AdminLayout.escapeHtml;
+        const $ = (id) => document.getElementById(id);
+
+        const AUTO_REFRESH_MS = 30000;   // ดึงรายการใหม่ทุก 30 วินาที (มีคำขอเข้ามาใหม่)
+        const focusId = Number(new URLSearchParams(location.search).get('focus')) || null;
+        let items = [];
+        let filter = '';
+        let loaded = false;
+        let requestSeq = 0;
+        let focusHandled = false;
+
+        // ข้อความในหน้าต่างยืนยันของแต่ละปุ่ม
+        const ACTIONS = {
+            approve: {
+                title: (c) => `อนุมัติคำขอรับสิ่งของคืน #${c.Claim_ID}?`,
+                effects: () => `<li>แจ้งเตือนผู้ใช้งาน <b>"รายการคำขอของท่านได้รับการอนุมัติแล้ว ให้มารับสิ่งของคืน"</b></li>
+                                <li>สถานะคำขอเป็น <b>"อนุมัติ"</b> และปุ่ม <b>"คืนสิ่งของแล้ว"</b> จะกดได้</li>`,
+                button: ['confirm-approve', '<i class="fa-solid fa-check"></i> อนุมัติคำขอ'],
+                done: (c) => `อนุมัติคำขอ #${c.Claim_ID} แล้ว · กด "คืนสิ่งของแล้ว" เมื่อเจ้าของมารับสิ่งของ`,
+            },
+            reject: {
+                title: (c) => `ปฏิเสธคำขอรับสิ่งของคืน #${c.Claim_ID}?`,
+                effects: () => `<li>แจ้งเตือนผู้ใช้งาน <b>"รายการคำขอของท่านถูกปฏิเสธ สามารถมาติดต่อได้ที่ส่วนกลาง"</b></li>
+                                <li>สถานะคำขอเป็น <b>"ปฏิเสธ"</b> และออกจากหน้านี้ (ดูได้ที่ History)</li>
+                                <li>สิ่งของที่หายกลับเป็น <b>"ไม่พบ"</b> แล้วระบบจับคู่ใหม่ (ไม่จับกับสิ่งของที่พบชิ้นเดิม)</li>`,
+                button: ['confirm-reject', '<i class="fa-solid fa-xmark"></i> ปฏิเสธคำขอ'],
+                done: (c) => `ปฏิเสธคำขอ #${c.Claim_ID} แล้ว (ดูได้ที่ History)`,
+            },
+            returned: {
+                title: (c) => `ยืนยันว่าเจ้าของรับสิ่งของคืนแล้ว (คำขอ #${c.Claim_ID})?`,
+                effects: () => `<li>สถานะคำขอเป็น <b>"คืนสิ่งของแล้ว"</b> และออกจากหน้านี้ (ดูได้ที่ History)</li>
+                                <li>สิ่งของที่หายเป็น <b>"ได้รับสิ่งของคืนแล้ว"</b> · สิ่งของที่พบเป็น <b>"คืนสิ่งของแล้ว"</b></li>
+                                <li>แจ้งเตือนเจ้าของสิ่งของและผู้แจ้งพบ</li>`,
+                button: ['confirm-returned', '<i class="fa-solid fa-box-open"></i> คืนสิ่งของแล้ว'],
+                done: (c) => `บันทึกการคืนสิ่งของของคำขอ #${c.Claim_ID} เรียบร้อยแล้ว`,
+            },
+        };
+
+        // ---------- ช่วยแสดงผล ----------
+        function claimDate(text) {
+            return text ? MatchView.formatDate(text) : '-';
+        }
+        function rowHtml(claim) {
+            const m = claim.match;
+            const approved = claim.Claim_status === 'อนุมัติ';
+            const name = `${claim.claimant.FName || ''} ${claim.claimant.LName || ''}`.trim();
+            return `
+                <tr data-id="${esc(claim.Claim_ID)}">
+                    <td><span class="claim-id">#${esc(claim.Claim_ID)}</span><span class="match-when">ขอเมื่อ ${esc(claimDate(claim.Claim_date))}</span></td>
+                    <td class="claimant"><b>${esc(claim.claimant.Student_ID || '-')}</b><span>${esc(name || '-')}</span></td>
+                    <td>
+                        <div class="claim-pair">
+                            ${MatchView.itemCell('lost', m.lost, m.found)}
+                            ${MatchView.itemCell('found', m.found, m.lost)}
+                        </div>
+                        <div class="claim-meta">
+                            <span>รหัสจับคู่ <b>#${esc(m.Match_ID)}</b></span>
+                            <span class="score">Match Score <b>${esc(MatchView.formatScore(m.Match_score))}%</b></span>
+                            ${claim.Claimcheck_at && approved ? `<span>อนุมัติเมื่อ <b>${esc(claimDate(claim.Claimcheck_at.slice(0, 10)))} ${esc(claim.Claimcheck_at.slice(11, 16))} น.</b>${claim.Handled_by ? ` โดย ${esc(claim.Handled_by)}` : ''}</span>` : ''}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-line ${approved ? 'is-approved' : 'is-pending'}">
+                            <i class="fa-solid ${approved ? 'fa-location-dot' : 'fa-hourglass-half'}" aria-hidden="true"></i>${approved ? 'อนุมัติ · รอเจ้าของมารับ' : 'รอการอนุมัติ'}
+                        </span>
+                        <div class="action-group">
+                            <button type="button" class="approve-btn" data-action="approve"${approved ? ' disabled' : ''}><i class="fa-solid fa-check"></i>อนุมัติ</button>
+                            <button type="button" class="reject-btn" data-action="reject"${approved ? ' disabled' : ''}><i class="fa-solid fa-xmark"></i>ปฏิเสธ</button>
+                            <button type="button" class="returned-btn" data-action="returned"${approved ? '' : ' disabled title="กดได้หลังอนุมัติคำขอแล้ว"'}><i class="fa-solid fa-box-open"></i>คืนสิ่งของแล้ว</button>
+                            ${approved ? '' : '<span class="returned-hint">กดได้หลังอนุมัติ</span>'}
+                        </div>
+                    </td>
+                </tr>`;
+        }
+        function stateRow(html) {
+            return `<tr><td colspan="4"><div class="state">${html}</div></td></tr>`;
+        }
+        function showAlert(message) {
+            const alert = $('page-alert');
+            alert.querySelector('span').textContent = message || '';
+            alert.classList.toggle('is-visible', Boolean(message));
+        }
+        let toastTimer = null;
+        function toast(message, type) {
+            const el = $('toast');
+            el.className = `toast is-visible${type ? ` is-${type}` : ''}`;
+            el.querySelector('i').className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
+            el.querySelector('span').textContent = message;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.remove('is-visible'), 4500);
+        }
+
+        function render() {
+            const pendingCount = items.filter((c) => c.Claim_status === 'รอการอนุมัติ').length;
+            const approvedCount = items.filter((c) => c.Claim_status === 'อนุมัติ').length;
+            $('pending-count').textContent = String(items.length);
+            document.querySelector('[data-count="all"]').textContent = items.length;
+            document.querySelector('[data-count="pending"]').textContent = pendingCount;
+            document.querySelector('[data-count="approved"]').textContent = approvedCount;
+            document.querySelectorAll('[data-filter]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === filter)));
+            AdminLayout.setBadge('claims', pendingCount);
+
+            const shown = filter ? items.filter((c) => c.Claim_status === filter) : items;
+            const rows = $('rows');
+            if (shown.length === 0) {
+                rows.innerHTML = stateRow(items.length === 0
+                    ? '<i class="fa-regular fa-circle-check ok"></i>ไม่มีคำขอรับสิ่งของคืนที่ต้องดำเนินการ'
+                    : '<i class="fa-regular fa-folder-open"></i>ไม่มีคำขอในสถานะนี้');
+                return;
+            }
+            rows.innerHTML = shown.map(rowHtml).join('');
+            MatchView.bindBrokenPhotos(rows);
+        }
+
+        async function load() {
+            const seq = ++requestSeq;
+            $('refresh-btn').disabled = true;
+            if (!loaded) $('rows').innerHTML = stateRow('<i class="fa-solid fa-spinner fa-spin"></i>กำลังโหลด...');
+            try {
+                const { ok, data } = await AdminSession.apiFetch('/api/claim/pending');
+                if (seq !== requestSeq) return;
+                if (!ok) throw new Error(data.message || 'โหลดรายการไม่สำเร็จ');
+                items = data.items;
+                loaded = true;
+                showAlert('');
+                render();
+                $('updated-at').textContent = `อัปเดตล่าสุด ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} น.`;
+                handleFocus();
+            } catch (error) {
+                if (error.unauthorized || seq !== requestSeq) return;
+                if (!loaded) $('rows').innerHTML = stateRow('<i class="fa-solid fa-plug-circle-exclamation"></i>โหลดรายการไม่สำเร็จ');
+                showAlert(error instanceof TypeError ? 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบว่าเปิด Backend แล้ว' : error.message);
+            } finally {
+                if (seq === requestSeq) $('refresh-btn').disabled = false;
+            }
+        }
+
+        // มาจากการกดการแจ้งเตือน (?focus=รหัสคำขอ) → เลื่อนไปที่รายการนั้นและไฮไลต์
+        function handleFocus() {
+            if (!focusId || focusHandled) return;
+            focusHandled = true;
+            const row = document.querySelector(`#rows tr[data-id="${focusId}"]`);
+            if (!row) {
+                toast(`คำขอ #${focusId} ไม่ได้รอดำเนินการแล้ว`, 'error');
+                return;
+            }
+            row.classList.add('is-focus');
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => row.classList.remove('is-focus'), 2500);
+        }
+
+        document.querySelectorAll('[data-filter]').forEach((btn) => btn.addEventListener('click', () => {
+            filter = btn.dataset.filter;
+            render();
+        }));
+
+        // ---------- อนุมัติ / ปฏิเสธ / คืนสิ่งของแล้ว (ยืนยันก่อนทุกครั้ง) ----------
+        let pending = null;
+        function openConfirm(claim, action, opener) {
+            pending = { claim, action, opener };
+            const conf = ACTIONS[action];
+            const m = claim.match;
+            $('confirm-title').textContent = conf.title(claim);
+            $('c-claimant').innerHTML = `ผู้ขอรับคืน: <b>${esc(claim.claimant.Student_ID || '-')}</b> ${esc(`${claim.claimant.FName || ''} ${claim.claimant.LName || ''}`.trim())}`;
+            $('c-lost-id').textContent = `#${m.lost.Lost_ID}`;
+            $('c-lost-name').textContent = m.lost.LostItem_name;
+            $('c-found-id').textContent = `#${m.found.Found_ID}`;
+            $('c-found-name').textContent = m.found.FoundItem_name;
+            $('c-effects').innerHTML = conf.effects(claim);
+            const ok = $('confirm-ok');
+            ok.className = conf.button[0];
+            ok.innerHTML = conf.button[1];
+            $('confirm-modal').hidden = false;
+            $('confirm-cancel').focus();
+        }
+        function closeConfirm() {
+            $('confirm-modal').hidden = true;
+            const target = pending;
+            pending = null;
+            if (target && target.opener) target.opener.focus();
+        }
+        $('confirm-cancel').addEventListener('click', closeConfirm);
+        $('confirm-modal').addEventListener('click', (event) => { if (event.target.id === 'confirm-modal') closeConfirm(); });
+        $('confirm-ok').addEventListener('click', async () => {
+            if (!pending) return;
+            const { claim, action } = pending;
+            const row = document.querySelector(`#rows tr[data-id="${claim.Claim_ID}"]`);
+            const buttons = row ? [...row.querySelectorAll('[data-action]')] : [];
+            $('confirm-ok').disabled = true;
+            buttons.forEach((b) => { b.disabled = true; });
+            try {
+                const { ok, status, data } = await AdminSession.apiFetch(`/api/claim/${action}/${claim.Claim_ID}`, { method: 'PUT' });
+                if (ok) {
+                    toast(ACTIONS[action].done(claim), 'success');
+                    AdminLayout.refreshNotifications();
+                } else {
+                    toast(data.message || 'ดำเนินการไม่สำเร็จ', 'error');
+                }
+                if (ok || status === 409 || status === 404) load();
+                else render();
+            } catch (error) {
+                if (!error.unauthorized) toast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่', 'error');
+                render();
+            }
+            $('confirm-ok').disabled = false;
+            $('confirm-modal').hidden = true;
+            pending = null;
+        });
+
+        $('rows').addEventListener('click', (event) => {
+            const photo = event.target.closest('.mi-photo');
+            if (photo) return openLightbox(photo.dataset.photo, photo.dataset.caption, photo);
+            const btn = event.target.closest('[data-action]');
+            if (!btn || btn.disabled) return;
+            const row = btn.closest('tr');
+            const claim = items.find((c) => String(c.Claim_ID) === row.dataset.id);
+            if (claim) openConfirm(claim, btn.dataset.action, btn);
+        });
+
+        // ---------- ดูรูปขนาดใหญ่ ----------
+        let lightboxOpener = null;
+        function openLightbox(src, caption, opener) {
+            lightboxOpener = opener;
+            $('lightbox-img').src = src;
+            $('lightbox-caption').textContent = caption || '';
+            $('lightbox').hidden = false;
+            $('lightbox-close').focus();
+        }
+        function closeLightbox() {
+            $('lightbox').hidden = true;
+            $('lightbox-img').removeAttribute('src');
+            if (lightboxOpener) lightboxOpener.focus();
+        }
+        $('lightbox-close').addEventListener('click', closeLightbox);
+        $('lightbox').addEventListener('click', (event) => { if (event.target.id === 'lightbox') closeLightbox(); });
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            if (!$('lightbox').hidden) closeLightbox();
+            else if (!$('confirm-modal').hidden) closeConfirm();
+        });
+
+        $('refresh-btn').addEventListener('click', load);
+
+        // ---------- เริ่มต้นหน้า ----------
+        if (session) {
+            load();
+            setInterval(() => { if (document.visibilityState === 'visible' && $('confirm-modal').hidden) load(); }, AUTO_REFRESH_MS);
+        }
+    </script>
+</body>
+</html>

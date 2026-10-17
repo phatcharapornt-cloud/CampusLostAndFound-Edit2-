@@ -8,6 +8,16 @@
 // ถ้า Match Score มากกว่า 70 และคู่นี้ยังไม่เคยถูกจับคู่ → บันทึกลง MatchItem (Match_status = NULL = รอ Admin ตรวจสอบ)
 // และแจ้งเตือน Admin ทุกคนว่า "พบรายการจับคู่สิ่งของรายการใหม่" (Admin ดูได้ที่หน้า "รายการจับคู่สิ่งของ")
 const db = require('../config/db');
+const { withItemName } = require('../utils/notimessage');
+
+// ข้อความแจ้งเตือนผู้ใช้งาน
+const MESSAGES = {
+    // ไม่กด "ขอรับสิ่งของคืน" ภายใน 24 ชม. หลังได้รับแจ้งรายการจับคู่
+    claimExpired: (lostName) => withItemName(
+        (name) => `ท่านได้ปฏิเสธการขอรับสิ่งของคืน "${name}" หากท่านต้องการขอรับสิ่งของชิ้นนี้ ให้ติดต่อที่ส่วนกลาง`,
+        lostName
+    ),
+};
 
 const MATCH_THRESHOLD = 70;             // จับคู่เมื่อ Match Score "มากกว่า" ค่านี้ (70 พอดีไม่นับ)
 const WEIGHTS = { category: 30, location: 25, name: 30, description: 15 };
@@ -155,12 +165,13 @@ async function processMatchingByFoundItem(foundId) {
 }
 
 // ตรวจรายการจับคู่ที่ส่งให้ผู้ใช้งานแล้ว แต่ผู้ใช้ไม่ส่งคำขอรับคืนภายใน 24 ชั่วโมง
-// → Match_status 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน', สิ่งของที่หายกลับเป็น 'ไม่พบ' แล้วเริ่มจับคู่ใหม่ (ไม่จับกับคู่เดิมอีก)
+// → Match_status 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน', สิ่งของที่หายกลับเป็น 'ไม่พบ', แจ้งเตือนผู้ใช้
+//   "ท่านได้ปฏิเสธการขอรับสิ่งของคืน ... ให้ติดต่อที่ส่วนกลาง" แล้วเริ่มจับคู่ใหม่ (ไม่จับกับคู่เดิมอีก)
 // นับเวลาจากการแจ้งเตือนที่ส่งถึงเจ้าของสิ่งของที่หาย (ไม่นับการแจ้งเตือนของ Admin)
 async function checkAndProcessExpiredMatches() {
     try {
         const [expiredMatches] = await db.query(
-            `SELECT m.Match_ID, m.Lost_ID, m.Found_ID
+            `SELECT m.Match_ID, m.Lost_ID, m.Found_ID, l.User_ID, l.LostItem_name
              FROM MatchItem m
              JOIN LostItem l ON m.Lost_ID = l.Lost_ID
              WHERE m.Match_status = 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน'
@@ -169,17 +180,39 @@ async function checkAndProcessExpiredMatches() {
             [CLAIM_WINDOW_HOURS]
         );
 
+        const processed = [];
         for (const match of expiredMatches) {
-            await db.query(
-                "UPDATE MatchItem SET Match_status = 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน' WHERE Match_ID = ? AND Match_status = 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน'",
-                [match.Match_ID]
-            );
-            // ปรับเฉพาะของที่ยังเป็น 'พบ' (ถ้าผู้ใช้ยกเลิกรายการไปแล้ว จะไม่เปลี่ยนกลับ)
-            await db.query("UPDATE LostItem SET Lost_status = 'ไม่พบ' WHERE Lost_ID = ? AND Lost_status = 'พบ'", [match.Lost_ID]);
+            const conn = await db.getConnection();
+            try {
+                await conn.beginTransaction();
+                // เงื่อนไข Match_status กันกรณีผู้ใช้กดขอรับคืนในจังหวะเดียวกัน (ถ้าเปลี่ยนไปแล้วจะไม่ทำซ้ำ)
+                const [result] = await conn.query(
+                    "UPDATE MatchItem SET Match_status = 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน' WHERE Match_ID = ? AND Match_status = 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน'",
+                    [match.Match_ID]
+                );
+                if (result.affectedRows === 0) {
+                    await conn.rollback();
+                    continue;
+                }
+                // ปรับเฉพาะของที่ยังเป็น 'พบ' (ถ้าผู้ใช้ยกเลิกรายการไปแล้ว จะไม่เปลี่ยนกลับ)
+                await conn.query("UPDATE LostItem SET Lost_status = 'ไม่พบ' WHERE Lost_ID = ? AND Lost_status = 'พบ'", [match.Lost_ID]);
+                await conn.query(
+                    'INSERT INTO Notification (User_ID, Lost_ID, Found_ID, Match_ID, Message) VALUES (?, ?, ?, ?, ?)',
+                    [match.User_ID, match.Lost_ID, match.Found_ID, match.Match_ID, MESSAGES.claimExpired(match.LostItem_name)]
+                );
+                await conn.commit();
+                processed.push(match);
+            } catch (error) {
+                await conn.rollback().catch(() => {});
+                console.error(`Error expiring Match_ID ${match.Match_ID}:`, error);
+            } finally {
+                conn.release();
+            }
+            if (!processed.includes(match)) continue;
             console.log(`[Auto Expire] Match_ID ${match.Match_ID} เกิน ${CLAIM_WINDOW_HOURS} ชม. -> รีเซ็ต Lost_ID ${match.Lost_ID} เป็น 'ไม่พบ'`);
-            await processMatchingByLostItem(match.Lost_ID);
+            await processMatchingByLostItem(match.Lost_ID);   // จับคู่ใหม่ (ไม่จับกับสิ่งของที่พบคู่เดิมอีก)
         }
-        return expiredMatches.map((m) => m.Match_ID);
+        return processed.map((m) => m.Match_ID);
     } catch (error) {
         console.error('Error in checkAndProcessExpiredMatches:', error);
         return [];

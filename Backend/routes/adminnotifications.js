@@ -6,6 +6,7 @@
 // แต่ละรายการมี Target = หน้าที่เกี่ยวข้อง และ Needs_action = ยังต้องจัดการอยู่หรือไม่
 //   Target 'matches'       : "พบรายการจับคู่สิ่งของรายการใหม่" → หน้ารายการจับคู่สิ่งของ (ยังรอตรวจสอบ = Needs_action)
 //   Target 'approve-found' : "มีรายการแจ้งสิ่งของที่พบเข้ามาใหม่" → หน้าอนุมัติสิ่งของที่พบ (ยัง 'รอการอนุมัติ' = Needs_action)
+//   Target 'claims'        : "มีคำขอการขอรับสิ่งของคืนเข้ามาใหม่" → หน้าคำขอรับสิ่งของคืน (คำขอยัง 'รอการอนุมัติ' = Needs_action)
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
@@ -27,10 +28,13 @@ router.get('/notifications', requireAdmin, async (req, res) => {
                 n.Match_ID,
                 n.Claim_ID,
                 f.Found_status,
-                CASE WHEN n.Match_ID IS NOT NULL THEN 'matches'
+                CASE WHEN n.Claim_ID IS NOT NULL THEN 'claims'
+                     WHEN n.Match_ID IS NOT NULL THEN 'matches'
                      WHEN n.Found_ID IS NOT NULL THEN 'approve-found'
                      ELSE NULL END AS Target,
-                CASE WHEN n.Match_ID IS NOT NULL
+                CASE WHEN n.Claim_ID IS NOT NULL
+                         THEN (cl.Claim_status = 'รอการอนุมัติ')
+                     WHEN n.Match_ID IS NOT NULL
                          THEN (m.Match_status IS NULL AND ml.Lost_status = 'ไม่พบ' AND mf.Found_status = 'อนุมัติแล้ว' AND ml.User_ID <> mf.User_ID)
                      WHEN n.Found_ID IS NOT NULL
                          THEN (f.Found_status = 'รอการอนุมัติ')
@@ -40,6 +44,7 @@ router.get('/notifications', requireAdmin, async (req, res) => {
              LEFT JOIN MatchItem m  ON n.Match_ID = m.Match_ID
              LEFT JOIN LostItem ml  ON m.Lost_ID = ml.Lost_ID
              LEFT JOIN FoundItem mf ON m.Found_ID = mf.Found_ID
+             LEFT JOIN Claim cl     ON n.Claim_ID = cl.Claim_ID
              WHERE n.Admin_ID = ?
              ORDER BY n.Notice_at DESC, n.Notification_ID DESC
              LIMIT ?`,

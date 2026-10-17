@@ -5,6 +5,7 @@
 //                                      รวมรายการที่ถูกปฏิเสธอัตโนมัติเพราะไม่ได้นำมาส่งภายใน 30 นาที
 //   GET /api/admin/history/matches 5.3 รายการจับคู่สิ่งของทั้งหมด ทุกสถานะ (หน้า Web-Admin/historymatches.html)
 //                                      สถานะ 'รอการตรวจสอบ' = Admin ยังไม่ได้อนุมัติ/ปฏิเสธ (Match_status เป็น NULL)
+//   GET /api/admin/history/claims  5.4 คำขอรับสิ่งของคืนทั้งหมด ทุกสถานะ (หน้า Web-Admin/historyclaims.html)
 //
 // query ที่ใช้ได้ทั้งสองแบบ: ?status=...&q=...&page=1&pageSize=20
 //   status   = กรองตามสถานะ (ไม่ใส่ = ทุกสถานะ)
@@ -19,6 +20,7 @@ const { requireAdmin } = require('../utils/admintoken');
 const { expireOverdueFoundItems } = require('../service/foundstatus');
 const { checkAndProcessExpiredMatches } = require('../service/matchingService');
 const { MATCH_STATUSES, STATUS_SQL, MATCH_FROM, MATCH_COLUMNS, shapeMatchRow } = require('../service/matchquery');
+const { CLAIM_STATUSES, CLAIM_FROM, CLAIM_COLUMNS, shapeClaimRow } = require('../service/claimquery');
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
@@ -117,6 +119,24 @@ const HISTORY = {
         map: shapeMatchRow,
         errorText: 'เกิดข้อผิดพลาดในการดึงรายการจับคู่สิ่งของ',
     },
+    claims: {
+        statuses: CLAIM_STATUSES,
+        id: 'c.Claim_ID',
+        status: 'c.Claim_status',
+        from: CLAIM_FROM,
+        columns: CLAIM_COLUMNS,
+        // ค้นหาได้ทั้งรหัสคำขอ / รหัสสิ่งของที่หายหรือที่พบ, รหัสนักศึกษาผู้ขอรับคืน, ชื่อสิ่งของทั้งสองฝั่ง
+        search: (q, like, prefix) => {
+            const isId = /^\d+$/.test(q);
+            return {
+                sql: `(${isId ? 'c.Claim_ID = ? OR c.Lost_ID = ? OR c.Found_ID = ? OR ' : ''}cu.Student_ID LIKE ?
+                       OR l.LostItem_name LIKE ? OR f.FoundItem_name LIKE ?)`,
+                params: [...(isId ? [Number(q), Number(q), Number(q)] : []), prefix, like, like],
+            };
+        },
+        map: shapeClaimRow,
+        errorText: 'เกิดข้อผิดพลาดในการดึงรายการคำขอรับสิ่งของคืน',
+    },
 };
 
 function historyHandler(config) {
@@ -196,5 +216,6 @@ function historyHandler(config) {
 router.get('/history/lost', requireAdmin, historyHandler(HISTORY.lost));
 router.get('/history/found', requireAdmin, historyHandler(HISTORY.found));
 router.get('/history/matches', requireAdmin, historyHandler(HISTORY.matches));
+router.get('/history/claims', requireAdmin, historyHandler(HISTORY.claims));
 
 module.exports = router;

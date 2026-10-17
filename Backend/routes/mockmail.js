@@ -42,8 +42,10 @@ const MAIL_SELECT = `
     SELECT ${MATCH_COLUMNS},
            DATE_FORMAT(s.Sent_at, '%Y-%m-%d %H:%i:%s') AS Sent_at,
            DATE_FORMAT(s.Sent_at + INTERVAL ${CLAIM_WINDOW_HOURS} HOUR, '%Y-%m-%d %H:%i:%s') AS Deadline_at,
-           GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), s.Sent_at + INTERVAL ${CLAIM_WINDOW_HOURS} HOUR)) AS Seconds_left
+           GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), s.Sent_at + INTERVAL ${CLAIM_WINDOW_HOURS} HOUR)) AS Seconds_left,
+           mc.Claim_ID AS Mail_Claim_ID, mc.Claim_status AS Mail_Claim_status
     ${MATCH_FROM}
+    LEFT JOIN Claim mc ON mc.Claim_ID = (SELECT MAX(Claim_ID) FROM Claim WHERE Match_ID = m.Match_ID)
     JOIN (SELECT Match_ID, MIN(Notice_at) AS Sent_at
           FROM Notification
           WHERE User_ID = ? AND Match_ID IS NOT NULL
@@ -77,6 +79,8 @@ function shapeMail(row, user) {
         Seconds_left: secondsLeft,
         Claim_window_hours: CLAIM_WINDOW_HOURS,
         State: stateOf(match, secondsLeft),
+        // คำขอรับสิ่งของคืนของรายการนี้ (ถ้ากดขอรับคืนแล้ว) ใช้แสดงสถานะล่าสุดในอีเมล
+        Claim: row.Mail_Claim_ID ? { Claim_ID: row.Mail_Claim_ID, Claim_status: row.Mail_Claim_status } : null,
         match,
     };
 }
