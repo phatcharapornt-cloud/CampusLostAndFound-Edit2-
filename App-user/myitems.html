@@ -355,7 +355,7 @@
                 empty: { icon: 'fa-regular fa-face-smile', title: 'ยังไม่มีรายการสิ่งของที่หาย', text: 'ถ้าทำของหาย แจ้งไว้ได้เลย ระบบจะช่วยจับคู่กับของที่มีคนพบ', button: ['reportLost', 'fa-solid fa-plus', 'แจ้งสิ่งของที่หาย'] },
             },
             found: {
-                hint: 'สิ่งของที่คุณแจ้งว่าพบ (รวมรายการที่เจ้าหน้าที่บันทึกให้)',
+                hint: 'สิ่งของที่คุณแจ้งว่าพบ',
                 toCard: (r) => ({
                     key: `F${r.Found_ID}`,
                     idHtml: `รหัสสิ่งของที่พบ #${esc(r.Found_ID)}`,
@@ -369,7 +369,7 @@
                 empty: { icon: 'fa-regular fa-hand', title: 'ยังไม่มีรายการสิ่งของที่พบ', text: 'เจอของตกหล่น แจ้งไว้เพื่อช่วยส่งคืนเจ้าของ', button: ['reportFound', 'fa-solid fa-plus', 'แจ้งสิ่งของที่พบ'] },
             },
             claims: {
-                hint: 'คำขอรับสิ่งของคืนที่คุณส่งไว้ (แสดงข้อมูลสิ่งของที่พบที่ขอรับคืน)',
+                hint: 'รายการคำขอรับสิ่งของคืนของคุณ',
                 toCard: (r) => ({
                     key: `C${r.Claim_ID}`,
                     idHtml: `คำขอ #${esc(r.Claim_ID)}<span class="sep">·</span>รหัสสิ่งของที่พบ #${esc(r.Found_ID)}`,

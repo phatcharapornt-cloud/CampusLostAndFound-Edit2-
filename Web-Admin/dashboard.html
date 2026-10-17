@@ -278,7 +278,6 @@
                 <section aria-labelledby="tasks-title">
                     <div class="section-head">
                         <h2 id="tasks-title">งานที่รอดำเนินการ</h2>
-                        <p>ตัวเลขอัปเดตอัตโนมัติทุก 1 นาที</p>
                     </div>
                     <div class="task-grid" id="task-grid"></div>
                 </section>
@@ -304,18 +303,17 @@
         const TASKS = [
             {
                 page: 'approve-found', countKey: 'found', unit: 'รายการรออนุมัติ',
-                desc: 'สิ่งของที่ผู้ใช้แจ้งพบ ตรวจสอบและอนุมัติเมื่อได้รับสิ่งของที่ศูนย์แล้ว',
-                note: 'รายการที่ไม่ได้อนุมัติภายใน 30 นาที ระบบจะลบอัตโนมัติ',
+                desc: 'สิ่งของที่ผู้ใช้แจ้งพบ ตรวจสอบและอนุมัติเมื่อได้รับสิ่งของจากนักศึกษาแล้ว',
                 action: 'ไปที่หน้าอนุมัติ',
             },
             {
-                page: 'matches', countKey: 'matches', unit: 'คู่รอตรวจสอบ',
-                desc: 'คู่สิ่งของที่หายกับที่พบซึ่งระบบจับคู่ได้ (คะแนนมากกว่า 70%) ตรวจก่อนแจ้งไปยังเจ้าของ',
+                page: 'matches', countKey: 'matches', unit: 'รายการรอตรวจสอบ',
+                desc: 'ตรวจสอบรายการจับคู่สิ่งของก่อนทำการอนุมัติไปยังผู้ใช้งาน',
                 action: 'ตรวจสอบการจับคู่',
             },
             {
-                page: 'claims', countKey: 'claims', unit: 'คำขอรออนุมัติ',
-                desc: 'คำขอรับสิ่งของคืนจากเจ้าของ อนุมัติหรือปฏิเสธ และยืนยันเมื่อคืนสิ่งของแล้ว',
+                page: 'claims', countKey: 'claims', unit: 'รายการรออนุมัติ',
+                desc: 'นักศึกษายื่นคำขอรับสิ่งของคืน กรุณาตรวจสอบรายการคำขอ',
                 extra: (pending) => `อนุมัติแล้ว รอเจ้าของมารับ <strong>${pending.awaitingReturn}</strong> รายการ`,
                 action: 'ไปที่คำขอรับคืน',
             },
@@ -366,7 +364,7 @@
                         <div class="task-icon"><i class="${recordPage.icon}"></i></div>
                         <h3>${esc(recordPage.label)}</h3>
                     </div>
-                    <p class="task-desc">บันทึกสิ่งของที่มีผู้นำมาส่งที่ศูนย์โดยตรง ระบบจะอนุมัติทันทีและเริ่มจับคู่กับรายการของหายให้อัตโนมัติ</p>
+                    <p class="task-desc">บันทึกรายการสิ่งของที่มีพบ เมื่อนักศึกษานำสิ่งของมาส่งที่ส่วนกลางโดยตรง</p>
                     ${actionHtml(recordPage, 'บันทึกรายการใหม่', true, '<i class="fa-solid fa-plus"></i>')}
                 </article>`);
             document.getElementById('task-grid').innerHTML = taskCards.join('');
