@@ -2,7 +2,9 @@
 // เปิดใช้ใน server.js ที่ path /api/auth:
 //   (1) POST /api/auth/admin-login  เข้าสู่ระบบด้วย Admin_email + Admin_password → ได้ token กลับไป
 //   (2) GET  /api/auth/admin-me     ตรวจว่า token ยังใช้ได้ (หน้า Web-Admin เรียกตอนเปิดหน้า)
-// บัญชี Admin กำหนดไว้ล่วงหน้าในตาราง Admin (ไม่มีหน้าสมัคร) เพิ่มได้ด้วยคำสั่ง: npm run create-admin -- <อีเมล> <รหัสผ่าน>
+// บัญชี Admin กำหนดไว้ล่วงหน้าในตาราง Admin (ไม่มีหน้าสมัคร) เพิ่มด้วยคำสั่ง SQL ได้เลย (รหัสผ่านเก็บตามที่พิมพ์):
+//   INSERT INTO Admin (Admin_email, Admin_password) VALUES ('newadmin@kmitl.ac.th', 'Admin*1234');
+// Admin ที่เพิ่มแล้วจะได้รับการแจ้งเตือนของเหตุการณ์ใหม่ทุกอย่างทันที (ระบบส่งให้ Admin ทุกคนที่อยู่ในตารางตอนเกิดเหตุการณ์)
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');

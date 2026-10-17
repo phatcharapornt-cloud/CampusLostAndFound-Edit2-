@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS Admin (
     Admin_email VARCHAR(50) NOT NULL UNIQUE,
     Admin_password VARCHAR(255) NOT NULL
 ) ENGINE=InnoDB;
+-- เพิ่มบัญชี Admin (ไม่มีหน้าสมัคร) รหัสผ่านเก็บตามที่พิมพ์ เช่น
+-- INSERT INTO Admin (Admin_email, Admin_password) VALUES ('newadmin@kmitl.ac.th', 'Admin*1234');
 
 -- 3.ตารางข้อมูลหมวดหมู่ของสิ่งของ (Category)
 CREATE TABLE IF NOT EXISTS Category (
@@ -127,4 +129,3 @@ CREATE TABLE IF NOT EXISTS Notification (
     FOREIGN KEY (Found_ID) REFERENCES FoundItem(Found_ID) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (Claim_ID) REFERENCES Claim(Claim_ID) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
-
