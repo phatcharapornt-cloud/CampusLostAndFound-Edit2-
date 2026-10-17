@@ -1,10 +1,10 @@
-// สร้างบัญชี Admin ใหม่ หรือเปลี่ยนรหัสผ่านของ Admin ที่มีอยู่แล้ว (รหัสผ่านถูกเข้ารหัสด้วย bcrypt ก่อนบันทึก)
+// สร้างบัญชี Admin ใหม่ หรือเปลี่ยนรหัสผ่านของ Admin ที่มีอยู่แล้ว (รหัสผ่านเก็บตามที่กรอก ไม่ hash ดู utils/password.js)
 // วิธีใช้ (รันในโฟลเดอร์ Backend):
 // npm run create-admin -- admin@kmitl.ac.th 'Admin#2026'
 // รหัสผ่านต้องผ่านเงื่อนไขเดียวกับผู้ใช้งาน: 8-16 ตัว มีตัวใหญ่ ตัวเล็ก ตัวเลข และอักขระพิเศษ
 // (ใส่รหัสผ่านในเครื่องหมาย ' ' เพื่อไม่ให้ terminal ตีความอักขระพิเศษ เช่น # ! $)
 require('dotenv').config();
-const bcrypt = require('bcryptjs');
+const { toStoredPassword } = require('../utils/password');
 const { validateAdminEmail, validatePassword } = require('../utils/validators');
 
 let db = null; // เชื่อมฐานข้อมูลหลังตรวจข้อมูลผ่านแล้วเท่านั้น
@@ -27,13 +27,13 @@ async function main() {
     }
 
     db = require('../config/db');
-    const hashed = await bcrypt.hash(password, 10);
+    const stored = toStoredPassword(password);
 
     // ถ้ามีอีเมลนี้อยู่แล้ว (Admin_email เป็น UNIQUE) จะอัปเดตรหัสผ่านแทนการเพิ่มใหม่
     const [result] = await db.query(
         `INSERT INTO Admin (Admin_email, Admin_password) VALUES (?, ?)
          ON DUPLICATE KEY UPDATE Admin_password = VALUES(Admin_password)`,
-        [email, hashed]
+        [email, stored]
     );
 
     console.log(result.affectedRows === 1

@@ -5,7 +5,6 @@
 //   (3) POST /api/auth/reset-password  ตั้งรหัสผ่านใหม่     (หน้า newpass.html)
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const db = require('../config/db');
 const {
@@ -13,6 +12,8 @@ const {
     validateOtpVerification,
     validatePasswordReset,
 } = require('../utils/validators');
+// เก็บรหัสผ่านเป็นข้อความตามที่กรอก (ไม่ hash) ดูรายละเอียดใน utils/password.js
+const { toStoredPassword, verifyPassword } = require('../utils/password');
 
 // ทุกขั้นตอบกลับเป็น JSON { success, message, code?, errors? }
 //   code: OTP_EXPIRED = OTP หมดอายุ/ถูกใช้แล้ว | OTP_INVALID = OTP ผิด | OTP_LOCKED = กรอกผิดเกินกำหนด | OTP_COOLDOWN = ขอ OTP ถี่เกินไป
@@ -191,12 +192,12 @@ router.post('/reset-password', async (req, res) => {
         if (!result.ok) return res.status(result.status).json(result.body);
 
         // 3. รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม
-        if (await bcrypt.compare(values.NewPassword, user.Password)) {
+        if ((await verifyPassword(values.NewPassword, user.Password)).ok) {
             return badRequest(res, { NewPassword: 'รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม' });
         }
 
-        // 4. เข้ารหัสรหัสผ่านใหม่ด้วย bcrypt
-        const hashedPassword = await bcrypt.hash(values.NewPassword, 10);
+        // 4. รหัสผ่านใหม่ (เก็บตามที่กรอก ไม่ hash)
+        const newPassword = toStoredPassword(values.NewPassword);
 
         // 5. บันทึกด้วย Transaction: ทำเครื่องหมายว่าใช้ OTP แล้ว + อัปเดตรหัสผ่านในตาราง User (สำเร็จพร้อมกันหรือไม่ทำเลย)
         connection = await db.getConnection();
@@ -212,7 +213,7 @@ router.post('/reset-password', async (req, res) => {
             return res.status(400).json(otpError('OTP_EXPIRED', 'รหัส OTP หมดอายุหรือถูกใช้งานไปแล้ว กรุณาขอรหัสใหม่'));
         }
 
-        await connection.query('UPDATE User SET Password = ? WHERE User_ID = ?', [hashedPassword, user.User_ID]);
+        await connection.query('UPDATE User SET Password = ? WHERE User_ID = ?', [newPassword, user.User_ID]);
         await connection.commit();
         failedOtpAttempts.delete(result.reset.ResetPassword_ID);
 

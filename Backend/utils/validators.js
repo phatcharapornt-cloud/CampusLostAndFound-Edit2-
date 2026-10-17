@@ -103,7 +103,7 @@ function validateRegistration(body) {
 
 // ตรวจสอบข้อมูลเข้าสู่ระบบ (Login) ด้วยรหัสนักศึกษาและรหัสผ่าน
 // ตรวจแค่รูปแบบรหัสนักศึกษาและว่ากรอกรหัสผ่านแล้ว ไม่ตรวจเงื่อนไขความปลอดภัยของรหัสผ่านซ้ำ
-// (ความถูกต้องของรหัสผ่านตรวจด้วย bcrypt ใน routes/auth.js)
+// (ความถูกต้องของรหัสผ่านตรวจใน routes/auth.js ด้วย utils/password.js)
 function validateLogin(body) {
     const values = {
         Student_ID: toText(body.Student_ID).trim(),

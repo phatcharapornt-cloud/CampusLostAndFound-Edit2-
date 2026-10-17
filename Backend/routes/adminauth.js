@@ -5,11 +5,10 @@
 // บัญชี Admin กำหนดไว้ล่วงหน้าในตาราง Admin (ไม่มีหน้าสมัคร) เพิ่มได้ด้วยคำสั่ง: npm run create-admin -- <อีเมล> <รหัสผ่าน>
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
 const db = require('../config/db');
 const { validateAdminLogin } = require('../utils/validators');
 const { createAdminToken, requireAdmin } = require('../utils/admintoken');
+const { safeEqual, toStoredPassword, verifyPassword } = require('../utils/password');
 
 const MAX_FAILED_LOGINS = 5;              // กรอกรหัสผิดได้ 5 ครั้ง
 const LOCK_SECONDS = 5 * 60;              // แล้วล็อกอีเมลนั้นไว้ 5 นาที
@@ -17,30 +16,15 @@ const LOCK_SECONDS = 5 * 60;              // แล้วล็อกอีเ�
 // เก็บจำนวนครั้งที่เข้าสู่ระบบผิด แยกตามอีเมล (ในหน่วยความจำ รีเซ็ตเมื่อรีสตาร์ทเซิร์ฟเวอร์)
 const failedLogins = new Map();           // Admin_email → { count, lockedUntil }
 
-// ใช้เทียบเวลาให้เท่ากันตอนไม่พบอีเมล (คนอื่นจะได้จับเวลาเดาไม่ได้ว่าอีเมลไหนเป็น Admin)
-const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', 10);
-
-const isBcryptHash = (value) => /^\$2[aby]\$\d{2}\$/.test(value || '');
-
-// เทียบข้อความแบบใช้เวลาเท่ากันเสมอ (ใช้กับรหัสผ่านที่ยังเก็บเป็นข้อความธรรมดา)
-function safeEqual(a, b) {
-    const hashA = crypto.createHash('sha256').update(String(a)).digest();
-    const hashB = crypto.createHash('sha256').update(String(b)).digest();
-    return crypto.timingSafeEqual(hashA, hashB);
-}
-
-// ตรวจรหัสผ่าน รองรับทั้งแบบเข้ารหัส bcrypt และแบบข้อความธรรมดา (กรณี INSERT เข้าฐานข้อมูลเองตรง ๆ)
-// ถ้าเป็นข้อความธรรมดาและถูกต้อง จะเข้ารหัสด้วย bcrypt แล้วบันทึกทับให้อัตโนมัติ
+// ตรวจรหัสผ่าน (เก็บเป็นข้อความตามที่ตั้งไว้ ไม่ hash ดู utils/password.js)
+// ถ้ายังเป็น bcrypt แบบเก่าและถูกต้อง จะบันทึกใหม่เป็นข้อความธรรมดาให้อัตโนมัติ
 async function checkAdminPassword(admin, password) {
-    if (isBcryptHash(admin.Admin_password)) {
-        return bcrypt.compare(password, admin.Admin_password);
+    const check = await verifyPassword(password, admin.Admin_password);
+    if (check.ok && check.legacyHash) {
+        await db.query('UPDATE Admin SET Admin_password = ? WHERE Admin_ID = ?', [toStoredPassword(password), admin.Admin_ID]);
+        console.log(`[Admin] เปลี่ยนรหัสผ่านของ ${admin.Admin_email} จาก bcrypt เป็นข้อความธรรมดาแล้ว`);
     }
-    if (!safeEqual(password, admin.Admin_password)) return false;
-
-    const hashed = await bcrypt.hash(password, 10);
-    await db.query('UPDATE Admin SET Admin_password = ? WHERE Admin_ID = ?', [hashed, admin.Admin_ID]);
-    console.log(`[Admin] เข้ารหัสรหัสผ่านของ ${admin.Admin_email} ด้วย bcrypt เรียบร้อยแล้ว`);
-    return true;
+    return check.ok;
 }
 
 function secondsUntilUnlock(email) {
@@ -109,7 +93,7 @@ router.post('/admin-login', async (req, res) => {
         if (admin) {
             isPasswordValid = await checkAdminPassword(admin, Admin_password);
         } else {
-            await bcrypt.compare(Admin_password, DUMMY_HASH); // ไม่พบอีเมล: เทียบหลอกไว้ให้ใช้เวลาเท่ากับกรณีพบ
+            safeEqual(Admin_password, 'no-such-admin'); // ไม่พบอีเมล: เทียบหลอกไว้ให้ใช้เวลาใกล้เคียงกับกรณีพบ
         }
 
         if (!isPasswordValid) {
