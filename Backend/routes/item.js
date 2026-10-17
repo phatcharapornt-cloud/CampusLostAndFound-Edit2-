@@ -10,6 +10,9 @@ const { FOUND_EXPIRE_MINUTES, MESSAGES: FOUND_MESSAGES } = require('../service/f
 const { parseImageDataUrl, saveImage, removeUpload } = require('../utils/imageupload');
 const { notifyAllAdmins } = require('../utils/adminnotify');
 
+// สถานะรายการจับคู่ เมื่อผู้ใช้ยกเลิกรายการสิ่งของที่หาย (ENUM ของ MatchItem.Match_status)
+const MATCH_LOST_CANCELLED = 'ผู้ใช้ยกเลิกรายการสิ่งของที่หาย';
+
 // รหัสที่เป็นเลขจำนวนเต็มบวก (รับได้ทั้งตัวเลขและข้อความตัวเลข) ไม่ใช่ → null
 function toPositiveId(value) {
     const text = typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '';
@@ -380,6 +383,7 @@ router.get('/founditem/admin/student/:studentId', requireAdmin, async (req, res)
 // 4. API ผู้ใช้งานยกเลิกรายการสิ่งของที่หาย (DELETE /api/items/lostitem/:lostId)
 // ส่ง User_ID มาด้วย (body JSON { User_ID } หรือ ?User_ID=) ยกเลิกได้เฉพาะรายการของตัวเอง
 // ยกเลิกได้เมื่อสถานะ 'ไม่พบ' หรือ 'พบ' ที่ยังไม่มีคำขอรับคืนค้างอยู่ → 'ยกเลิกรายการ' + แจ้งเตือนผู้ใช้ (ไม่ลบข้อมูล)
+// รายการจับคู่ของสิ่งของชิ้นนี้ที่ยังไม่จบ → Match_status 'ผู้ใช้ยกเลิกรายการสิ่งของที่หาย'
 // 200 = ยกเลิกแล้ว, 400 = ข้อมูลไม่ครบ, 404 = ไม่พบรายการของผู้ใช้นี้
 // 409 code: NOT_CANCELLABLE (สถานะยกเลิกไม่ได้แล้ว), CLAIM_IN_PROGRESS (มีคำขอรับคืนที่รอดำเนินการ)
 router.delete('/lostitem/:lostId', async (req, res) => {
@@ -427,10 +431,19 @@ router.delete('/lostitem/:lostId', async (req, res) => {
 
         // 3. เปลี่ยนสถานะเป็น 'ยกเลิกรายการ' + แจ้งเตือนผู้ใช้ (ระบบจะไม่จับคู่รายการนี้อีก)
         await connection.query("UPDATE LostItem SET Lost_status = 'ยกเลิกรายการ' WHERE Lost_ID = ?", [lostId]);
-        // รายการจับคู่ที่ส่งให้ผู้ใช้แล้วแต่ยังไม่ได้ขอรับคืน ถือว่าผู้ใช้ไม่ขอรับคืน (ปิดอีเมลของรายการนั้น)
+        // รายการจับคู่ของสิ่งของชิ้นนี้ที่ยังไม่จบ (รอ Admin ตรวจสอบ หรือส่งให้ผู้ใช้แล้วแต่ยังไม่ได้ขอรับคืน)
+        // → 'ผู้ใช้ยกเลิกรายการสิ่งของที่หาย' (ปิดอีเมลของรายการนั้นด้วย) คู่ที่จบไปแล้วคงสถานะเดิมไว้เป็นประวัติ
         await connection.query(
-            "UPDATE MatchItem SET Match_status = 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน' WHERE Lost_ID = ? AND Match_status = 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน'",
-            [lostId]
+            `UPDATE MatchItem SET Match_status = ?
+             WHERE Lost_ID = ? AND (Match_status IS NULL OR Match_status = 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน')`,
+            [MATCH_LOST_CANCELLED, lostId]
+        );
+        // การแจ้งเตือน "พบรายการจับคู่ใหม่" ของ Admin สำหรับคู่เหล่านั้น ไม่ต้องจัดการแล้ว → อ่านแล้ว
+        await connection.query(
+            `UPDATE Notification n JOIN MatchItem m ON m.Match_ID = n.Match_ID
+             SET n.Is_read = TRUE
+             WHERE m.Lost_ID = ? AND m.Match_status = ? AND n.Admin_ID IS NOT NULL AND n.Is_read = FALSE`,
+            [lostId, MATCH_LOST_CANCELLED]
         );
         const notiMessage = `ท่านได้ทำการยกเลิกรายการสิ่งของ "${lostItem.LostItem_name}" เรียบร้อยแล้ว`;
         await connection.query(
