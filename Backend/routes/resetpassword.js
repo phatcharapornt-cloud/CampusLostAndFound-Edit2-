@@ -192,7 +192,7 @@ router.post('/reset-password', async (req, res) => {
         if (!result.ok) return res.status(result.status).json(result.body);
 
         // 3. รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม
-        if ((await verifyPassword(values.NewPassword, user.Password)).ok) {
+        if (verifyPassword(values.NewPassword, user.Password)) {
             return badRequest(res, { NewPassword: 'รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม' });
         }
 

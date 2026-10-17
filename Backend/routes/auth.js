@@ -5,11 +5,6 @@ const { validateRegistration, validateLogin } = require('../utils/validators');
 // เก็บรหัสผ่านเป็นข้อความตามที่กรอก (ไม่ hash) ดูรายละเอียดใน utils/password.js
 const { toStoredPassword, verifyPassword } = require('../utils/password');
 
-// รหัสผ่านเก่าที่ยังเป็น bcrypt → เข้าสู่ระบบสำเร็จแล้วบันทึกใหม่เป็นข้อความตามที่กรอก
-async function saveAsPlainPassword(table, idColumn, passwordColumn, id, password) {
-    await db.query(`UPDATE ${table} SET ${passwordColumn} = ? WHERE ${idColumn} = ?`, [toStoredPassword(password), id]);
-}
-
 //1. API สมัครสมาชิก (POST /api/auth/register(signup))
 // Body (JSON): { FName, LName, Student_ID, Email, Password }
 // 201 = สมัครสำเร็จ | 400 = ข้อมูลไม่ผ่านเงื่อนไข (errors แยกตามฟิลด์) | 409 = รหัสนักศึกษา/อีเมลซ้ำ
@@ -103,8 +98,7 @@ router.post('/login', async (req, res) => {
         
         if (users.length > 0) {
             const user = users[0];
-            const check = await verifyPassword(Password, user.Password);
-            const isPasswordValid = check.ok;
+            const isPasswordValid = verifyPassword(Password, user.Password);
 
             if (!isPasswordValid) {
                 return res.status(401).json({
@@ -112,7 +106,6 @@ router.post('/login', async (req, res) => {
                     message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
                 });
             }
-            if (check.legacyHash) await saveAsPlainPassword('User', 'User_ID', 'Password', user.User_ID, Password);
             // ลบ Password ออกจากข้อมูลผู้ใช้
             const { Password: _, ...userWithoutPassword } = user;
             return res.status(200).json({
@@ -129,9 +122,7 @@ router.post('/login', async (req, res) => {
 
         if (admins.length > 0) {
             const admin = admins[0];
-            const check = await verifyPassword(Password, admin.Admin_password);
-            const isPasswordValid = check.ok;
-            if (isPasswordValid && check.legacyHash) await saveAsPlainPassword('Admin', 'Admin_ID', 'Admin_password', admin.Admin_ID, Password);
+            const isPasswordValid = verifyPassword(Password, admin.Admin_password);
 
             if (!isPasswordValid) {
                 return res.status(401).json({
@@ -192,12 +183,9 @@ async function loginWithStudentId(body, res) {
 
         // 3. เปรียบเทียบรหัสผ่านที่กรอกกับรหัสผ่านที่เก็บไว้ในฐานข้อมูล
         const user = users[0];
-        const check = await verifyPassword(values.Password, user.Password);
-
-        if (!check.ok) {
+        if (!verifyPassword(values.Password, user.Password)) {
             return res.status(401).json(invalidCredentials);
         }
-        if (check.legacyHash) await saveAsPlainPassword('User', 'User_ID', 'Password', user.User_ID, values.Password);
 
         // 4. ส่งข้อมูลผู้ใช้กลับไป (ลบ Password ออกก่อน)
         const { Password: _, ...userWithoutPassword } = user;

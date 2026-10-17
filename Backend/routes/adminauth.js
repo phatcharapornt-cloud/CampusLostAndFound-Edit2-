@@ -8,7 +8,7 @@ const router = express.Router();
 const db = require('../config/db');
 const { validateAdminLogin } = require('../utils/validators');
 const { createAdminToken, requireAdmin } = require('../utils/admintoken');
-const { safeEqual, toStoredPassword, verifyPassword } = require('../utils/password');
+const { safeEqual, verifyPassword } = require('../utils/password');
 
 const MAX_FAILED_LOGINS = 5;              // กรอกรหัสผิดได้ 5 ครั้ง
 const LOCK_SECONDS = 5 * 60;              // แล้วล็อกอีเมลนั้นไว้ 5 นาที
@@ -17,14 +17,8 @@ const LOCK_SECONDS = 5 * 60;              // แล้วล็อกอีเ�
 const failedLogins = new Map();           // Admin_email → { count, lockedUntil }
 
 // ตรวจรหัสผ่าน (เก็บเป็นข้อความตามที่ตั้งไว้ ไม่ hash ดู utils/password.js)
-// ถ้ายังเป็น bcrypt แบบเก่าและถูกต้อง จะบันทึกใหม่เป็นข้อความธรรมดาให้อัตโนมัติ
-async function checkAdminPassword(admin, password) {
-    const check = await verifyPassword(password, admin.Admin_password);
-    if (check.ok && check.legacyHash) {
-        await db.query('UPDATE Admin SET Admin_password = ? WHERE Admin_ID = ?', [toStoredPassword(password), admin.Admin_ID]);
-        console.log(`[Admin] เปลี่ยนรหัสผ่านของ ${admin.Admin_email} จาก bcrypt เป็นข้อความธรรมดาแล้ว`);
-    }
-    return check.ok;
+function checkAdminPassword(admin, password) {
+    return verifyPassword(password, admin.Admin_password);
 }
 
 function secondsUntilUnlock(email) {

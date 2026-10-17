@@ -3,15 +3,7 @@
 // โปรเจกต์นี้ใช้สาธิต ไม่ได้เปิดใช้งานจริง จึงเก็บรหัสผ่านเป็นข้อความตามที่กรอก (ไม่ hash)
 // เช่น สมัครด้วย Test*1234 → คอลัมน์ Password ในฐานข้อมูลเก็บ Test*1234
 // ⚠️ ถ้าจะนำไปใช้งานจริง ควรกลับไปเข้ารหัสด้วย bcrypt (แก้แค่ toStoredPassword และ verifyPassword ในไฟล์นี้)
-//
-// รหัสผ่านเก่าที่เคยเข้ารหัสด้วย bcrypt ไว้ (ขึ้นต้นด้วย $2a$ / $2b$ / $2y$) ยังเข้าสู่ระบบได้ตามปกติ
-// และระบบจะเปลี่ยนเป็นข้อความธรรมดาให้อัตโนมัติเมื่อเข้าสู่ระบบสำเร็จครั้งถัดไป
-const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-
-function isBcryptHash(value) {
-    return /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(String(value || ''));
-}
 
 // เทียบข้อความแบบใช้เวลาเท่ากันเสมอ (ไม่ให้เดารหัสผ่านจากเวลาที่ใช้ตอบกลับได้)
 function safeEqual(a, b) {
@@ -25,13 +17,9 @@ function toStoredPassword(password) {
     return String(password);
 }
 
-// ตรวจรหัสผ่านที่กรอกกับค่าที่เก็บไว้
-// คืน { ok, legacyHash } — legacyHash = true แปลว่าค่าที่เก็บไว้ยังเป็น bcrypt แบบเก่า (ควรบันทึกใหม่เป็นข้อความธรรมดา)
-async function verifyPassword(input, stored) {
-    if (isBcryptHash(stored)) {
-        return { ok: await bcrypt.compare(String(input), stored), legacyHash: true };
-    }
-    return { ok: stored != null && safeEqual(input, stored), legacyHash: false };
+// รหัสผ่านที่กรอกตรงกับค่าที่เก็บไว้หรือไม่ (true / false)
+function verifyPassword(input, stored) {
+    return stored != null && safeEqual(input, stored);
 }
 
-module.exports = { isBcryptHash, safeEqual, toStoredPassword, verifyPassword };
+module.exports = { safeEqual, toStoredPassword, verifyPassword };
