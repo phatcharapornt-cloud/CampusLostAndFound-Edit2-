@@ -8,6 +8,8 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const { expireOverdueFoundItems } = require('../service/foundstatus');
+const { checkAndProcessExpiredMatches } = require('../service/matchingService');
 
 function parseUserId(value) {
     const text = typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '';
@@ -100,6 +102,10 @@ router.get('/my', async (req, res) => {
                 message: 'ไม่พบบัญชีผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่อีกครั้ง'
             });
         }
+
+        // ให้สถานะเป็นปัจจุบันก่อนแสดง (สิ่งของที่พบเกิน 30 นาที / รายการจับคู่ที่เกิน 24 ชม.)
+        await expireOverdueFoundItems();
+        await checkAndProcessExpiredMatches();
 
         const [[lost], [found], [claims]] = await Promise.all([
             db.query(LOST_QUERY, [userId]),

@@ -7,6 +7,7 @@
 //   router.get('/something', requireAdmin, (req, res) => { req.admin.Admin_ID ... });
 // หน้าเว็บต้องส่ง header:  Authorization: Bearer <token>
 const crypto = require('crypto');
+const db = require('../config/db');
 
 const TOKEN_LIFETIME_SECONDS = 8 * 60 * 60; // token ใช้ได้ 8 ชั่วโมง แล้วต้องเข้าสู่ระบบใหม่
 
@@ -53,17 +54,25 @@ function verifyAdminToken(token) {
 }
 
 // Middleware: ใส่หน้า route ที่ต้องเป็น Admin เท่านั้น ถ้าผ่านจะได้ req.admin = { Admin_ID, Admin_email, exp }
-function requireAdmin(req, res, next) {
+// ตรวจด้วยว่าบัญชี Admin ยังอยู่ในตาราง Admin (ถ้าถูกลบระหว่างที่ยังเข้าสู่ระบบอยู่ → ต้องเข้าสู่ระบบใหม่)
+async function requireAdmin(req, res, next) {
     const header = req.get('Authorization') || '';
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
     const admin = verifyAdminToken(token);
+    const unauthorized = (message) => res.status(401).json({
+        success: false,
+        code: 'ADMIN_UNAUTHORIZED',
+        message
+    });
 
-    if (!admin) {
-        return res.status(401).json({
-            success: false,
-            code: 'ADMIN_UNAUTHORIZED',
-            message: 'กรุณาเข้าสู่ระบบผู้ดูแลระบบใหม่อีกครั้ง'
-        });
+    if (!admin) return unauthorized('กรุณาเข้าสู่ระบบผู้ดูแลระบบใหม่อีกครั้ง');
+
+    try {
+        const [[exists]] = await db.query('SELECT Admin_ID FROM Admin WHERE Admin_ID = ?', [admin.Admin_ID]);
+        if (!exists) return unauthorized('ไม่พบบัญชีผู้ดูแลระบบนี้แล้ว กรุณาเข้าสู่ระบบใหม่');
+    } catch (error) {
+        console.error('Admin check error:', error);
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบสิทธิ์ผู้ดูแลระบบ' });
     }
 
     req.admin = admin;

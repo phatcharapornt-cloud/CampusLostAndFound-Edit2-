@@ -68,6 +68,7 @@ function stateOf(match, secondsLeft) {
 
 function shapeMail(row, user) {
     const match = shapeMatchRow(row);
+    delete match.found.Student_ID;   // ไม่ส่งรหัสนักศึกษาของผู้แจ้งพบให้เจ้าของสิ่งของ (ข้อมูลส่วนตัวของคนอื่น)
     const secondsLeft = Number(row.Seconds_left);
     return {
         Match_ID: match.Match_ID,

@@ -5,6 +5,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const { requireAdmin } = require('../utils/admintoken');
+const { expireOverdueFoundItems } = require('../service/foundstatus');
+const { checkAndProcessExpiredMatches } = require('../service/matchingService');
 
 // เงื่อนไขการนับใช้ชุดเดียวกับ API ที่แสดงรายการจริง เพื่อให้ตัวเลขบนหน้าหลักตรงกับจำนวนรายการในแต่ละหน้า
 //   pendingFound   = GET /api/admin/pendingfound  (สิ่งของที่พบ สถานะ 'รอการอนุมัติ')
@@ -37,6 +39,9 @@ const SUMMARY_QUERY = `
 // 200 = { pending: { found, matches, claims, awaitingReturn }, totals: { lost, found, matches, claims }, generatedAt }
 router.get('/summary', requireAdmin, async (req, res) => {
     try {
+        // ให้สถานะเป็นปัจจุบันก่อนนับ เหมือนหน้าที่แสดงรายการจริง (เกิน 30 นาที / เกิน 24 ชม.)
+        await expireOverdueFoundItems();
+        await checkAndProcessExpiredMatches();
         const [[row]] = await db.query(SUMMARY_QUERY);
         res.json({
             success: true,

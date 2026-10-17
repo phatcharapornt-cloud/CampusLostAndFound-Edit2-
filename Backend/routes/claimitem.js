@@ -238,6 +238,14 @@ router.put('/approve/:claimId', requireAdmin, adminAction('รอการอน
     if (claim.Found_status !== 'อนุมัติแล้ว') {
         return { error: { status: 409, body: { code: 'FOUND_NOT_AVAILABLE', message: `สิ่งของที่พบ #${claim.Found_ID} อยู่ในสถานะ "${claim.Found_status}" ไม่สามารถอนุมัติคำขอนี้ได้` } } };
     }
+    // สิ่งของชิ้นเดียวกันถูกจับคู่กับของหายได้หลายรายการ: อนุมัติให้ได้ทีละคำขอ (คำขอเดิมต้องคืนสิ่งของหรือถูกปฏิเสธก่อน)
+    const [[otherApproved]] = await conn.query(
+        "SELECT Claim_ID FROM Claim WHERE Found_ID = ? AND Claim_status = 'อนุมัติ' AND Claim_ID <> ? LIMIT 1",
+        [claim.Found_ID, claim.Claim_ID]
+    );
+    if (otherApproved) {
+        return { error: { status: 409, body: { code: 'FOUND_ALREADY_APPROVED', message: `สิ่งของที่พบ #${claim.Found_ID} มีคำขอ #${otherApproved.Claim_ID} ที่อนุมัติแล้ว กรุณาจัดการคำขอนั้นก่อน` } } };
+    }
     await conn.query("UPDATE Claim SET Claim_status = 'อนุมัติ', Admin_ID = ?, Claimcheck_at = NOW() WHERE Claim_ID = ?", [adminId, claim.Claim_ID]);
     const message = MESSAGES.approved(claim.FoundItem_name);
     await conn.query(
@@ -271,6 +279,9 @@ router.put('/reject/:claimId', requireAdmin, adminAction(['รอการอน
 // 5. Admin กด "คืนสิ่งของแล้ว" เมื่อเจ้าของมารับสิ่งของ (PUT /api/claim/returned/:claimId) กดได้หลังอนุมัติเท่านั้น
 // ============================================================
 router.put('/returned/:claimId', requireAdmin, adminAction('อนุมัติ', async (conn, claim, adminId) => {
+    if (claim.Found_status !== 'อนุมัติแล้ว') {
+        return { error: { status: 409, body: { code: 'FOUND_NOT_AVAILABLE', message: `สิ่งของที่พบ #${claim.Found_ID} อยู่ในสถานะ "${claim.Found_status}" ไม่สามารถบันทึกการคืนได้` } } };
+    }
     await conn.query("UPDATE Claim SET Claim_status = 'คืนสิ่งของแล้ว', Admin_ID = ?, Claimcheck_at = NOW() WHERE Claim_ID = ?", [adminId, claim.Claim_ID]);
     await conn.query("UPDATE LostItem SET Lost_status = 'ได้รับสิ่งของคืนแล้ว' WHERE Lost_ID = ?", [claim.Lost_ID]);
     await conn.query("UPDATE FoundItem SET Found_status = 'คืนสิ่งของแล้ว' WHERE Found_ID = ?", [claim.Found_ID]);

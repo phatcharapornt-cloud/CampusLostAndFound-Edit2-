@@ -10,6 +10,14 @@ const { FOUND_EXPIRE_MINUTES, MESSAGES: FOUND_MESSAGES } = require('../service/f
 const { parseImageDataUrl, saveImage, removeUpload } = require('../utils/imageupload');
 const { notifyAllAdmins } = require('../utils/adminnotify');
 
+// รหัสที่เป็นเลขจำนวนเต็มบวก (รับได้ทั้งตัวเลขและข้อความตัวเลข) ไม่ใช่ → null
+function toPositiveId(value) {
+    const text = typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '';
+    if (!/^\d+$/.test(text)) return null;
+    const number = Number(text);
+    return Number.isSafeInteger(number) && number > 0 ? number : null;
+}
+
 // 1. API แจ้งสิ่งของที่หาย (POST /api/items/lostitem) ใช้กับหน้า App-user/reportlost.html
 // body (JSON): { User_ID, LostItem_name, Category_ID, Location_ID, Lost_date: 'YYYY-MM-DD', Lost_time: 'HH:MM',
 //                Lost_description, Lost_photo?: 'data:image/jpeg;base64,...' (ไม่บังคับ) }
@@ -370,53 +378,82 @@ router.get('/founditem/admin/student/:studentId', requireAdmin, async (req, res)
 });
 
 // 4. API ผู้ใช้งานยกเลิกรายการสิ่งของที่หาย (DELETE /api/items/lostitem/:lostId)
+// ส่ง User_ID มาด้วย (body JSON { User_ID } หรือ ?User_ID=) ยกเลิกได้เฉพาะรายการของตัวเอง
+// ยกเลิกได้เมื่อสถานะ 'ไม่พบ' หรือ 'พบ' ที่ยังไม่มีคำขอรับคืนค้างอยู่ → 'ยกเลิกรายการ' + แจ้งเตือนผู้ใช้ (ไม่ลบข้อมูล)
+// 200 = ยกเลิกแล้ว, 400 = ข้อมูลไม่ครบ, 404 = ไม่พบรายการของผู้ใช้นี้
+// 409 code: NOT_CANCELLABLE (สถานะยกเลิกไม่ได้แล้ว), CLAIM_IN_PROGRESS (มีคำขอรับคืนที่รอดำเนินการ)
 router.delete('/lostitem/:lostId', async (req, res) => {
-    const { lostId } = req.params;
-    const { User_ID } = req.body;
+    const lostId = toPositiveId(req.params.lostId);
+    const userId = toPositiveId((req.body || {}).User_ID ?? req.query.User_ID);
+    if (!lostId || !userId) {
+        return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน กรุณาเข้าสู่ระบบใหม่แล้วลองอีกครั้ง' });
+    }
 
+    let connection;
     try {
-        // 1. ค้นหาข้อมูลรายการของหายก่อน เพื่อดึง User_ID และชื่อสิ่งของมาทำ Notification
-        let selectQuery = 'SELECT User_ID, LostItem_name FROM LostItem WHERE Lost_ID = ?';
-        let selectParams = [lostId];
+        connection = await db.getConnection();
+        await connection.beginTransaction();
 
-        if (User_ID) {
-            selectQuery += ' AND User_ID = ?';
-            selectParams.push(User_ID);
+        // 1. รายการต้องเป็นของผู้ใช้คนนี้ (ล็อกไว้กันการเปลี่ยนสถานะพร้อมกัน)
+        const [[lostItem]] = await connection.query(
+            'SELECT Lost_ID, LostItem_name, Lost_status FROM LostItem WHERE Lost_ID = ? AND User_ID = ? FOR UPDATE',
+            [lostId, userId]
+        );
+        if (!lostItem) {
+            await connection.rollback();
+            return res.status(404).json({ success: false, message: 'ไม่พบรายการสิ่งของที่หาย หรือคุณไม่มีสิทธิ์ในการยกเลิกรายการนี้' });
         }
-
-        const [items] = await db.query(selectQuery, selectParams);
-
-        if (items.length === 0) {
-            return res.status(404).json({
+        if (!['ไม่พบ', 'พบ'].includes(lostItem.Lost_status)) {
+            await connection.rollback();
+            return res.status(409).json({
                 success: false,
-                message: 'ไม่พบรายการสิ่งของที่หาย หรือคุณไม่มีสิทธิ์ในการยกเลิกรายการนี้'
+                code: 'NOT_CANCELLABLE',
+                message: `รายการนี้อยู่ในสถานะ "${lostItem.Lost_status}" ไม่สามารถยกเลิกได้`
+            });
+        }
+        // 2. ถ้ามีคำขอรับคืนที่รออนุมัติหรืออนุมัติแล้ว ต้องให้เจ้าหน้าที่จัดการก่อน
+        const [[openClaim]] = await connection.query(
+            "SELECT Claim_ID FROM Claim WHERE Lost_ID = ? AND Claim_status IN ('รอการอนุมัติ', 'อนุมัติ') LIMIT 1",
+            [lostId]
+        );
+        if (openClaim) {
+            await connection.rollback();
+            return res.status(409).json({
+                success: false,
+                code: 'CLAIM_IN_PROGRESS',
+                message: 'รายการนี้มีคำขอรับสิ่งของคืนที่กำลังดำเนินการอยู่ กรุณาติดต่อที่ส่วนกลาง'
             });
         }
 
-        const lostItem = items[0];
-        const targetUserId = User_ID || lostItem.User_ID;
-
-        // 2. อัปเดตสถานะของสิ่งของที่หายเป็น 'ยกเลิกรายการ' 
-        await db.query("UPDATE LostItem SET Lost_status = 'ยกเลิกรายการ' WHERE Lost_ID = ?", [lostId]);
-
-        // 3. บันทึก Notification แจ้งเตือนไปยังผู้ใช้งาน 
-        const notiMessage = `ท่านได้ทำการยกเลิกรายการสิ่งของ "${lostItem.LostItem_name}" เรียบร้อยแล้ว`;
-        await db.query(
-            `INSERT INTO Notification (User_ID, Lost_ID, Message) VALUES (?, ?, ?)`,
-            [targetUserId, lostId, notiMessage]
+        // 3. เปลี่ยนสถานะเป็น 'ยกเลิกรายการ' + แจ้งเตือนผู้ใช้ (ระบบจะไม่จับคู่รายการนี้อีก)
+        await connection.query("UPDATE LostItem SET Lost_status = 'ยกเลิกรายการ' WHERE Lost_ID = ?", [lostId]);
+        // รายการจับคู่ที่ส่งให้ผู้ใช้แล้วแต่ยังไม่ได้ขอรับคืน ถือว่าผู้ใช้ไม่ขอรับคืน (ปิดอีเมลของรายการนั้น)
+        await connection.query(
+            "UPDATE MatchItem SET Match_status = 'ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน' WHERE Lost_ID = ? AND Match_status = 'ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน'",
+            [lostId]
         );
+        const notiMessage = `ท่านได้ทำการยกเลิกรายการสิ่งของ "${lostItem.LostItem_name}" เรียบร้อยแล้ว`;
+        await connection.query(
+            'INSERT INTO Notification (User_ID, Lost_ID, Message) VALUES (?, ?, ?)',
+            [userId, lostId, notiMessage]
+        );
+        await connection.commit();
 
         res.status(200).json({
             success: true,
-            message: 'ยกเลิกรายการสิ่งของที่หายเรียบร้อยแล้ว'
+            message: 'ยกเลิกรายการสิ่งของที่หายเรียบร้อยแล้ว',
+            Lost_ID: lostId,
+            Lost_status: 'ยกเลิกรายการ'
         });
-
     } catch (error) {
+        if (connection) await connection.rollback().catch(() => {});
         console.error('Error canceling lost item:', error);
         res.status(500).json({
             success: false,
             message: 'เกิดข้อผิดพลาดในการยกเลิกรายการสิ่งของที่หาย'
         });
+    } finally {
+        if (connection) connection.release();
     }
 });
 
