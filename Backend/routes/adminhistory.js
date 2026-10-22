@@ -129,7 +129,7 @@ const HISTORY = {
         search: (q, like, prefix) => {
             const isId = /^\d+$/.test(q);
             return {
-                sql: `(${isId ? 'c.Claim_ID = ? OR c.Lost_ID = ? OR c.Found_ID = ? OR ' : ''}cu.Student_ID LIKE ?
+                sql: `(${isId ? 'c.Claim_ID = ? OR m.Lost_ID = ? OR m.Found_ID = ? OR ' : ''}cu.Student_ID LIKE ?
                        OR l.LostItem_name LIKE ? OR f.FoundItem_name LIKE ?)`,
                 params: [...(isId ? [Number(q), Number(q), Number(q)] : []), prefix, like, like],
             };

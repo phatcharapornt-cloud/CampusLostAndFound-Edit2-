@@ -108,9 +108,9 @@ router.post('/request', async (req, res) => {
         // Claim_detail: สรุปคู่สิ่งของที่ขอรับคืน (รายละเอียดเต็มดึงจากตาราง LostItem/FoundItem ตอนแสดงผล)
         const detail = `สิ่งของที่หาย #${match.Lost_ID} "${match.LostItem_name}" / สิ่งของที่พบ #${match.Found_ID} "${match.FoundItem_name}"`.slice(0, 200);
         const [result] = await conn.query(
-            `INSERT INTO Claim (User_ID, Admin_ID, Match_ID, Lost_ID, Found_ID, Claim_detail, Claim_status, Claim_date, Claimcheck_at)
-             VALUES (?, NULL, ?, ?, ?, ?, 'รอการอนุมัติ', CURDATE(), NULL)`,
-            [userId, matchId, match.Lost_ID, match.Found_ID, detail]
+            `INSERT INTO Claim (User_ID, Admin_ID, Match_ID, Claim_detail, Claim_status, Claim_date, Claimcheck_at)
+             VALUES (?, NULL, ?, ?, 'รอการอนุมัติ', CURDATE(), NULL)`,
+            [userId, matchId, detail]
         );
         claimId = result.insertId;
         await conn.query('UPDATE MatchItem SET Match_status = ? WHERE Match_ID = ?', [MATCH_CONFIRMED, matchId]);
@@ -171,14 +171,16 @@ router.get('/pending', requireAdmin, async (req, res) => {
 });
 
 // ล็อกคำขอ + ข้อมูลที่ต้องใช้ แล้วตรวจสถานะที่ต้องการ (1 สถานะ หรือรายการของสถานะ) คืน { claim } หรือ { status, body }
+// ตาราง Claim ไม่เก็บ Lost_ID / Found_ID เอง จึงดึงผ่านรายการจับคู่ (MatchItem) ของคำขอนั้น
 async function lockClaim(conn, claimId, expectedStatus) {
     const allowed = Array.isArray(expectedStatus) ? expectedStatus : [expectedStatus];
     const [[claim]] = await conn.query(
-        `SELECT c.Claim_ID, c.Claim_status, c.User_ID, c.Match_ID, c.Lost_ID, c.Found_ID,
+        `SELECT c.Claim_ID, c.Claim_status, c.User_ID, c.Match_ID, m.Lost_ID, m.Found_ID,
                 l.LostItem_name, l.Lost_status, f.FoundItem_name, f.Found_status, f.User_ID AS Finder_User_ID
          FROM Claim c
-         JOIN LostItem l  ON c.Lost_ID = l.Lost_ID
-         JOIN FoundItem f ON c.Found_ID = f.Found_ID
+         JOIN MatchItem m ON c.Match_ID = m.Match_ID
+         JOIN LostItem l  ON m.Lost_ID = l.Lost_ID
+         JOIN FoundItem f ON m.Found_ID = f.Found_ID
          WHERE c.Claim_ID = ?
          FOR UPDATE`,
         [claimId]
@@ -240,7 +242,9 @@ router.put('/approve/:claimId', requireAdmin, adminAction('รอการอน
     }
     // สิ่งของชิ้นเดียวกันถูกจับคู่กับของหายได้หลายรายการ: อนุมัติให้ได้ทีละคำขอ (คำขอเดิมต้องคืนสิ่งของหรือถูกปฏิเสธก่อน)
     const [[otherApproved]] = await conn.query(
-        "SELECT Claim_ID FROM Claim WHERE Found_ID = ? AND Claim_status = 'อนุมัติ' AND Claim_ID <> ? LIMIT 1",
+        `SELECT c.Claim_ID FROM Claim c
+         JOIN MatchItem m ON c.Match_ID = m.Match_ID
+         WHERE m.Found_ID = ? AND c.Claim_status = 'อนุมัติ' AND c.Claim_ID <> ? LIMIT 1`,
         [claim.Found_ID, claim.Claim_ID]
     );
     if (otherApproved) {

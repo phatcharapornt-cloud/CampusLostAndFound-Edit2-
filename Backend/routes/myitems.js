@@ -58,13 +58,14 @@ const FOUND_QUERY = `
 
 // คำขอรับคืน: แสดงข้อมูลของ "สิ่งของที่พบ" ที่ผู้ใช้งานขอรับคืน (ชื่อ รูป หมวดหมู่ สถานที่ที่พบ)
 // และแนบรหัส/ชื่อรายการสิ่งของที่หายของผู้ใช้งานที่ใช้จับคู่ไว้ด้วย
+// (Lost_ID / Found_ID ดึงจากรายการจับคู่ MatchItem ของคำขอ เพราะตาราง Claim ไม่เก็บซ้ำ)
 const CLAIM_QUERY = `
     SELECT
         cl.Claim_ID,
         cl.Match_ID,
-        cl.Lost_ID,
+        m.Lost_ID,
         l.LostItem_name,
-        cl.Found_ID,
+        m.Found_ID,
         f.FoundItem_name,
         f.Found_photo,
         f.Found_description,
@@ -77,8 +78,9 @@ const CLAIM_QUERY = `
         DATE_FORMAT(cl.Claim_date, '%Y-%m-%d') AS Claim_date,
         cl.Claim_status
     FROM Claim cl
-    LEFT JOIN FoundItem f ON cl.Found_ID = f.Found_ID
-    LEFT JOIN LostItem l ON cl.Lost_ID = l.Lost_ID
+    JOIN MatchItem m ON cl.Match_ID = m.Match_ID
+    LEFT JOIN FoundItem f ON m.Found_ID = f.Found_ID
+    LEFT JOIN LostItem l ON m.Lost_ID = l.Lost_ID
     LEFT JOIN Category c ON f.Category_ID = c.Category_ID
     LEFT JOIN Location loc ON f.Location_ID = loc.Location_ID
     WHERE cl.User_ID = ?
