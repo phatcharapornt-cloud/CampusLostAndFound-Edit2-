@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS MatchItem (
     Lost_ID INT NOT NULL,
     Found_ID INT NOT NULL,
     Match_score DECIMAL(5,2) NOT NULL,
-   Match_status ENUM('ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน','ปฏิเสธการส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน','ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน', 'ผู้ใช้งานยืนยันการขอรับสิ่งของคืน', 'ผู้ใช้ยกเลิกรายการสิ่งของที่หาย') DEFAULT NULL,
+    Match_status ENUM('รอการตรวจสอบ','ส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน','ปฏิเสธการส่งรายการจับคู่สิ่งของไปยังผู้ใช้งาน','ผู้ใช้งานปฏิเสธการขอรับสิ่งของคืน', 'ผู้ใช้งานยืนยันการขอรับสิ่งของคืน', 'ผู้ใช้ยกเลิกรายการสิ่งของที่หาย') DEFAULT NULL,
     Match_date DATE NOT NULL default (CURRENT_DATE),
     Match_time TIME NOT NULL default (CURRENT_TIME),
     UNIQUE KEY uq_match_pair (Lost_ID, Found_ID),   -- สิ่งของที่หายกับสิ่งของที่พบคู่เดียวกัน จับคู่ได้ครั้งเดียว
