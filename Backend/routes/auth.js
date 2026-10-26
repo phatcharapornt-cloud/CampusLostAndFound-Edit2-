@@ -6,8 +6,8 @@ const { validateRegistration, validateLogin } = require('../utils/validators');
 const { toStoredPassword, verifyPassword } = require('../utils/password');
 
 //1. API สมัครสมาชิก (POST /api/auth/register(signup))
-// Body (JSON): { FName, LName, Student_ID, Email, Password }
-// 201 = สมัครสำเร็จ | 400 = ข้อมูลไม่ผ่านเงื่อนไข (errors แยกตามฟิลด์) | 409 = รหัสนักศึกษา/อีเมลซ้ำ
+     // Body (JSON): { FName, LName, Student_ID, Email, Password }
+     // 201 = สมัครสำเร็จ | 400 = ข้อมูลไม่ผ่านเงื่อนไข (errors แยกตามฟิลด์) | 409 = รหัสนักศึกษา/อีเมลซ้ำ
 router.post('/register', async (req, res) => {
     // 1. ตรวจสอบความถูกต้องของข้อมูล (ชื่อ, รหัสนักศึกษา 8 หลัก, อีเมล รหัสนักศึกษา@kmitl.ac.th, เงื่อนไขรหัสผ่าน)
     const { values, errors } = validateRegistration(req.body ?? {});
@@ -74,83 +74,7 @@ router.post('/register', async (req, res) => {
 // ผู้ใช้งาน (App-user): Body { Student_ID, Password }
 //   200 = สำเร็จ (role: 'user', user: ข้อมูลผู้ใช้ไม่รวมรหัสผ่าน) | 400 = กรอกไม่ครบ/รูปแบบผิด | 401 = รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง
 // แบบเดิม: Body { Email, Password } ยังใช้ได้ (ผู้ใช้งานหรือ Admin เข้าด้วยอีเมล)
-router.post('/login', async (req, res) => {
-    const body = req.body ?? {};
-
-    if (body.Email === undefined) {
-        return loginWithStudentId(body, res);
-    }
-
-    const { Email, Password } = body;
-
-    //ตรวจสอบว่ากรอกข้อมูลครบถ้วนหรือไม่
-    if (!Email || !Password) {
-        return res.status(400).json({
-            success: false,
-            message: 'กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน'
-        });
-    }
-
-    try {
-        //1. ตรวจสอบว่ามี Email ในฐานข้อมูล(User) หรือไม่
-        const getUserQuery = 'SELECT * FROM User WHERE Email = ?';
-        const [users] = await db.query(getUserQuery, [Email]);
-        
-        if (users.length > 0) {
-            const user = users[0];
-            const isPasswordValid = verifyPassword(Password, user.Password);
-
-            if (!isPasswordValid) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
-                });
-            }
-            // ลบ Password ออกจากข้อมูลผู้ใช้
-            const { Password: _, ...userWithoutPassword } = user;
-            return res.status(200).json({
-                success: true,
-                message: 'เข้าสู่ระบบสำเร็จ',
-                role: 'user',
-                user: userWithoutPassword
-            });
-        }
-
-        // 2. ตรวจสอบว่ามี Email ในฐานข้อมูล(Admin) หรือไม่
-        const getAdminQuery = 'SELECT * FROM Admin WHERE Admin_email = ?';
-        const [admins] = await db.query(getAdminQuery, [Email]);
-
-        if (admins.length > 0) {
-            const admin = admins[0];
-            const isPasswordValid = verifyPassword(Password, admin.Admin_password);
-
-            if (!isPasswordValid) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
-                });
-            }
-            const { Admin_password, ...adminWithoutPassword } = admin; // ลบ Admin_password ออกจากข้อมูลผู้ดูแลระบบ
-            return res.status(200).json({
-                success: true,
-                message: 'เข้าสู่ระบบสำเร็จ',
-                role: 'admin',
-                admin: adminWithoutPassword
-            });
-        }
-
-        return res.status(401).json({
-            success: false,
-            message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
-        });
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ'
-        });
-    }
-});
+router.post('/login', (req, res) => loginWithStudentId(req.body ?? {}, res));
 
 // เข้าสู่ระบบด้วยรหัสนักศึกษา + รหัสผ่าน (ใช้ในหน้า App-user/login.html)
 async function loginWithStudentId(body, res) {
@@ -203,6 +127,5 @@ async function loginWithStudentId(body, res) {
         });
     }
 }
-
 
 module.exports = router;
