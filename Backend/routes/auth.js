@@ -73,7 +73,7 @@ router.post('/register', async (req, res) => {
 // 2. API เข้าสู่ระบบ (POST /api/auth/login)
 // ผู้ใช้งาน (App-user): Body { Student_ID, Password }
 //   200 = สำเร็จ (role: 'user', user: ข้อมูลผู้ใช้ไม่รวมรหัสผ่าน) | 400 = กรอกไม่ครบ/รูปแบบผิด | 401 = รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง
-// แบบเดิม: Body { Email, Password } ยังใช้ได้ (ผู้ใช้งานหรือ Admin เข้าด้วยอีเมล)
+// (Admin เข้าสู่ระบบที่ POST /api/auth/admin-login ใน routes/adminauth.js)
 router.post('/login', (req, res) => loginWithStudentId(req.body ?? {}, res));
 
 // เข้าสู่ระบบด้วยรหัสนักศึกษา + รหัสผ่าน (ใช้ในหน้า App-user/login.html)
