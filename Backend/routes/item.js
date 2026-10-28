@@ -399,7 +399,7 @@ router.delete('/lostitem/:lostId', async (req, res) => {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        // 1. รายการต้องเป็นของผู้ใช้คนนี้ (ล็อกไว้กันการเปลี่ยนสถานะพร้อมกัน)
+        // 1. รายการต้องเป็นของผู้ใช้คนนี้
         const [[lostItem]] = await connection.query(
             'SELECT Lost_ID, LostItem_name, Lost_status FROM LostItem WHERE Lost_ID = ? AND User_ID = ? FOR UPDATE',
             [lostId, userId]
@@ -418,9 +418,7 @@ router.delete('/lostitem/:lostId', async (req, res) => {
         }
         // 2. ถ้ามีคำขอรับคืนที่รออนุมัติหรืออนุมัติแล้ว ต้องให้เจ้าหน้าที่จัดการก่อน
         const [[openClaim]] = await connection.query(
-            `SELECT c.Claim_ID FROM Claim c
-             JOIN MatchItem m ON c.Match_ID = m.Match_ID
-             WHERE m.Lost_ID = ? AND c.Claim_status IN ('รอการอนุมัติ', 'อนุมัติ') LIMIT 1`,
+            "SELECT Claim_ID FROM Claim WHERE Lost_ID = ? AND Claim_status IN ('รอการอนุมัติ', 'อนุมัติ') LIMIT 1",
             [lostId]
         );
         if (openClaim) {
