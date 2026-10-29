@@ -27,23 +27,25 @@ cd CampusLostAndFound-Edit2-
 
 2.1 สร้างฐานข้อมูลเปล่า (มีแค่หมวดหมู่และสถานที่) (bash ลงใน Terminal)
 
-bash
+```bash
 mysql -u root -p --default-character-set=utf8mb4 < Database/schema.sql
 mysql -u root -p --default-character-set=utf8mb4 < Database/seed.sql
-
+```
 
 ระบบไม่มีหน้าสมัครบัญชีเจ้าหน้าที่ ให้เพิ่มบัญชีด้วยคำสั่ง SQL:
 
-sql
+```sql
 USE campus_lost_and_found;
 INSERT INTO Admin (Admin_email, Admin_password) VALUES ('admin@kmitl.ac.th', 'Admin*1234');
+```
 
 3. เปิด Backend
 
-bash
+```bash
 cd Backend
 npm install
 cp .env.example .env
+```
 
 3.1. แก้ไฟล์ `Backend/.env`:
 
@@ -51,9 +53,9 @@ cp .env.example .env
 - `ADMIN_TOKEN_SECRET` = ข้อความสุ่มสำหรับลงชื่อ token ของเจ้าหน้าที่ สร้างได้ด้วย `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 - `PORT` ต้องเป็น `5001` เพราะหน้าเว็บเรียก API ที่ `http://localhost:5001`
 
-bash
+```bash
 npm start
-
+```
 
 ถ้าขึ้น `Server running on http://localhost:5001` และ `Connected to MySQL Database successfully!` แปลว่าพร้อมใช้งาน
 
