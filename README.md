@@ -2,10 +2,10 @@
 
 ระบบแจ้งสิ่งของหายและสิ่งของที่พบภายในคณะวิทยาศาสตร์
 
-App-user : หน้าเว็บสำหรับนักศึกษา (หน้าจอแบบมือถือ) เริ่มที่ `login.html`
-Web-Admin : หน้าเว็บสำหรับเจ้าหน้าที่ เริ่มที่ `login.html` 
-Backend : API ด้วย Node.js + Express เชื่อม MySQL ผ่าน mysql2 (พอร์ต 5001)
-Database : schema.sql สร้าง 10 ตาราง, seed.sql ข้อมูลหมวดหมู่ 24 รายการและสถานที่ 11 แห่ง
+- App-user : หน้าเว็บสำหรับนักศึกษา (หน้าจอแบบมือถือ) เริ่มที่ `login.html`
+- Web-Admin : หน้าเว็บสำหรับเจ้าหน้าที่ เริ่มที่ `login.html` 
+- Backend : API ด้วย Node.js + Express เชื่อม MySQL ผ่าน mysql2 (พอร์ต 5001)
+- Database : schema.sql สร้าง 10 ตาราง, seed.sql ข้อมูลหมวดหมู่ 24 รายการและสถานที่ 11 แห่ง
 
 สิ่งที่ต้องมีในเครื่อง
 1. Node.js 18 ขึ้นไป
@@ -33,11 +33,22 @@ mysql -u root -p --default-character-set=utf8mb4 < Database/seed.sql
 ```
 
 ระบบไม่มีหน้าสมัครบัญชีเจ้าหน้าที่ ให้เพิ่มบัญชีด้วยคำสั่ง SQL:
-
 ```sql
 USE campus_lost_and_found;
 INSERT INTO Admin (Admin_email, Admin_password) VALUES ('admin@kmitl.ac.th', 'Admin*1234');
 ```
+2.2 ใช้ข้อมูลตัวอย่างที่ส่งให้ (ไฟล์ dump และโฟลเดอร์ uploads ส่งแยกจาก GitHub)
+
+```bash
+mysql -u root -p -e "CREATE DATABASE campus_lost_and_found CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+mysql -u root -p --default-character-set=utf8mb4 campus_lost_and_found < campus_lost_and_found_dump.sql
+```
+
+ถ้าในเครื่องมีฐานข้อมูลชื่อนี้อยู่แล้ว ให้ลบก่อนด้วย DROP DATABASE campus_lost_and_found;
+
+จากนั้นคัดลอกโฟลเดอร์ uploads ที่ได้รับไปไว้ที่ Backend/uploads (รูปสิ่งของในข้อมูลตัวอย่างอยู่ในโฟลเดอร์นี้) บัญชีทดสอบของแบบนี้ทีมแจ้งไว้พร้อมไฟล์ dump
+
+ไฟล์ Database/add_unique_keys.sql และ Database/remove_claim_lost_found.sql ใช้ปรับฐานข้อมูลรุ่นเก่าของทีมเท่านั้น ไม่ต้องรันเมื่อสร้างใหม่
 
 3. เปิด Backend
 
